@@ -1,11 +1,14 @@
 // symbol list, each entry will display the symbol name, latest fetched price, and percent increase/decrease. clicking one will open a ChartPanel
-
 package com.gui;
+
+import com.etl.ReadData;
+import com.market.SymbolData;
 
 import com.market.*;
 import javax.swing.*;
 import java.awt.*;
 import java.io.File;
+import java.util.List;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -15,6 +18,11 @@ public class SymbolListPanel extends JPanel {
    private JList<TradeItem> symbolList;
    private final List<SymbolSelectionListener> listeners;
    private final String dataFolderPath;
+    private DefaultListModel<TradeItem> symbolModel;
+    private JList<TradeItem> symbolList;
+    private List<SymbolSelectionListener> listeners;
+    private String dataFolderPath;
+    private ReadData reader;
 
    // interface that listeners must implement
    public interface SymbolSelectionListener {
@@ -22,32 +30,32 @@ public class SymbolListPanel extends JPanel {
    }
 
     public SymbolListPanel(String dataFolderPath) {
-      this.dataFolderPath = dataFolderPath;
-      this.listeners = new ArrayList<>();
-      
-      initializeComponents();
-      loadSymbols();
-      setupListeners();
-   }
+        this.dataFolderPath = dataFolderPath;
+        this.listeners = new ArrayList<>();
+        try {
+            reader = new ReadData(dataFolderPath);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        initializeComponents();
+        loadSymbols();
+        setupListeners();
+    }
 
-   private void initializeComponents() {
-      setLayout(new BorderLayout());
-      setBackground(GUIComponents.BG_MEDIUM);
-      setBorder(GUIComponents.createBorder());
-      
-      symbolModel = new DefaultListModel<>();
-      symbolList = GUIComponents.createList(symbolModel);
+    private void initializeComponents() {
+        setLayout(new BorderLayout());
+        setBackground(GUIComponents.BG_MEDIUM);
+        setBorder(GUIComponents.createBorder());
 
-      symbolList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-      symbolList.setCellRenderer(new SymbolCellRenderer());
-      symbolList.setFixedCellHeight(50);
-      
-      JScrollPane scrollPane = GUIComponents.createScrollPane(symbolList);
-      scrollPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
-      scrollPane.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
-      
-      add(scrollPane, BorderLayout.CENTER);
-   }
+        symbolModel = new DefaultListModel<>();
+        symbolList = GUIComponents.createList(symbolModel);
+        symbolList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        symbolList.setCellRenderer(new SymbolCellRenderer());
+        symbolList.setFixedCellHeight(50);
+
+        JScrollPane scrollPane = GUIComponents.createScrollPane(symbolList);
+        add(scrollPane, BorderLayout.CENTER);
+    }
 
    private void loadSymbols() {
       symbolModel.clear();
@@ -94,14 +102,12 @@ public class SymbolListPanel extends JPanel {
             if (selectedSymbol != null) {
                notifyListeners(selectedSymbol);
             }
-         }
-      });
-   }
+        });
+    }
 
-   // methods for managing listeners
-   public void addSymbolSelectionListener(SymbolSelectionListener listener) {
-      listeners.add(listener);
-   }
+    public void addSymbolSelectionListener(SymbolSelectionListener listener) {
+        listeners.add(listener);
+    }
 
    public void removeSymbolSelectionListener(SymbolSelectionListener listener) {
       listeners.remove(listener);
@@ -113,10 +119,10 @@ public class SymbolListPanel extends JPanel {
       }
    }
 
-   // utility methods
-   public void refreshSymbols() {
-      loadSymbols();
-   }
+    /** Helper: return the first symbol name (for initializing chart) */
+    public String getFirstSymbolName() {
+        return symbolModel.isEmpty() ? null : symbolModel.get(0).getSymbol();
+    }
 
    public String getSelectedSymbol() {
       TradeItem selected = symbolList.getSelectedValue();
@@ -126,4 +132,8 @@ public class SymbolListPanel extends JPanel {
    public void clearSelection() {
       symbolList.clearSelection();
    }
+    /** Helper: return the underlying ReadData instance */
+    public ReadData getReader() {
+        return reader;
+    }
 }

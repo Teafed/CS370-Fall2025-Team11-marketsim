@@ -3,8 +3,22 @@
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 
          http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>com</groupId>
+    <artifactId>marketsim</artifactId>
+    <version>1.0-SNAPSHOT</version>
+
+    <properties>
+        <maven.compiler.source>11</maven.compiler.source>
+        <maven.compiler.target>11</maven.compiler.target>
+    </properties>
+
+    <dependencies>
+        <!-- add API dependencies here later -->
+    </dependencies>
    <modelVersion>4.0.0</modelVersion>
-   
+
    <groupId>com</groupId>
    <artifactId>marketsim</artifactId>
    <version>1.0-SNAPSHOT</version>
@@ -14,7 +28,7 @@
       <maven.compiler.source>11</maven.compiler.source>
       <maven.compiler.target>11</maven.compiler.target>
     </properties>
-   
+
    <dependencies>
        <dependency>
            <groupId>org.xerial</groupId>
@@ -72,27 +86,40 @@
         </plugin>
     </plugins>
   </build>
-
-  <profiles>
-    <!-- test profiles -->
-    <profile>
-      <id>etldemo</id>
-      <build>
+    <build>
         <plugins>
-          <plugin>
-            <groupId>org.codehaus.mojo</groupId>
-            <artifactId>exec-maven-plugin</artifactId>
-            <version>3.1.0</version>
-            <configuration>
-              <mainClass>com.etl.ExtractorDemo</mainClass>
-            </configuration>
-          </plugin>
+            <!-- run program (Main.java) -->
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>exec-maven-plugin</artifactId>
+                <version>3.1.0</version>
+                <configuration>
+                    <mainClass>com.Main</mainClass>
+                </configuration>
+            </plugin>
         </plugins>
-      </build>
-    </profile>
-    <!-- to add another test profile, use the same format as above
-         (just change <id> and <mainClass>) -->
+    </build>
 
-  </profiles>
-  
+    <profiles>
+        <!-- test profiles -->
+        <profile>
+            <id>etldemo</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.codehaus.mojo</groupId>
+                        <artifactId>exec-maven-plugin</artifactId>
+                        <version>3.1.0</version>
+                        <configuration>
+                            <mainClass>com.etl.ExtractorDemo</mainClass>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+        <!-- to add another test profile, use the same format as above
+             (just change <id> and <mainClass>) -->
+
+    </profiles>
+
 </project>
