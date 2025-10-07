@@ -1,23 +1,30 @@
 package com.accountmanager;
 
+import com.markets.*;
+
 import java.util.ArrayList;
+import java.util.Map;
 
 // One account
 public class Account {
 
-    private int accountValue; // Current account value stored in cents
+    private int accountTotalValue; // Current total account value stored in cents
+    private int availableBalance; // the amount the user can currently trade
     private String accountName; // User defined name of account
-    private ArrayList<String> ownedStocks;  // stocks the account owns
-    private ArrayList<String> watchlistStocks; // stocks the account is watching
+    private Portfolio portfolio;
+    private Watchlist watchList;
 
     // constructor
-    public Account(int accountValue, String accountName) {
-        this.accountValue = accountValue;
+    public Account(String accountName) {
+        this.accountTotalValue = 0;
         this.accountName = accountName;
+        this.portfolio = new Portfolio();
+        this.watchList = new Watchlist();
     }
 
     // Set name
     public void setAccountName(String accountName) {
+
         this.accountName = accountName;
     }
 
@@ -26,74 +33,63 @@ public class Account {
         return accountName;
     }
 
-    // Set value
-    public void setAccountValue(int accountValue) {
-        this.accountValue = accountValue;
+    // Get account value
+    public int getAccountTotalValue() {
+        updateAccountValue();
+        return accountTotalValue;
     }
 
-    // Get account value
-    public int getAccountValue() {
-        return accountValue;
+    // get the available balance
+    public int getAvailableBalance() {
+        return this.availableBalance;
     }
+
+    /**
+     * Returns the portfolio of the account.
+     * @return The portfolio of the account.
+     */
+    public Portfolio getPortfolio() {
+        return portfolio;
+    }
+
+    /**
+     * Returns the watchlist of the account.
+     * @return The watchlist of the account.
+     */
+    public Watchlist getWatchList() {
+        return watchList;
+    }
+
+    // DEPOSIT WITHDRAW UPDATE
 
     // Add value to account
-    public void addValue(int amount) {
-        this.accountValue += amount;
-    }
-
-    // Remove value from account
-    public void removeValue(int amount) {
-        this.accountValue -= amount;
-    }
-
-    // Add stock to owned list
-    public boolean addOwnedStock(String stock) {
-        this.ownedStocks.add(stock);
+    public boolean depositFunds(int amount) {
+        if (amount < 1) {
+            return false;
+        }
+        this.availableBalance += amount;
+        updateAccountValue();
         return true;
     }
 
-    // Remove stock from owned list
-    public boolean removeOwnedStock(String stock) {
-        if(this.ownedStocks.contains(stock)) {
-            this.ownedStocks.remove(stock);     // stock was removed
+    // withdraw funds from account
+    public boolean withdrawFunds(int amount) {
+        if (amount < 1) {
+            return false;
+        }
+        if (availableBalance >= amount) {
+            availableBalance -= amount;
+            updateAccountValue();
             return true;
         }
-        return false;       // stock was not removed
+        return false;
+        // TODO else throw error
     }
 
-    // Add stock to watchlist
-    // Check for errors on input from broker class
-    public boolean addWatchedStock(String stock) {
-        if (!this.watchlistStocks.contains(stock)) {
-            this.watchlistStocks.add(stock);      // stock successfully added
-            return true;
-        }
-        return false;       // stock was not added
+    public void updateAccountValue() {
+        accountTotalValue = availableBalance + portfolio.getPortfolioValue();
     }
 
-    // Remove stock from watchlist
-    public boolean removeWatchedStock(String stock) {
-        if(this.watchlistStocks.contains(stock)) {
-            this.watchlistStocks.remove(stock);       //stock was removed
-            return true;
-        }
-        return false;           // stock was not removed
-    }
-
-    // Get list of owned stocks
-    public String[]  getOwnedStocks() {
-        return this.ownedStocks.toArray(new String[0]);
-    }
-
-    // get watchlist of stocks
-    public String[]  getWatchedStocks() {
-        return this.watchlistStocks.toArray(new String[0]);
-    }
-
-    // check if stock is owned by account
-    public boolean findStock(String stock) {
-        return ownedStocks.contains(stock);
-    }
 
 
 }

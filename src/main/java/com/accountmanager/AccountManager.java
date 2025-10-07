@@ -7,7 +7,8 @@ public class AccountManager {
 
     private ArrayList<Account> accounts;    // list of accounts
     private int numberOfAccounts;       // number of active accounts
-    private int maxNumberOfAccounts = 4;    // maximum number of accounts
+    private int maxNumberOfAccounts = 5;    // maximum number of accounts
+    private String owner;
 
     // Constructor
     public AccountManager() {
@@ -59,6 +60,14 @@ public class AccountManager {
             names[i] = accounts.get(i).getName();
         }
         return names;
+    }
+
+    public int getNumberOfAccounts() {
+        return numberOfAccounts;
+    }
+
+    public void setOwner(String owner) {
+        this.owner = owner;
     }
 
 }
