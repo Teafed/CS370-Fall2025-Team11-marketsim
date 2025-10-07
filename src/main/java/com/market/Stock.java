@@ -1,4 +1,4 @@
-package com.markets;
+package com.market;
 
 import java.util.ArrayList;
 
@@ -10,12 +10,7 @@ public class Stock extends TradeItem {
     // options?
 
 
-    public Stock(String symbol, String name, int price) {
-        this.symbol = symbol;
-        this.name = name;
-        this.price = price;
+    public Stock(String symbol, String name) {
+        super(name, symbol);
     }
-
-
-
 }

@@ -4,6 +4,8 @@ public abstract class TradeItem {
     private String name;
     private String symbol;
     private int price;
+    private double changePercent;
+    private double change;
 
     public TradeItem(String name, String symbol) {
         this.name = name;
@@ -14,12 +16,23 @@ public abstract class TradeItem {
     public String getName() {
         return name;
     }
+
     public String getSymbol() {
         return symbol;
     }
+
     public int getCurrentPrice() {
         //updatePrice();
-        return price;}
+        return price;
+    }
+
+    public double getChangePercent() {
+        return changePercent;
+    }
+
+    public double getChange() {
+        return change;
+    }
 
     public void updatePrice(int price) {
         this.price = price;

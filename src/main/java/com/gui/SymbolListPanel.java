@@ -2,7 +2,7 @@
 
 package com.gui;
 
-import com.market.TradeItem;
+import com.market.*;
 import javax.swing.*;
 import java.awt.*;
 import java.io.File;
@@ -83,7 +83,7 @@ public class SymbolListPanel extends JPanel {
          double change = (random.nextDouble() - 0.5) * 10;
          double changePercent = (change / basePrice) * 100;
          
-         symbolModel.addElement(new TradeItem(symbol, basePrice, change, changePercent));
+         symbolModel.addElement(new Stock(symbol, symbol));
       }
    }
 

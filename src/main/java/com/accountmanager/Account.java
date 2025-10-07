@@ -1,6 +1,6 @@
 package com.accountmanager;
 
-import com.markets.*;
+import com.market.*;
 
 import java.util.ArrayList;
 import java.util.Map;
