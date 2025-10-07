@@ -1,4 +1,4 @@
-package com.markets;
+package com.market;
 
 public class DataBaseManager {
 

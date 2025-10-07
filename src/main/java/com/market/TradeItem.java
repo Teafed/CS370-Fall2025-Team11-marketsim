@@ -1,4 +1,4 @@
-package com.markets;
+package com.market;
 
 public abstract class TradeItem {
     private String name;

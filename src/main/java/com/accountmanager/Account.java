@@ -1,10 +1,5 @@
 package com.accountmanager;
 
-import com.markets.*;
-
-import java.util.ArrayList;
-import java.util.Map;
-
 // One account
 public class Account {
 

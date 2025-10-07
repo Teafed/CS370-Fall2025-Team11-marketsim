@@ -1,4 +1,4 @@
-package com.markets;
+package com.market;
 
 // Will hold all open stock objects
 // each account will reference stocks held in the market

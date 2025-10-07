@@ -1,6 +1,4 @@
-package com.markets;
-
-import java.util.ArrayList;
+package com.market;
 
 public class Stock extends TradeItem {
 
