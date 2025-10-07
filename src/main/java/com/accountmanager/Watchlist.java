@@ -3,7 +3,9 @@ package com.accountmanager;
 import com.markets.*;
 
 
+import java.util.ArrayList;
 import java.util.LinkedHashSet;
+import java.util.List;
 
 
 /*
@@ -30,12 +32,20 @@ public class Watchlist {
      * @return True if successful, False if list is full.
      */
     public boolean addWatchlistItem(TradeItem tradeItem) {
+        if (tradeItem == null) {
+            // trade item must not be null
+            return false;
+        }
+        if (watchlist.contains(tradeItem)) {
+            return false;
+        }
         if (watchlistSize < maxSize) {
             watchlist.add(tradeItem);
             watchlistSize++;
             return true;
         }
         else
+            // cannot add more than max size
             return false;
     }
 
@@ -53,9 +63,25 @@ public class Watchlist {
             return false;
     }
 
+    public void clearList(){
+        watchlist.clear();
+        watchlistSize = 0;
+    }
+
     public int  getWatchlistSize() {
         return watchlistSize;
     }
 
+    public int getMaxSize() {
+        return maxSize;
+    }
+
+    public boolean hasTradeItem(TradeItem tradeItem) {
+        return watchlist.contains(tradeItem);
+    }
+
+    public List<TradeItem> getWatchlist() {
+        return new ArrayList(watchlist);
+    }
 
 }

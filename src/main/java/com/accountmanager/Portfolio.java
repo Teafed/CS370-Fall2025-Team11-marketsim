@@ -47,7 +47,7 @@ public class Portfolio {
 
     /*
         Remove a TradeItem from a portfolio. Removes the entry if entire value is removed.
-        Other wise subtracts from existing value.
+        Otherwise, subtracts from existing value.
         @param tradeItem The item to be removed.
         @param n The amount of the item to be removed. If -1 removes all that item.
      */

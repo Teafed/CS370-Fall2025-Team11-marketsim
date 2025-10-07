@@ -258,15 +258,85 @@ public class AccountSystemTest {
         Stock stock1 = new Stock("stock1", "s1");
         Stock stock2 = new Stock("stock2", "s2");
 
-        // A watchlist can add a stock to itself
-        assertTrue(watchlist.addWatchlistItem(stock1));
-        assertTrue(watchlist.addWatchlistItem(stock2));
         // A watchlist can return its length
-        assertEquals(2, watchlist.getWatchlistSize());
-        // A watchlist can remove a stock from itself
-        assertTrue(watchlist.removeWatchlistItem(stock1));
+        assertEquals(0, watchlist.getWatchlistSize());
+        watchlist.addWatchlistItem(stock1);
+        assertEquals(1, watchlist.getWatchlistSize());
+    }
+
+    @Test
+    void testWatchlistAddsItems() {
+        Watchlist watchlist = new Watchlist();
+        Stock stock1 = new Stock("stock1", "s1");
+        Stock stock2 = null;
+
+        // A watchlist can add items to itself
+        assertTrue(watchlist.addWatchlistItem(stock1));
+        assertEquals(1, watchlist.getWatchlistSize());
+        assertTrue(watchlist.hasTradeItem(stock1));
+
+        // A watchlist will not add a null item
+        assertFalse(watchlist.addWatchlistItem(stock2));
+        assertFalse(watchlist.hasTradeItem(stock2));
         assertEquals(1, watchlist.getWatchlistSize());
 
-        // A watchlist can return a list of stocks on it
+        // A watchlist will not add an item it already has
+        assertFalse(watchlist.addWatchlistItem(stock1));
+
+        // Add stocks to max size of watchlist
+        for (int i = 0; i < watchlist.getMaxSize()-1; i++) {
+            Stock s = new Stock("stock" + i, "s" + i);
+            watchlist.addWatchlistItem(s);
+        }
+        assertEquals(watchlist.getMaxSize(), watchlist.getWatchlistSize());
+
+        Stock stock3 = new Stock("stock3", "s3");
+
+        // A watchlist will not add items past its max size
+        assertFalse(watchlist.addWatchlistItem(stock3));
+    }
+
+    @Test
+    void testWatchlistRemovesItems() {
+        Watchlist watchlist = new Watchlist();
+        Stock stock1 = new Stock("stock1", "s1");
+        Stock stock2 = new Stock("stock2", "s2");
+        watchlist.addWatchlistItem(stock1);
+        watchlist.addWatchlistItem(stock2);
+
+        // A Watchlist can remove items from itself
+        assertTrue(watchlist.removeWatchlistItem(stock1));
+        assertFalse(watchlist.hasTradeItem(stock1));
+
+        // A watchlist will not remove an item it does not have
+        assertFalse(watchlist.removeWatchlistItem(stock1));
+
+        // Add stock to have 2 items on watchlist
+        watchlist.addWatchlistItem(stock1);
+        assertEquals(2, watchlist.getWatchlistSize());
+
+        // A watchlist can remove all items it contains
+        watchlist.clearList();
+        assertEquals(0, watchlist.getWatchlistSize());
+        assertFalse(watchlist.hasTradeItem(stock1));
+        assertFalse(watchlist.hasTradeItem(stock2));
+
+
+
+
+    }
+
+    @Test
+    void testWatchlistListsTradeItems() {
+        Watchlist watchlist = new Watchlist();
+        Stock stock1 = new Stock("stock1", "s1");
+        Stock stock2 = new Stock("stock2", "s2");
+        watchlist.addWatchlistItem(stock1);
+        watchlist.addWatchlistItem(stock2);
+
+        // A watchlist can return a list of trade items it contains
+        List list = watchlist.getWatchlist();
+        assertEquals(stock1, list.get(0));
+        assertEquals(stock2, list.get(1));
     }
 }
