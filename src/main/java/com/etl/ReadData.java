@@ -7,57 +7,74 @@ import java.nio.file.*;
 import java.util.*;
 
 public class ReadData {
-    private final Path dataDir;
-    private final Map<String, List<String[]>> cache = new HashMap<>();
+    private Map<String, List<String[]>> data = new HashMap<>();
+    private Map<String, String[]> headers = new HashMap<>();
 
-    public ReadData(String dataDir) {
-        this.dataDir = Paths.get(dataDir);
+    // Constructor: load all CSV files in the directory
+    public ReadData(String dataDir) throws IOException {
+        loadData(dataDir);
     }
 
-    // trying out different way of getting the data
-    public Stream<String[]> streamData(String fileName) throws IOException {
-        Path filePath = dataDir.resolve(fileName);
-        if (!Files.exists(filePath)) {
-            throw new FileNotFoundException("File not found: " + filePath);
-        }
-
-        BufferedReader br = Files.newBufferedReader(filePath);
-        return br.lines()
-                 .map(line -> line.split(",")) // simple CSV, for more complex CSV use a parser
-                 .onClose(() -> {
-                     try { br.close(); } catch (IOException ignored) {}
-                 });
+    private void loadData(String dataDir) throws IOException {
+        Files.list(Paths.get(dataDir))
+                .filter(path -> path.toString().endsWith(".csv"))
+                .forEach(path -> {
+                    try {
+                        loadSingleFile(path.toFile());
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                });
     }
 
-    public List<String[]> loadData(String fileName) throws IOException {
-        if (cache.containsKey(fileName)) {
-            return cache.get(fileName); // return cached data
-        }
-        
-        Path filePath = dataDir.resolve(fileName);
-        if (!Files.exists(filePath)) {
-            throw new FileNotFoundException("File not found: " + filePath);
-        }
-
+    // Load a single CSV file
+    public void loadSingleFile(File file) throws IOException {
         List<String[]> rows = new ArrayList<>();
-        try (BufferedReader br = new BufferedReader(new FileReader(filePath.toFile()))) {
+        try (BufferedReader br = new BufferedReader(new FileReader(file))) {
             String line;
+            boolean firstLine = true;
             while ((line = br.readLine()) != null) {
-                rows.add(line.split(",")); // simple CSV split
+                String[] values = Arrays.stream(line.split(","))
+                        .map(String::trim)
+                        .toArray(String[]::new);
+                if (firstLine) {
+                    headers.put(file.getName(), values); // store header
+                    firstLine = false;
+                } else {
+                    rows.add(values);
+                }
             }
         }
-        
-        cache.put(fileName, rows); // store in cache
-        return rows;
+        data.put(file.getName(), rows);
     }
 
-    public List<String> getFileNames() throws IOException {
-        List<String> fileNames = new ArrayList<>();
-        try (DirectoryStream<Path> stream = Files.newDirectoryStream(dataDir, "*.csv")) {
-            for (Path path : stream) {
-                fileNames.add(path.getFileName().toString());
-            }
-        }
-        return fileNames;
+    // Get rows of a specific file
+    public List<String[]> getFileData(String fileName) {
+        return data.get(fileName);
+    }
+
+    // Get column headers of a specific file
+    public String[] getHeaders(String fileName) {
+        return headers.get(fileName);
+    }
+
+    // Get all CSV file names loaded
+    public Set<String> getFileNames() {
+        return data.keySet();
+    }
+
+    // Convenience: get first CSV file (if you just want "singular access")
+    public String getFirstFileName() {
+        return data.keySet().stream().findFirst().orElse(null);
+    }
+
+    public List<String[]> getFirstFileData() {
+        String file = getFirstFileName();
+        return file != null ? getFileData(file) : Collections.emptyList();
+    }
+
+    public String[] getFirstFileHeaders() {
+        String file = getFirstFileName();
+        return file != null ? getHeaders(file) : null;
     }
 }
