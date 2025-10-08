@@ -21,8 +21,12 @@ public abstract class TradeItem {
         //updatePrice();
         return price;}
 
-    public void updatePrice(int price) {
+    public boolean updatePrice(int price) {
+        if (price < 0) {
+            return false;
+        }
         this.price = price;
+        return true;
     }
 
     @Override

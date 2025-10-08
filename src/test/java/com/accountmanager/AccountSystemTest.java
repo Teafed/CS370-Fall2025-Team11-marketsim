@@ -301,6 +301,7 @@ public class AccountSystemTest {
         Watchlist watchlist = new Watchlist();
         Stock stock1 = new Stock("stock1", "s1");
         Stock stock2 = new Stock("stock2", "s2");
+        Stock stock3 = null;
         watchlist.addWatchlistItem(stock1);
         watchlist.addWatchlistItem(stock2);
 
@@ -311,18 +312,17 @@ public class AccountSystemTest {
         // A watchlist will not remove an item it does not have
         assertFalse(watchlist.removeWatchlistItem(stock1));
 
-        // Add stock to have 2 items on watchlist
+        // A watchlist will not remove a null item
+        assertFalse(watchlist.removeWatchlistItem(stock3));
+
         watchlist.addWatchlistItem(stock1);
         assertEquals(2, watchlist.getWatchlistSize());
 
-        // A watchlist can remove all items it contains
+        // A watchlist can be cleared of all items
         watchlist.clearList();
         assertEquals(0, watchlist.getWatchlistSize());
         assertFalse(watchlist.hasTradeItem(stock1));
         assertFalse(watchlist.hasTradeItem(stock2));
-
-
-
 
     }
 
