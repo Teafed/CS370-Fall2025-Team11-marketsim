@@ -2,6 +2,8 @@ package com.etl;
 
 import jakarta.websocket.*;
 import java.net.URI;
+import java.sql.ResultSet;
+
 import com.google.gson.*;
 import com.market.DatabaseManager;
 

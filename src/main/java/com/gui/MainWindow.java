@@ -8,7 +8,6 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ComponentAdapter;
 import java.awt.event.ComponentEvent;
-import java.io.IOException;
 
 public class MainWindow extends JFrame implements SymbolListPanel.SymbolSelectionListener {
     private JSplitPane splitPane;
@@ -89,7 +88,7 @@ public class MainWindow extends JFrame implements SymbolListPanel.SymbolSelectio
 
     // implement the SymbolSelectionListener interface
     @Override
-    public void onSymbolSelected(SymbolData symbol) {
-        chartPanel.openChart(symbolPanel.getReader(), symbol.getSymbol());
+    public void onSymbolSelected(TradeItem item) {
+        chartPanel.openChart(symbolPanel.getReader(), item.getSymbol());
     }
 }

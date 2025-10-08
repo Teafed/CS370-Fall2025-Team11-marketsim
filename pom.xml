@@ -10,21 +10,6 @@
     <version>1.0-SNAPSHOT</version>
 
     <properties>
-        <maven.compiler.source>11</maven.compiler.source>
-        <maven.compiler.target>11</maven.compiler.target>
-    </properties>
-
-    <dependencies>
-        <!-- add API dependencies here later -->
-    </dependencies>
-   <modelVersion>4.0.0</modelVersion>
-
-   <groupId>com</groupId>
-   <artifactId>marketsim</artifactId>
-   <version>1.0-SNAPSHOT</version>
-
-
-    <properties>
       <maven.compiler.source>11</maven.compiler.source>
       <maven.compiler.target>11</maven.compiler.target>
     </properties>
@@ -84,21 +69,16 @@
                 <compilerArgs>--enable-preview</compilerArgs>
             </configuration>
         </plugin>
+        <plugin>
+            <groupId>org.codehaus.mojo</groupId>
+            <artifactId>exec-maven-plugin</artifactId>
+            <version>3.1.0</version>
+            <configuration>
+                <mainClass>com.Main</mainClass>
+            </configuration>
+        </plugin>
     </plugins>
   </build>
-    <build>
-        <plugins>
-            <!-- run program (Main.java) -->
-            <plugin>
-                <groupId>org.codehaus.mojo</groupId>
-                <artifactId>exec-maven-plugin</artifactId>
-                <version>3.1.0</version>
-                <configuration>
-                    <mainClass>com.Main</mainClass>
-                </configuration>
-            </plugin>
-        </plugins>
-    </build>
 
     <profiles>
         <!-- test profiles -->

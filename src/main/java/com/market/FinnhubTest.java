@@ -5,22 +5,31 @@ import java.sql.*;
 
 public class FinnhubTest {
     public static void main(String[] args) {
+        DatabaseManager db;
         try {
-            DatabaseManager db = new DatabaseManager("market.db");
+            db = new DatabaseManager("data/market.db");
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
 
-            String symbol = "AAPL";
+        String symbol = "AAPL";
+
+        try {
             FinnhubClient.start(db, symbol);
-
-            System.out.println("Listening for real-time trades for " + symbol + "...");
-            System.out.println("Waiting for messages...");
-
-            Thread dbChecker = getThread(db, symbol);
-            dbChecker.start();
-
-            Thread.currentThread().join();
-
         } catch (Exception e) {
-            e.printStackTrace();
+            throw new RuntimeException(e);
+        }
+
+        System.out.println("Listening for real-time trades for " + symbol + "...");
+        System.out.println("Waiting for messages...");
+
+        Thread dbChecker = getThread(db, symbol);
+        dbChecker.start();
+
+        try {
+            Thread.currentThread().join();
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
         }
     }
 
