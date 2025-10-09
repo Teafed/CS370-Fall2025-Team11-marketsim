@@ -3,6 +3,7 @@
 package com.gui;
 
 import com.etl.ReadData;
+import com.market.DatabaseManager;
 import com.market.TradeItem;
 import com.market.Stock;
 import javax.swing.*;
@@ -27,8 +28,8 @@ public class SymbolListPanel extends JPanel {
     public SymbolListPanel(String dataFolderPath) {
         this.dataFolderPath = dataFolderPath;
         this.listeners = new ArrayList<>();
-        try {
-            reader = new ReadData(dataFolderPath);
+        try (DatabaseManager db = new DatabaseManager("market.db")) {
+            reader = new ReadData(dataFolderPath, db);
         } catch (Exception e) {
             e.printStackTrace();
         }

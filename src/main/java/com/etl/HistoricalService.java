@@ -47,7 +47,7 @@ public class HistoricalService {
             if (chunkEnd.isAfter(end)) chunkEnd = end;
 
             String url = String.format(
-                    "https://api.polygon.io/v2/aggs/ticker/%s/range/1/min/%s/%s?adjusted=true&sort=asc&limit=50000&apiKey=%s",
+                    "https://api.polygon.io/v2/aggs/ticker/%s/range/1/day/%s/%s?adjusted=true&sort=asc&limit=50000&apiKey=%s",
                     symbol, cursor, chunkEnd, apiKey);
 
             HttpResponse<String> resp = http.send(
