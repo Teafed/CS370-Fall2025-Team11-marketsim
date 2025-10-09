@@ -53,6 +53,18 @@
            <artifactId>logback-classic</artifactId>
            <version>1.5.13</version>
        </dependency>
+       <dependency>
+           <groupId>io.github.cdimascio</groupId>
+           <artifactId>dotenv-java</artifactId>
+           <version>3.0.0</version>
+           <scope>test</scope> <!-- or remove scope to use in main -->
+       </dependency>
+       <dependency>
+           <groupId>io.github.cdimascio</groupId>
+           <artifactId>dotenv-java</artifactId>
+           <version>3.0.0</version>
+           <scope>compile</scope>
+       </dependency>
    </dependencies>
 
    <build>

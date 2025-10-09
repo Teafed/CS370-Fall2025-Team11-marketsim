@@ -9,6 +9,8 @@ build/
 out/
 
 # others
+.env
+*.sercrets.properties
 *.iml
 .idea/
 .vscode/
