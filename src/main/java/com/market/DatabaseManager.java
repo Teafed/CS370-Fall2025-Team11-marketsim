@@ -3,7 +3,7 @@ package com.market;
 import java.sql.Connection;
 import java.sql.*;
 
-public class DatabaseManager {
+public class DatabaseManager implements AutoCloseable {
     private final Connection conn;
 
     public DatabaseManager(String dbFile) throws SQLException {
