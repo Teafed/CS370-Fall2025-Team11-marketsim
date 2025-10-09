@@ -1,17 +1,22 @@
 package com.etl;
 
 import jakarta.websocket.*;
+
+import java.io.IOException;
 import java.net.URI;
 import java.sql.ResultSet;
+import java.util.concurrent.CountDownLatch;
 
 import com.google.gson.*;
+import io.github.cdimascio.dotenv.Dotenv;
 import com.market.DatabaseManager;
 
 @ClientEndpoint
 public class FinnhubClient {
-    private static final String API_KEY = "d2sq3t1r01qkuv3hu930d2sq3t1r01qkuv3hu93g";
     private final DatabaseManager db;
     private final String symbol;
+    private Session session;
+    private final CountDownLatch received = new CountDownLatch(1); // or N
 
     public FinnhubClient(DatabaseManager db, String symbol) {
         this.db = db;
@@ -19,32 +24,17 @@ public class FinnhubClient {
     }
 
     @OnOpen
-    public void onOpen(Session session) throws Exception {
-        String subscribeMsg = String.format("{\"type\":\"subscribe\",\"symbol\":\"%s\"}", symbol);
-        session.getBasicRemote().sendText(subscribeMsg);
-        System.out.println("[Finnhub] Subscribed to " + symbol);
+    public void onOpen(Session s) throws IOException {
+        this.session = s;
+        // subscribe to trades for this.symbol (double-check Finnhub’s expected payload)
+        String msg = "{\"type\":\"subscribe\",\"symbol\":\"" + symbol + "\"}";
+        s.getBasicRemote().sendText(msg);
     }
 
     @OnMessage
     public void onMessage(String msg) {
-        try {
-            JsonObject obj = JsonParser.parseString(msg).getAsJsonObject();
-            if (!obj.has("data")) return;
-
-            for (JsonElement el : obj.getAsJsonArray("data")) {
-                JsonObject trade = el.getAsJsonObject();
-                double price = trade.get("p").getAsDouble();
-                long timestamp = trade.get("t").getAsLong();
-                long volume = trade.get("v").getAsLong();
-                String s = trade.get("s").getAsString();
-
-                // Store trade as OHLC candle with identical values (prototype only)
-                db.insertPrice(s, timestamp, price, price, price, price, volume);
-                System.out.printf("[DB] Inserted %s at %d: %.2f (vol=%d)%n", s, timestamp, price, volume);
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
+        parseAndStore(msg, db);
+        received.countDown(); // signals “we got something”
     }
 
     @OnClose
@@ -58,9 +48,44 @@ public class FinnhubClient {
         t.printStackTrace();
     }
 
-    public static void start(DatabaseManager db, String symbol) throws Exception {
-        WebSocketContainer container = ContainerProvider.getWebSocketContainer();
-        URI uri = new URI("wss", "ws.finnhub.io", "/", "token=" + API_KEY, null);
-        container.connectToServer(new FinnhubClient(db, symbol), uri);
+    public static FinnhubClient start(DatabaseManager db, String symbol) throws Exception {
+        Dotenv dotenv = Dotenv.configure().ignoreIfMissing().load();
+        String k = System.getenv("FINNHUB_API_KEY");
+        if (k == null || k.isBlank()) k = dotenv.get("FINNHUB_API_KEY");
+
+        FinnhubClient client = new FinnhubClient(db, symbol);
+        WebSocketContainer c = ContainerProvider.getWebSocketContainer();
+        URI uri = new URI("wss", "ws.finnhub.io", "/", "token=" + k, null);
+        c.connectToServer(client, uri);
+        return client;
+    }
+
+    public void stop() {
+        try { if (session != null && session.isOpen()) session.close(); } catch (Exception ignore) {}
+    }
+
+    // helper functions
+
+    /**
+     * Finnhub message parsing logic
+     * @param msg
+     * @param db
+     */
+    static void parseAndStore(String msg, DatabaseManager db) {
+        JsonObject obj = JsonParser.parseString(msg).getAsJsonObject();
+        if (!obj.has("data")) return;
+
+        for (JsonElement el : obj.getAsJsonArray("data")) {
+            JsonObject trade = el.getAsJsonObject();
+            double price = trade.get("p").getAsDouble();
+            long timestamp = trade.get("t").getAsLong();
+            long volume = trade.get("v").getAsLong();
+            String s = trade.get("s").getAsString();
+            try {
+                db.insertPrice(s, timestamp, price, price, price, price, volume);
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+        }
     }
 }

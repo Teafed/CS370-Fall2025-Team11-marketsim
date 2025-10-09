@@ -7,10 +7,12 @@ public class DatabaseManager {
     private final Connection conn;
 
     public DatabaseManager(String dbFile) throws SQLException {
-        String url = "jdbc:sqlite:" + dbFile;
+        String url = "jdbc:sqlite:" + dbFile + "?busy_timeout=5000"; // 5s
         this.conn = DriverManager.getConnection(url);
         createSchema();
     }
+
+    public void close() throws SQLException { conn.close(); }
 
     private void createSchema() throws SQLException {
         String sql = "CREATE TABLE IF NOT EXISTS prices ("
