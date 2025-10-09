@@ -1,7 +1,14 @@
 package com.market;
 
+import com.etl.ReadData;
+
+import java.io.IOException;
 import java.sql.Connection;
 import java.sql.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Set;
+import java.util.TreeSet;
 
 public class DatabaseManager implements AutoCloseable {
     private final Connection conn;

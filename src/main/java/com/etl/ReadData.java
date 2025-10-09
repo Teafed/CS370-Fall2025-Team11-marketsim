@@ -112,16 +112,6 @@ public class ReadData {
         return data.get(fileName);
     }
 
-    // Get column headers of a specific file
-    public String[] getHeaders(String fileName) {
-        return headers.get(fileName);
-    }
-
-    // Get all CSV file names loaded
-    public Set<String> getFileNames() {
-        return data.keySet();
-    }
-
     // Convenience: get first CSV file (if you just want "singular access")
     public String getFirstFileName() {
         return data.keySet().stream().findFirst().orElse(null);
@@ -130,10 +120,5 @@ public class ReadData {
     public List<String[]> getFirstFileData() {
         String file = getFirstFileName();
         return file != null ? getFileData(file) : Collections.emptyList();
-    }
-
-    public String[] getFirstFileHeaders() {
-        String file = getFirstFileName();
-        return file != null ? getHeaders(file) : null;
     }
 }
