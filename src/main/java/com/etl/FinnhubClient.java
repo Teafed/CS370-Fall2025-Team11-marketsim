@@ -67,6 +67,16 @@ public class FinnhubClient {
     // helper functions
 
     /**
+     * wait until first message
+     * @param timeout
+     * @return CountDownLatch received
+     * @throws InterruptedException
+     */
+    public boolean awaitFirstMessage(java.time.Duration timeout) throws InterruptedException {
+        return received.await(timeout.toMillis(), java.util.concurrent.TimeUnit.MILLISECONDS);
+    }
+
+    /**
      * Finnhub message parsing logic
      * @param msg
      * @param db
