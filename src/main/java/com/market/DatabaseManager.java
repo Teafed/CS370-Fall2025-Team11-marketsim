@@ -1,14 +1,8 @@
 package com.market;
 
-import com.etl.ReadData;
-
-import java.io.IOException;
-import java.sql.Connection;
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Set;
-import java.util.TreeSet;
 
 public class DatabaseManager implements AutoCloseable {
     private final Connection conn;
@@ -22,7 +16,9 @@ public class DatabaseManager implements AutoCloseable {
         createSchema();
     }
 
-    public void close() throws SQLException { conn.close(); }
+    @Override public void close() throws SQLException {
+        if (conn != null && !conn.isClosed()) conn.close();
+    }
 
     private void createSchema() throws SQLException {
         String table = "CREATE TABLE IF NOT EXISTS prices ("
@@ -41,6 +37,83 @@ public class DatabaseManager implements AutoCloseable {
                 + "ON prices(symbol, timestamp)";
         try (Statement st = conn.createStatement()) {
             st.execute(index);
+        }
+    }
+
+    public Connection getConnection() {
+        return conn;
+    }
+
+    /**
+     * distinct symbols in alphabetical order (for SymbolListPanel)
+     * @return String list of symbols
+     * @throws SQLException
+     */
+    public List<String> listSymbols() throws SQLException {
+        String sql = "SELECT DISTINCT symbol FROM prices ORDER BY symbol ASC";
+        try (PreparedStatement ps = conn.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+            List<String> out = new ArrayList<>();
+            while (rs.next()) out.add(rs.getString(1));
+            return out;
+        }
+    }
+
+    /**
+     * candles in [startMs, endMs], ordered by time asc (for ChartPanel)
+     * @param symbol
+     * @param startMs
+     * @param endMs
+     * @return
+     * @throws SQLException
+     */
+    public ResultSet getPrices(String symbol, long startMs, long endMs) throws SQLException {
+        PreparedStatement ps = conn.prepareStatement("""
+            SELECT timestamp, open, high, low, close, volume
+            FROM prices
+            WHERE symbol = ? AND timestamp BETWEEN ? AND ?
+            ORDER BY timestamp ASC
+        """);
+        ps.setString(1, symbol);
+        ps.setLong(2, startMs);
+        ps.setLong(3, endMs);
+        // Caller will iterate and then close the ResultSet (closing ps auto-closes rs).
+        return ps.executeQuery();
+    }
+
+    public long getLatestTimestamp(String symbol) throws SQLException {
+        String sql = "SELECT MAX(timestamp) FROM prices WHERE symbol=?";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, symbol);
+            ResultSet rs = ps.executeQuery();
+            return rs.next() ? rs.getLong(1) : 0L;
+        }
+    }
+
+    /**
+     * get latest close and previous close for % change (NaN if not available)
+     * @param symbol
+     * @return
+     * @throws SQLException
+     */
+    public double[] latestAndPrevClose(String symbol) throws SQLException {
+        String sql = """
+            SELECT close FROM prices
+            WHERE symbol = ?
+            ORDER BY timestamp DESC
+            LIMIT 2
+        """;
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, symbol);
+            try (ResultSet rs = ps.executeQuery()) {
+                Double last = null, prev = null;
+                if (rs.next()) last = rs.getDouble(1);
+                if (rs.next()) prev = rs.getDouble(1);
+                return new double[] {
+                        last == null ? Double.NaN : last,
+                        prev == null ? Double.NaN : prev
+                };
+            }
         }
     }
 
@@ -80,27 +153,6 @@ public class DatabaseManager implements AutoCloseable {
             conn.commit();
         } finally {
             conn.setAutoCommit(prev);
-        }
-    }
-    public Connection getConnection() {
-        return conn;
-    }
-
-    public ResultSet getPrices(String symbol, long start, long end) throws SQLException {
-        String sql = "SELECT * FROM prices WHERE symbol=? AND timestamp BETWEEN ? AND ? ORDER BY timestamp ASC";
-        PreparedStatement ps = conn.prepareStatement(sql);
-        ps.setString(1, symbol);
-        ps.setLong(2, start);
-        ps.setLong(3, end);
-        return ps.executeQuery();
-    }
-
-    public long getLatestTimestamp(String symbol) throws SQLException {
-        String sql = "SELECT MAX(timestamp) FROM prices WHERE symbol=?";
-        try (PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setString(1, symbol);
-            ResultSet rs = ps.executeQuery();
-            return rs.next() ? rs.getLong(1) : 0L;
         }
     }
 }
