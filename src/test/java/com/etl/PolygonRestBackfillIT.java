@@ -1,10 +1,11 @@
 package com.etl;
 
+import com.market.DatabaseManager;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.condition.DisabledIfEnvironmentVariable;
 
-import java.nio.file.Files;
-import java.nio.file.Path;
+import java.sql.ResultSet;
+import java.time.LocalDate;
 import java.sql.*;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -14,19 +15,30 @@ class PolygonRestBackfillIT {
     @Test
     @DisabledIfEnvironmentVariable(named = "POLYGON_API_KEY", matches = "^$")
     @Timeout(90)
-    void runsCliAndWritesRows() throws Exception {
-        Path tmp = Files.createTempFile("market", ".db");
-        String dbFile = tmp.toString();
+    void backfillsAndPersistsRows() throws Exception {
+        String dbFile = "data/marketsim.db";
+        String symbol = "AAPL";
+        LocalDate from = LocalDate.now().minusDays(5); // small window
+        LocalDate to   = LocalDate.now().minusDays(1);
 
-        // Run the CLI for a tiny daily window to avoid plan issues
-        String[] args = { dbFile, "AAPL", "2025-09-01", "2025-09-03" };
-        PolygonRestBackfill.main(args); // uses HistoricalService under the hood now
+        try (DatabaseManager db = new DatabaseManager(dbFile)) {
+            HistoricalService svc = new HistoricalService(db);
+            svc.backfillRange(symbol, from, to, HistoricalService.Span.DAY, 1);
+        }
 
-        try (Connection c = DriverManager.getConnection("jdbc:sqlite:" + dbFile);
-             PreparedStatement ps = c.prepareStatement("SELECT COUNT(*) FROM prices WHERE symbol='AAPL'");
-             ResultSet rs = ps.executeQuery()) {
-            assertTrue(rs.next());
-            assertTrue(rs.getInt(1) > 0, "expected at least one bar from the CLI backfill");
+        // Verify by reading the same DB
+        try (DatabaseManager db = new DatabaseManager(dbFile)) {
+            long latest = db.getLatestTimestamp(symbol);
+            assertTrue(latest > 0, "Expected at least one candle written");
+
+            long startMs = from.atStartOfDay(java.time.ZoneOffset.UTC).toInstant().toEpochMilli();
+            long endMs   = to.plusDays(1).atStartOfDay(java.time.ZoneOffset.UTC).toInstant().toEpochMilli() - 1;
+
+            int count = 0;
+            try (ResultSet rs = db.getPrices(symbol, startMs, endMs)) {
+                while (rs.next()) count++;
+            }
+            assertTrue(count > 0, "Expected candles in requested window, got 0");
         }
     }
 }
