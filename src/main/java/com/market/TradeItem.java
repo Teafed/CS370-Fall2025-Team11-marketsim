@@ -13,6 +13,13 @@ public abstract class TradeItem {
         price = 0;
     }
 
+    public TradeItem(String name, String symbol, int price, double changePercent) {
+        this.name = name;
+        this.symbol = symbol;
+        this.price = price;
+        this.changePercent = changePercent;
+    }
+
     public String getName() {
         return name;
     }
