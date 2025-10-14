@@ -38,11 +38,39 @@ public class ChartPanel extends ContentPanel {
 
     /**
      * load data for a symbol from database and prep it for painting
-     *
-     * example for how to call:
-     * long now = System.currentTimeMillis();
-     * long threeDays = 3L * 24 * 60 * 60 * 1000;
-     * chartPanel.openChart(db, "AAPL", now - threeDays, now, 200);
+     * @param db
+     * @param symbol
+     */
+    public void openChart(DatabaseManager db, String symbol) {
+        this.symbol = symbol;
+        try {
+            long latest = db.getLatestTimestamp(symbol);          // 0 if none
+            if (latest == 0L) {
+                // nothing stored yet
+                times = null;
+                prices = null;
+                repaint();
+                return;
+            }
+
+            // default: show last 90 days that end at the latest stored bar
+            long ninetyDays = 90L * 24 * 60 * 60 * 1000L;
+            long start = Math.max(0, latest - ninetyDays);
+            long end   = latest;
+
+            // reuse existing loader
+            openChart(db, symbol, start, end, 400);
+        } catch (Exception e) {
+            e.printStackTrace();
+            times = null;
+            prices = null;
+            repaint();
+        }
+    }
+
+    /**
+     * load data for a symbol from database and prep it for painting
+     * overloaded to specify time frame
      *
      * @param db        DatabaseManager
      * @param symbol    e.g. "AAPL"

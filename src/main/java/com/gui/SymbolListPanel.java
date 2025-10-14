@@ -55,15 +55,14 @@ public class SymbolListPanel extends ContentPanel {
     private void loadSymbolsFromDb() {
         symbolModel.clear();
         try {
-            List<String> symbols = db.listSymbols();
-            for (String sym : symbols) {
-                symbolModel.addElement(new Stock(sym, sym));
+            for (String sym : db.listSymbols()) {
+                double[] lp = db.latestAndPrevClose(sym); // [last, prev]
+                int last = (int)lp[0], prev = (int)lp[1];
+                double pct = (Double.isNaN(last) || Double.isNaN(prev) || prev == 0)
+                        ? 0.0
+                        : (last - prev) / prev * 100.0;
 
-                // do this eventually to get price and change
-                // load like this and stash into item type:
-                // double[] lastPrev = db.latestAndPrevClose(sym);
-                // double last = lastPrev[0], prev = lastPrev[1];
-                // double pct = (Double.isNaN(last) || Double.isNaN(prev) || prev == 0) ? 0 : (last - prev) / prev * 100.0;
+                symbolModel.addElement(new Stock(sym, sym, last, pct));
             }
         } catch (Exception ex) {
             ex.printStackTrace();

@@ -89,8 +89,6 @@ public class MainWindow extends JFrame implements SymbolListPanel.SymbolSelectio
     // implement the SymbolSelectionListener interface
     @Override
     public void onSymbolSelected(TradeItem item) {
-        long now = System.currentTimeMillis();
-        long threeDays = 3L * 24 * 60 * 60 * 1000; // default chart open to three days
-        chartPanel.openChart(db, item.getSymbol(), now - threeDays, now, 200); // CHANGED
+        chartPanel.openChart(db, item.getSymbol());
     }
 }
