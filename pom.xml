@@ -3,76 +3,115 @@
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 
          http://maven.apache.org/xsd/maven-4.0.0.xsd">
-   <modelVersion>4.0.0</modelVersion>
-   
-   <groupId>com</groupId>
-   <artifactId>marketsim</artifactId>
-   <version>1.0-SNAPSHOT</version>
+    <modelVersion>4.0.0</modelVersion>
 
+    <groupId>com</groupId>
+    <artifactId>marketsim</artifactId>
+    <version>1.0-SNAPSHOT</version>
 
     <properties>
-      <maven.compiler.source>11</maven.compiler.source>
-      <maven.compiler.target>11</maven.compiler.target>
-   </properties>
-   
+        <maven.compiler.release>21</maven.compiler.release>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+        <maven.compiler.parameters>true</maven.compiler.parameters>
+    </properties>
+
    <dependencies>
-      <!-- add API dependencies here later -->
+       <dependency>
+           <groupId>org.xerial</groupId>
+           <artifactId>sqlite-jdbc</artifactId>
+           <version>3.45.2.0</version>
+       </dependency>
+       <dependency>
+           <groupId>jakarta.websocket</groupId>
+           <artifactId>jakarta.websocket-api</artifactId>
+           <version>2.0.0</version>
+       </dependency>
+       <dependency>
+           <groupId>org.glassfish.tyrus.bundles</groupId>
+           <artifactId>tyrus-standalone-client</artifactId>
+           <version>2.0.7</version>
+       </dependency>
+       <dependency>
+           <groupId>com.google.code.gson</groupId>
+           <artifactId>gson</artifactId>
+           <version>2.11.0</version>
+       </dependency>
        <dependency>
            <groupId>org.junit.jupiter</groupId>
            <artifactId>junit-jupiter</artifactId>
            <version>5.13.4</version>
            <scope>test</scope>
        </dependency>
+       <dependency>
+           <groupId>org.slf4j</groupId>
+           <artifactId>slf4j-api</artifactId>
+           <version>2.0.13</version>
+       </dependency>
+       <dependency>
+           <groupId>ch.qos.logback</groupId>
+           <artifactId>logback-classic</artifactId>
+           <version>1.5.13</version>
+       </dependency>
+       <dependency>
+           <groupId>io.github.cdimascio</groupId>
+           <artifactId>dotenv-java</artifactId>
+           <version>3.0.0</version>
+           <scope>test</scope> <!-- or remove scope to use in main -->
+       </dependency>
+       <dependency>
+           <groupId>io.github.cdimascio</groupId>
+           <artifactId>dotenv-java</artifactId>
+           <version>3.0.0</version>
+           <scope>compile</scope>
+       </dependency>
    </dependencies>
 
    <build>
     <plugins>
-      <!-- run program (Main.java) -->
-      <plugin>
-        <groupId>org.codehaus.mojo</groupId>
-        <artifactId>exec-maven-plugin</artifactId>
-        <version>3.1.0</version>
-        <configuration>
-          <mainClass>com.Main</mainClass>
-        </configuration>
-      </plugin>
+        <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-compiler-plugin</artifactId>
+            <version>3.13.0</version>
+            <configuration>
+                <release>${maven.compiler.release}</release>
+            </configuration>
+        </plugin>
         <plugin>
             <groupId>org.apache.maven.plugins</groupId>
             <artifactId>maven-surefire-plugin</artifactId>
             <version>3.2.5</version>
+            <configuration>
+                <useModulePath>true</useModulePath>
+                <argLine>--enable-native-access=ALL-UNNAMED</argLine>
+            </configuration>
+        </plugin>
+
+        <plugin>
+            <groupId>org.codehaus.mojo</groupId>
+            <artifactId>exec-maven-plugin</artifactId>
+            <version>3.5.0</version>
+            <configuration>
+                <mainClass>com.Main</mainClass>
+            </configuration>
         </plugin>
         <plugin>
             <groupId>org.apache.maven.plugins</groupId>
-            <artifactId>maven-compiler-plugin</artifactId>
-            <configuration>
-                <source>24</source>
-                <target>24</target>
-                <compilerArgs>--enable-preview</compilerArgs>
-            </configuration>
+            <artifactId>maven-enforcer-plugin</artifactId>
+            <version>3.5.0</version>
+            <executions>
+                <execution>
+                    <goals><goal>enforce</goal></goals>
+                    <configuration>
+                        <rules>
+                            <requireJavaVersion>
+                                <version>[21,22)</version>
+                            </requireJavaVersion>
+                        </rules>
+                    </configuration>
+                </execution>
+            </executions>
         </plugin>
     </plugins>
   </build>
-
-  <profiles>
-    <!-- test profiles -->
-    <profile>
-      <id>etldemo</id>
-      <build>
-        <plugins>
-          <plugin>
-            <groupId>org.codehaus.mojo</groupId>
-            <artifactId>exec-maven-plugin</artifactId>
-            <version>3.1.0</version>
-            <configuration>
-              <mainClass>com.etl.ExtractorDemo</mainClass>
-            </configuration>
-          </plugin>
-        </plugins>
-      </build>
-    </profile>
-    <!-- to add another test profile, use the same format as above
-         (just change <id> and <mainClass>) -->
-
-  </profiles>
-  
 </project>

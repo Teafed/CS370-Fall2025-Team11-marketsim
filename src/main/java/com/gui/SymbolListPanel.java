@@ -2,9 +2,10 @@
 
 package com.gui;
 
+import com.etl.ReadData;
+import com.market.TradeItem;
+import com.market.Stock;
 import javax.swing.*;
-import javax.swing.event.ListSelectionEvent;
-import javax.swing.event.ListSelectionListener;
 import java.awt.*;
 import java.io.File;
 import java.util.ArrayList;
@@ -12,121 +13,130 @@ import java.util.Arrays;
 import java.util.List;
 
 public class SymbolListPanel extends JPanel {
-   // debug
-   private static final String DATA_DIR_DNE = "no data folder found";
-   private static final String DATA_FILES_DNE = "no data files found";
-   
-   private JList<String> symbolList;
-   private DefaultListModel<String> listModel;
-   private List<SymbolSelectionListener> listeners;
-   private String dataFolderPath;
+    private DefaultListModel<TradeItem> symbolModel;
+    private JList<TradeItem> symbolList;
+    private final List<SymbolSelectionListener> listeners;
+    private final String dataFolderPath;
+    private ReadData reader;
 
-   // interface that listeners must implement
-   public interface SymbolSelectionListener {
-      void onSymbolSelected(String symbol);
-   }
+    // interface that listeners must implement
+    public interface SymbolSelectionListener {
+        void onSymbolSelected(TradeItem symbol);
+    }
 
-   public SymbolListPanel(String dataFolderPath) {
-      this.dataFolderPath = dataFolderPath;
-      this.listeners = new ArrayList<>();
-      
-      initializeComponents();
-      loadSymbols();
-      setupListeners();
-   }
+    public SymbolListPanel(String dataFolderPath) {
+        this.dataFolderPath = dataFolderPath;
+        this.listeners = new ArrayList<>();
+        try {
+            reader = new ReadData(dataFolderPath);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
 
-   private void initializeComponents() {
-      setLayout(new BorderLayout());
-      setBorder(BorderFactory.createTitledBorder("symbols"));
+        initializeComponents();
+        loadSymbols();
+        setupListeners();
+    }
 
-      // create list model and list
-      listModel = new DefaultListModel<>();
-      symbolList = new JList<>(listModel);
-      symbolList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-      symbolList.setFont(new Font("Arial", Font.PLAIN, 14));
+    private void initializeComponents() {
+        setLayout(new BorderLayout());
+        setBackground(GUIComponents.BG_MEDIUM);
+        setBorder(GUIComponents.createBorder());
 
-      // add scrolling
-      JScrollPane scrollPane = new JScrollPane(symbolList);
-      scrollPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
-      scrollPane.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
-      
-      add(scrollPane, BorderLayout.CENTER);
-   }
+        symbolModel = new DefaultListModel<>();
+        symbolList = GUIComponents.createList(symbolModel);
 
-   private void loadSymbols() {
-      listModel.clear();
-      File dataFolder = new File(dataFolderPath);
-      if (!dataFolder.exists() || !dataFolder.isDirectory()) {
-         listModel.addElement(DATA_DIR_DNE);
-         return;
-      }
-      
-      File[] csvFiles = dataFolder.listFiles((dir, name) -> 
-         name.toLowerCase().endsWith(".csv"));
-      if (csvFiles == null || csvFiles.length == 0) {
-         listModel.addElement(DATA_FILES_DNE);
-         return;
-      }
-      
-      System.out.println("loading symbols from: " + dataFolderPath);
-      System.out.println("found " + (csvFiles != null ? csvFiles.length : 0) + " csv files");
-      if (csvFiles != null) {
-         for (File f : csvFiles) {
+        symbolList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        symbolList.setCellRenderer(new SymbolCellRenderer());
+        symbolList.setFixedCellHeight(50);
+
+        JScrollPane scrollPane = GUIComponents.createScrollPane(symbolList);
+        scrollPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
+        scrollPane.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
+
+        add(scrollPane, BorderLayout.CENTER);
+    }
+
+    private void loadSymbols() {
+        symbolModel.clear();
+        File dataFolder = new File(dataFolderPath);
+        if (!dataFolder.exists() || !dataFolder.isDirectory()) {
+            System.out.println("data directory dne");
+            return;
+        }
+
+        File[] csvFiles = dataFolder.listFiles((dir, name) ->
+                name.toLowerCase().endsWith(".csv"));
+        if (csvFiles == null || csvFiles.length == 0) {
+            System.out.println("data files dne");
+            return;
+        }
+
+        System.out.println("loading symbols from: " + dataFolderPath);
+        System.out.println("found " + csvFiles.length + " csv files");
+        for (File f : csvFiles) {
             System.out.println("   " + f.getName());
-         }
-      }
+        }
 
-      // sort and add symbols (filename without .csv extension)
-      Arrays.sort(csvFiles, (a, b) -> a.getName().compareToIgnoreCase(b.getName()));
-      
-      for (File file : csvFiles) {
-         String fileName = file.getName();
-         String symbol = fileName.substring(0, fileName.lastIndexOf('.'));
-         listModel.addElement(symbol);
-      }
-   }
+        // sort and add symbols
+        Arrays.sort(csvFiles, (a, b) -> a.getName().compareToIgnoreCase(b.getName()));
 
-   private void setupListeners() {
-      symbolList.addListSelectionListener(new ListSelectionListener() {
-         @Override
-         public void valueChanged(ListSelectionEvent e) {
+        // TEMPORARY! please remove and replace with data
+        java.util.Random random = new java.util.Random();
+        for (File file : csvFiles) {
+            String fileName = file.getName();
+            String symbol = fileName.substring(0, fileName.lastIndexOf('.'));
+
+            double basePrice = 50 + random.nextDouble() * 200;
+            double change = (random.nextDouble() - 0.5) * 10;
+            double changePercent = (change / basePrice) * 100;
+
+            symbolModel.addElement(new Stock(symbol, symbol));
+        }
+    }
+
+    private void setupListeners() {
+        symbolList.addListSelectionListener(e -> {
             if (!e.getValueIsAdjusting()) { // only fire when selection is final
-               String selectedSymbol = symbolList.getSelectedValue();
-               if (selectedSymbol != null && 
-                   !selectedSymbol.equals(DATA_DIR_DNE) && 
-                   !selectedSymbol.equals(DATA_FILES_DNE)) {
-                  notifyListeners(selectedSymbol);
-               }
+                TradeItem selectedSymbol = symbolList.getSelectedValue();
+                if (selectedSymbol != null) {
+                    notifyListeners(selectedSymbol);
+                }
             }
-         }
-      });
-   }
+        });
+    }
 
-   // methods for managing listeners
-   public void addSymbolSelectionListener(SymbolSelectionListener listener) {
-      listeners.add(listener);
-   }
+    // methods for managing listeners
+    public void addSymbolSelectionListener(SymbolSelectionListener listener) {
+        listeners.add(listener);
+    }
 
-   public void removeSymbolSelectionListener(SymbolSelectionListener listener) {
-      listeners.remove(listener);
-   }
+    public void removeSymbolSelectionListener(SymbolSelectionListener listener) {
+        listeners.remove(listener);
+    }
 
-   private void notifyListeners(String symbol) {
-      for (SymbolSelectionListener listener : listeners) {
-         listener.onSymbolSelected(symbol);
-      }
-   }
+    private void notifyListeners(TradeItem symbol) {
+        for (SymbolSelectionListener listener : listeners) {
+            listener.onSymbolSelected(symbol);
+        }
+    }
 
-   // utility methods
-   public void refreshSymbols() {
-      loadSymbols();
-   }
+    // utility methods
+    public void refreshSymbols() {
+        loadSymbols();
+    }
 
-   public String getSelectedSymbol() {
-      return symbolList.getSelectedValue();
-   }
+    public String getSelectedSymbol() {
+        TradeItem selected = symbolList.getSelectedValue();
+        return selected != null ? selected.getSymbol() : null;
+    }
 
-   public void clearSelection() {
-      symbolList.clearSelection();
-   }
+    public void clearSelection() {
+        symbolList.clearSelection();
+    }
+
+    /** Helper: return the underlying ReadData instance */
+    public ReadData getReader() {
+        return reader;
+    }
 }

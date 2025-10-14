@@ -1,12 +1,16 @@
-# marketsim csv files
+# marketsim files
 data/
+*.db
 
 # build files
 *.class
 target/
 build/
+out/
 
 # others
+.env
+*.sercrets.properties
 *.iml
 .idea/
 .vscode/
