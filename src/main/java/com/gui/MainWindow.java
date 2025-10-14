@@ -17,13 +17,14 @@ public class MainWindow extends JFrame implements SymbolListPanel.SymbolSelectio
     private static final int LEFT_PANEL_WIDTH = 250;
     private static final int MIN_LEFT_WIDTH = 150;
     private static final int MIN_RIGHT_WIDTH = 300;
-    private static String defaultDbPath() { return "data/marketsim.db"; }
+    private static String defaultDbPath() { return "data/marketsim-sample.db"; }
 
     public MainWindow() {
         this(defaultDbPath());
     }
 
     public MainWindow(String dbFile) {
+        System.out.println("Launching Marketsim (" + dbFile + ")");
         initializeWindow();
         initDatabase(dbFile);
         createPanels();
