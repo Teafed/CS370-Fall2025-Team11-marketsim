@@ -2,33 +2,19 @@
 
 package com.gui;
 
+import com.market.DatabaseManager;
+
+import java.awt.geom.Path2D;
+import java.sql.Date;
+import java.sql.ResultSet;
 import javax.swing.*;
 import java.awt.*;
 import java.io.*;
-import java.util.List;
-import com.etl.ReadData;
-
-import javax.swing.JPanel;
-import javax.swing.BorderFactory;
-import java.awt.Color;
-import java.awt.Dimension;
-import java.awt.Font;
-import java.awt.FontMetrics;
-import java.awt.GradientPaint;
-import java.awt.Graphics;
-import java.awt.Graphics2D;
-import java.awt.RenderingHints;
-import java.awt.BasicStroke;
-import java.awt.geom.Path2D;
-import java.text.ParseException;
-import java.text.SimpleDateFormat;
-import java.util.Date;
-import java.util.TreeMap;
-import java.util.List;
+import java.text.*;
 import java.util.Map;
+import java.util.TreeMap;
 
 public class ChartPanel extends ContentPanel {
-    private ReadData reader;
     private long[] times;
     private double[] prices;
     private String symbol;
@@ -37,9 +23,6 @@ public class ChartPanel extends ContentPanel {
     private double maxPrice = Double.MIN_VALUE;
     private long minTime = Long.MAX_VALUE;
     private long maxTime = Long.MIN_VALUE;
-
-    // The format for parsing the input data from your CSV
-    private static final SimpleDateFormat sdf = new SimpleDateFormat("HH:mm:ss.SSS");
 
     public ChartPanel() {
         this.symbol = null;
@@ -54,94 +37,101 @@ public class ChartPanel extends ContentPanel {
     }
 
     /**
-     * Loads, filters, and processes a new symbol's data to be displayed on the chart.
+     * load data for a symbol from database and prep it for painting
+     * @param db
+     * @param symbol
      */
-    public void openChart(ReadData reader, String symbol) {
+    public void openChart(DatabaseManager db, String symbol) {
         this.symbol = symbol;
-        List<String[]> rows = reader.getFileData(symbol + ".csv");
-
-        if (rows == null || rows.size() < 2) {
-            times = null;
-            prices = null;
-            repaint();
-            return;
-        }
-
-        // Use a TreeMap to automatically sort all data by time
-        TreeMap<Long, Double> sortedData = new TreeMap<>();
-        for (int i = 1; i < rows.size(); i++) { // skip header row
-            try {
-                long t = sdf.parse(rows.get(i)[1]).getTime();
-                double p = Double.parseDouble(rows.get(i)[2]);
-                sortedData.put(t, p);
-            } catch (ParseException | NumberFormatException e) {
-                // Skip any rows with invalid data
+        try {
+            long latest = db.getLatestTimestamp(symbol);          // 0 if none
+            if (latest == 0L) {
+                // nothing stored yet
+                times = null;
+                prices = null;
+                repaint();
+                return;
             }
-        }
 
-        if (sortedData.isEmpty()) {
+            // default: show last 90 days that end at the latest stored bar
+            long ninetyDays = 90L * 24 * 60 * 60 * 1000L;
+            long start = Math.max(0, latest - ninetyDays);
+            long end   = latest;
+
+            // reuse existing loader
+            openChart(db, symbol, start, end, 400);
+        } catch (Exception e) {
+            e.printStackTrace();
             times = null;
             prices = null;
             repaint();
-            return;
         }
+    }
 
-        // --- FILTER DATA FOR THE LAST 3 DAYS ---
-        long latestTime = sortedData.lastKey();
-        long threeDaysInMillis = 3L * 24 * 60 * 60 * 1000; // Use 'L' for long literal
-        long cutoffTime = latestTime - threeDaysInMillis;
+    /**
+     * load data for a symbol from database and prep it for painting
+     * overloaded to specify time frame
+     *
+     * @param db        DatabaseManager
+     * @param symbol    e.g. "AAPL"
+     * @param startMs   inclusive epoch millis
+     * @param endMs     inclusive epoch millis
+     * @param maxPoints cap plotted points to keep the line smooth (e.g. 200)
+     */
+    public void openChart(DatabaseManager db, String symbol, long startMs, long endMs, int maxPoints) {
+        this.symbol = symbol;
 
-        // Use tailMap to get a new map containing only the last 3 days of data
-        Map<Long, Double> lastThreeDaysData = sortedData.tailMap(cutoffTime);
-        // --- END OF FILTERING ---
-
-        // === MODIFIED LINE FOR SIMPLIFICATION ===
-        // Instead of plotting one point per pixel, we target a fixed number of points
-        // to create a much smoother and less cluttered line.
-        int maxPoints = 200; // Target a fixed number of points for a smoother line
-        // ========================================
-
-        // Downsample the filtered data if it's too large for the screen width
-        int dataSize = lastThreeDaysData.size();
-        if (dataSize == 0) {
-            times = null;
-            prices = null;
-            repaint();
-            return;
-        }
-
-        int step = Math.max(1, dataSize / maxPoints);
-        int finalSize = (dataSize + step - 1) / step;
-
-        times = new long[finalSize];
-        prices = new double[finalSize];
-
-        // Reset min/max values before processing the new data set
-        minTime = Long.MAX_VALUE;
-        maxTime = Long.MIN_VALUE;
-        minPrice = Double.MAX_VALUE;
-        maxPrice = Double.MIN_VALUE;
-
-        int index = 0;
-        int count = 0;
-        // Iterate over the filtered map to prepare data for rendering
-        for (Map.Entry<Long, Double> entry : lastThreeDaysData.entrySet()) {
-            if (count % step == 0) {
-                long t = entry.getKey();
-                double p = entry.getValue();
-
-                if (index < times.length) {
-                    times[index] = t;
-                    prices[index] = p;
-                    index++;
-                }
-
-                minTime = Math.min(minTime, t);
-                maxTime = Math.max(maxTime, t);
-                minPrice = Math.min(minPrice, p);
-                maxPrice = Math.max(maxPrice, p);
+        try (ResultSet rs = db.getPrices(symbol, startMs, endMs)) {
+            // Keep a sorted map of timestamp -> close (already sorted by query, but this is simple)
+            TreeMap<Long, Double> sorted = new TreeMap<>();
+            while (rs.next()) {
+                long t = rs.getLong("timestamp");
+                double c = rs.getDouble("close");
+                sorted.put(t, c);
             }
-            count++;
+
+            if (sorted.isEmpty()) {
+                times = null;
+                prices = null;
+                repaint();
+                return;
+            }
+
+            // downsample to maxPoints
+            int dataSize = sorted.size();
+            int step = Math.max(1, dataSize / Math.max(1, maxPoints));
+            int finalSize = (dataSize + step - 1) / step;
+
+            times = new long[finalSize];
+            prices = new double[finalSize];
+
+            // reset ranges
+            minTime = Long.MAX_VALUE;
+            maxTime = Long.MIN_VALUE;
+            minPrice = Double.MAX_VALUE;
+            maxPrice = Double.MIN_VALUE;
+
+            int i = 0, k = 0;
+            for (Map.Entry<Long, Double> e : sorted.entrySet()) {
+                if (k++ % step != 0) continue;
+                if (i >= finalSize) break;
+
+                long t = e.getKey();
+                double p = e.getValue();
+
+                times[i] = t;
+                prices[i] = p;
+
+                if (t < minTime) minTime = t;
+                if (t > maxTime) maxTime = t;
+                if (p < minPrice) minPrice = p;
+                if (p > maxPrice) maxPrice = p;
+                i++;
+            }
+        } catch (Exception ex) {
+            ex.printStackTrace();
+            times = null;
+            prices = null;
         }
 
         repaint();

@@ -2,39 +2,31 @@
 
 package com.gui;
 
-import com.etl.ReadData;
+import com.market.DatabaseManager;
 import com.market.TradeItem;
 import com.market.Stock;
+
 import javax.swing.*;
 import java.awt.*;
-import java.io.File;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
-public class SymbolListPanel extends JPanel {
+public class SymbolListPanel extends ContentPanel {
     private DefaultListModel<TradeItem> symbolModel;
     private JList<TradeItem> symbolList;
     private final List<SymbolSelectionListener> listeners;
-    private final String dataFolderPath;
-    private ReadData reader;
+    private final DatabaseManager db;
 
     // interface that listeners must implement
     public interface SymbolSelectionListener {
         void onSymbolSelected(TradeItem symbol);
     }
 
-    public SymbolListPanel(String dataFolderPath) {
-        this.dataFolderPath = dataFolderPath;
+    public SymbolListPanel(DatabaseManager db) {
+        this.db = db;
         this.listeners = new ArrayList<>();
-        try {
-            reader = new ReadData(dataFolderPath);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-
         initializeComponents();
-        loadSymbols();
+        loadSymbolsFromDb();   // NEW
         setupListeners();
     }
 
@@ -57,41 +49,23 @@ public class SymbolListPanel extends JPanel {
         add(scrollPane, BorderLayout.CENTER);
     }
 
-    private void loadSymbols() {
+    /**
+     * load symbols from database
+     */
+    private void loadSymbolsFromDb() {
         symbolModel.clear();
-        File dataFolder = new File(dataFolderPath);
-        if (!dataFolder.exists() || !dataFolder.isDirectory()) {
-            System.out.println("data directory dne");
-            return;
-        }
+        try {
+            for (String sym : db.listSymbols()) {
+                double[] lp = db.latestAndPrevClose(sym); // [last, prev]
+                int last = (int)lp[0], prev = (int)lp[1];
+                double pct = (Double.isNaN(last) || Double.isNaN(prev) || prev == 0)
+                        ? 0.0
+                        : (last - prev) / prev * 100.0;
 
-        File[] csvFiles = dataFolder.listFiles((dir, name) ->
-                name.toLowerCase().endsWith(".csv"));
-        if (csvFiles == null || csvFiles.length == 0) {
-            System.out.println("data files dne");
-            return;
-        }
-
-        System.out.println("loading symbols from: " + dataFolderPath);
-        System.out.println("found " + csvFiles.length + " csv files");
-        for (File f : csvFiles) {
-            System.out.println("   " + f.getName());
-        }
-
-        // sort and add symbols
-        Arrays.sort(csvFiles, (a, b) -> a.getName().compareToIgnoreCase(b.getName()));
-
-        // TEMPORARY! please remove and replace with data
-        java.util.Random random = new java.util.Random();
-        for (File file : csvFiles) {
-            String fileName = file.getName();
-            String symbol = fileName.substring(0, fileName.lastIndexOf('.'));
-
-            double basePrice = 50 + random.nextDouble() * 200;
-            double change = (random.nextDouble() - 0.5) * 10;
-            double changePercent = (change / basePrice) * 100;
-
-            symbolModel.addElement(new Stock(symbol, symbol));
+                symbolModel.addElement(new Stock(sym, sym));
+            }
+        } catch (Exception ex) {
+            ex.printStackTrace();
         }
     }
 
@@ -123,7 +97,7 @@ public class SymbolListPanel extends JPanel {
 
     // utility methods
     public void refreshSymbols() {
-        loadSymbols();
+        loadSymbolsFromDb();
     }
 
     public String getSelectedSymbol() {
@@ -133,10 +107,5 @@ public class SymbolListPanel extends JPanel {
 
     public void clearSelection() {
         symbolList.clearSelection();
-    }
-
-    /** Helper: return the underlying ReadData instance */
-    public ReadData getReader() {
-        return reader;
     }
 }

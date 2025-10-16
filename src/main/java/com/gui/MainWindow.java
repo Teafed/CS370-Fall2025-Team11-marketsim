@@ -3,28 +3,33 @@
 package com.gui;
 
 import com.market.TradeItem;
+import com.market.DatabaseManager;
 
 import javax.swing.*;
 import java.awt.*;
-import java.awt.event.ComponentAdapter;
-import java.awt.event.ComponentEvent;
 
 public class MainWindow extends JFrame implements SymbolListPanel.SymbolSelectionListener {
-    private JSplitPane splitPane;
     private SymbolListPanel symbolPanel;
     private ChartPanel chartPanel;
+    private DatabaseManager db;
 
     private static final String WINDOW_TITLE = "Marketsim";
-    private static final String DATA_FOLDER = "data";
     private static final int LEFT_PANEL_WIDTH = 250;
     private static final int MIN_LEFT_WIDTH = 150;
     private static final int MIN_RIGHT_WIDTH = 300;
+    private static String defaultDbPath() { return "data/marketsim-sample.db"; }
 
     public MainWindow() {
+        this(defaultDbPath());
+    }
+
+    public MainWindow(String dbFile) {
+        System.out.println("Launching Marketsim (" + dbFile + ")");
         initializeWindow();
+        initDatabase(dbFile);
         createPanels();
         setupSplitPane();
-        setupResizeListener();
+        setupCloseHook();
 
         setVisible(true);
     }
@@ -32,14 +37,24 @@ public class MainWindow extends JFrame implements SymbolListPanel.SymbolSelectio
     private void initializeWindow() {
         setTitle(WINDOW_TITLE);
         setSize(1200, 800);
-        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
         setLocationRelativeTo(null); // center on screen
-
         getContentPane().setBackground(GUIComponents.BG_DARK);
+        setLayout(new BorderLayout());
+    }
+
+    private void initDatabase(String dbFile) {
+        try {
+            db = new DatabaseManager(dbFile);
+        } catch (Exception e) {
+            JOptionPane.showMessageDialog(this, "Failed to open database: " + e.getMessage(),
+                    "Database Error", JOptionPane.ERROR_MESSAGE);
+            throw new RuntimeException(e);
+        }
     }
 
     private void setupSplitPane() {
-        splitPane = GUIComponents.createSplitPane(
+        JSplitPane splitPane = GUIComponents.createSplitPane(
                 "horizontal", symbolPanel, chartPanel
         );
 
@@ -54,7 +69,7 @@ public class MainWindow extends JFrame implements SymbolListPanel.SymbolSelectio
     // create
     private void createPanels() {
         // data panel - contains list of symbols from csv data folder
-        symbolPanel = new SymbolListPanel(DATA_FOLDER);
+        symbolPanel = new SymbolListPanel(db);
         symbolPanel.setPreferredSize(new Dimension(LEFT_PANEL_WIDTH, 0));
         symbolPanel.setMinimumSize(new Dimension(MIN_LEFT_WIDTH, 0));
         symbolPanel.addSymbolSelectionListener(this);
@@ -64,24 +79,10 @@ public class MainWindow extends JFrame implements SymbolListPanel.SymbolSelectio
         chartPanel.setMinimumSize(new Dimension(MIN_RIGHT_WIDTH, 0));
     }
 
-    // ensure left panel has a minimum width
-    private void setupResizeListener() {
-        addComponentListener(new ComponentAdapter() {
-            @Override
-            public void componentResized(ComponentEvent e) {
-                // maintain the left panel at constant width
-                int currentDividerLocation = splitPane.getDividerLocation();
-                if (currentDividerLocation != LEFT_PANEL_WIDTH) {
-                    // only reset if user hasn't manually moved the divider
-                    // might need adjusting idk
-                    SwingUtilities.invokeLater(() -> {
-                        if (splitPane.getDividerLocation() < MIN_LEFT_WIDTH) {
-                            splitPane.setDividerLocation(MIN_LEFT_WIDTH);
-                        } else if (getWidth() - splitPane.getDividerLocation() < MIN_RIGHT_WIDTH) {
-                            splitPane.setDividerLocation(getWidth() - MIN_RIGHT_WIDTH);
-                        }
-                    });
-                }
+    private void setupCloseHook() {
+        addWindowListener(new java.awt.event.WindowAdapter() {
+            @Override public void windowClosing(java.awt.event.WindowEvent e) {
+                try { if (db != null) db.close(); } catch (Exception ignored) {}
             }
         });
     }
@@ -89,6 +90,6 @@ public class MainWindow extends JFrame implements SymbolListPanel.SymbolSelectio
     // implement the SymbolSelectionListener interface
     @Override
     public void onSymbolSelected(TradeItem item) {
-        chartPanel.openChart(symbolPanel.getReader(), item.getSymbol());
+        chartPanel.openChart(db, item.getSymbol());
     }
 }
