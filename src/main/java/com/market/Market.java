@@ -47,9 +47,7 @@ public class Market implements TradeListener {
 
     public void add(String symbol) throws Exception {
         // start client for symbol
-        System.out.println("subscribing to " + symbol);
         client.subscribe(symbol);
-        System.out.println("instantiating " + symbol);
         Stock stock = new Stock("name", symbol);
         stocks.put(symbol, stock);
         Thread.sleep(200);

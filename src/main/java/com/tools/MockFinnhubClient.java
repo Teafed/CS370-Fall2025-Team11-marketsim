@@ -8,6 +8,7 @@ import com.market.TradeListener;
 import jakarta.websocket.OnMessage;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Random;
 
@@ -35,13 +36,27 @@ public class MockFinnhubClient implements TradeSource {
         subscribedSymbols.add(symbol);
     }
 
+    public ArrayList<String> returnRandomSymbolList() {
+            int count = rand.nextInt(subscribedSymbols.size()) + 1;
+            ArrayList<String> symbols = new ArrayList<>(subscribedSymbols);
+            Collections.shuffle(symbols);
+            ArrayList<String> symbolList = new ArrayList<>(symbols.subList(0, count));
+            return symbolList;
+    }
+
     public void start() {
         new Thread(() -> {
+            try {
+                Thread.sleep(5000);
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
             while (true) {
                 JsonArray trades = new JsonArray();
                 long baseTimestamp = System.currentTimeMillis();
 
-                for (String symbol : subscribedSymbols) {
+                ArrayList<String> symbols = returnRandomSymbolList();
+                for (String symbol : symbols) {
                     double price = 100 + rand.nextDouble() * 50;
                     long timestamp = baseTimestamp + rand.nextInt(5); // slight jitter
                     long volume = rand.nextInt(500) + 50;
@@ -73,7 +88,7 @@ public class MockFinnhubClient implements TradeSource {
                 System.out.println("[Mock] Emitting: " + message);
 
                 try {
-                    Thread.sleep(500);
+                    Thread.sleep(900);
                 } catch (InterruptedException ignore) {}
             }
         }).start();

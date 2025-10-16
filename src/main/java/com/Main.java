@@ -28,6 +28,7 @@ public class Main {
 
            // Initialize mock finnhubclient after market hours
            MockFinnhubClient client = new MockFinnhubClient(db);
+           client.start();
 
 
            System.out.println(db);
