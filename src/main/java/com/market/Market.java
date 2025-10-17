@@ -3,10 +3,7 @@ package com.market;
 import com.etl.FinnhubClient;
 import com.etl.TradeSource;
 
-import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 
 // Will hold all open stock objects
@@ -16,6 +13,7 @@ public class Market implements TradeListener {
     private Map<String, TradeItem> stocks;
     private DatabaseManager dbManager;
     private TradeSource client;
+    private MarketListener marketListener;
 
     private String[] initialSymbols = {
             "AAPL", // Apple
@@ -30,20 +28,21 @@ public class Market implements TradeListener {
             "BRK.B" // Berkshire Hathaway
     };
 
-    public Market(DatabaseManager db, TradeSource client) throws Exception {
+    public Market(DatabaseManager db) throws Exception {
         stocks =  new LinkedHashMap<>();
         this.dbManager = db;
-        this.client = client;
-        client.setTradeListener(this);
 
-        this.add(initialSymbols);
     }
 
     /**
      * This method opens a socket through the etl clients and pulls data for each stock.
      */
 
-
+    public void setClient(TradeSource client) throws Exception {
+        this.client = client;
+        this.add(initialSymbols);
+        client.setTradeListener(this);
+    }
 
     public void add(String symbol) throws Exception {
         // start client for symbol
@@ -77,11 +76,19 @@ public class Market implements TradeListener {
 
         // Update its price
         stock.updatePrice(price);
+
     }
 
-
     @Override
-    public void onTrade(String symbol, double price, long timestamp, long volume) {
+    public void onTrade(String symbol, double price) {
         updateStock(symbol, price);
+        marketListener.onMarketUpdate();
+    }
+
+    public void setMarketListener(MarketListener marketListener) {
+        System.out.println("Adding listener");
+        this.marketListener = marketListener;
+        System.out.println("Adding symbols");
+        marketListener.loadSymbols(new ArrayList<>(stocks.values()));
     }
 }

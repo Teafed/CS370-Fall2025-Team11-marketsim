@@ -37,7 +37,7 @@ public class MockFinnhubClient implements TradeSource {
     }
 
     public ArrayList<String> returnRandomSymbolList() {
-            int count = rand.nextInt(subscribedSymbols.size()) + 1;
+            int count = rand.nextInt(8)+1;
             ArrayList<String> symbols = new ArrayList<>(subscribedSymbols);
             Collections.shuffle(symbols);
             ArrayList<String> symbolList = new ArrayList<>(symbols.subList(0, count));
@@ -77,7 +77,7 @@ public class MockFinnhubClient implements TradeSource {
 
                     // Notify listener
                     if (listener != null) {
-                        listener.onTrade(symbol, price, timestamp, volume);
+                        listener.onTrade(symbol, price);
                     }
                 }
 

@@ -30,8 +30,9 @@ public class FinnhubClient implements TradeSource {
 
     @OnMessage
     public void onMessage(String msg) {
-        parseAndStore(msg, db);
-        System.out.println("Message received: " + msg);
+        parseAndNotify(msg);
+        //parseAndStore(msg, db);
+        //System.out.println("Message received: " + msg);
         received.countDown(); // signals “we got something”
     }
 
@@ -57,6 +58,8 @@ public class FinnhubClient implements TradeSource {
         c.connectToServer(client, uri);
         return client;
     }
+
+    public void start(){};
 
     public void stop() {
         try { if (session != null && session.isOpen()) session.close(); } catch (Exception ignore) {}
@@ -113,5 +116,18 @@ public class FinnhubClient implements TradeSource {
      */
     public void setTradeListener(TradeListener tradeListener) {
         this.tradeListener = tradeListener;
+    }
+
+    public void parseAndNotify(String msg) {
+        JsonObject obj = JsonParser.parseString(msg).getAsJsonObject();
+        if (!obj.has("data")) return;
+
+        for (JsonElement el : obj.getAsJsonArray("data")) {
+            System.out.println("JSON: ");
+            JsonObject trade = el.getAsJsonObject();
+            double price = trade.get("p").getAsDouble();
+            String symbol = trade.get("s").getAsString();
+            tradeListener.onTrade(symbol, price);
+        }
     }
 }

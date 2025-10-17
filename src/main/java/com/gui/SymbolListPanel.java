@@ -3,6 +3,7 @@
 package com.gui;
 
 import com.market.DatabaseManager;
+import com.market.MarketListener;
 import com.market.TradeItem;
 import com.market.Stock;
 
@@ -11,11 +12,16 @@ import java.awt.*;
 import java.util.ArrayList;
 import java.util.List;
 
-public class SymbolListPanel extends ContentPanel {
+public class SymbolListPanel extends ContentPanel implements MarketListener {
     private DefaultListModel<TradeItem> symbolModel;
     private JList<TradeItem> symbolList;
     private final List<SymbolSelectionListener> listeners;
     private final DatabaseManager db;
+
+    @Override
+    public void onMarketUpdate() {
+        repaint();
+    }
 
     // interface that listeners must implement
     public interface SymbolSelectionListener {
@@ -26,7 +32,8 @@ public class SymbolListPanel extends ContentPanel {
         this.db = db;
         this.listeners = new ArrayList<>();
         initializeComponents();
-        loadSymbolsFromDb();   // NEW
+        //loadSymbolsFromDb();   // NEW
+
         setupListeners();
     }
 
@@ -69,6 +76,10 @@ public class SymbolListPanel extends ContentPanel {
         }
     }
 
+    public void loadSymbols(List<TradeItem> symbols) {
+        symbols.forEach(s -> symbolModel.addElement(s));
+    }
+
     private void setupListeners() {
         symbolList.addListSelectionListener(e -> {
             if (!e.getValueIsAdjusting()) { // only fire when selection is final
@@ -97,7 +108,8 @@ public class SymbolListPanel extends ContentPanel {
 
     // utility methods
     public void refreshSymbols() {
-        loadSymbolsFromDb();
+        //loadSymbolsFromDb();
+        repaint();
     }
 
     public String getSelectedSymbol() {
