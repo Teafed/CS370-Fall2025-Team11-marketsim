@@ -3,8 +3,8 @@ package com.accountmanager;
 // One account
 public class Account {
 
-    private int totalValue; // Current total account value stored in cents
-    private int availableBalance; // the amount the user can currently trade
+    private double totalValue; // Current total account value
+    private double availableBalance; // the amount the user can currently trade
     private String name; // User defined name of account
     private Portfolio portfolio;
     private Watchlist watchList;
@@ -18,10 +18,7 @@ public class Account {
     }
 
     // Set name
-    public void setName(String name) {
-
-        this.name = name;
-    }
+    public void setName(String name) { this.name = name; }
 
     // Get name
     public String getName() {
@@ -29,13 +26,13 @@ public class Account {
     }
 
     // Get account value
-    public int getTotalValue() {
+    public double getTotalValue() {
         updateValue();
         return totalValue;
     }
 
     // get the available balance
-    public int getAvailableBalance() {
+    public double getAvailableBalance() {
         return this.availableBalance;
     }
 
