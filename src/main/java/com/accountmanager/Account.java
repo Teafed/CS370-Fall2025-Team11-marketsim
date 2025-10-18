@@ -3,18 +3,19 @@ package com.accountmanager;
 // One account
 public class Account {
 
-    private double totalValue; // Current total account value
+    private double totalValue = 0.0f; // Current total account value
     private double availableBalance; // the amount the user can currently trade
     private String name; // User defined name of account
-    private Portfolio portfolio;
-    private Watchlist watchList;
+    private Portfolio portfolio = new Portfolio();
+    private Watchlist watchList = new Watchlist();
 
-    // constructor
+    // constructors
+    public Account() {
+        setName("New Account");
+    }
+
     public Account(String name) {
-        this.totalValue = 0;
-        this.name = name;
-        this.portfolio = new Portfolio();
-        this.watchList = new Watchlist();
+        setName(name);
     }
 
     // Set name
