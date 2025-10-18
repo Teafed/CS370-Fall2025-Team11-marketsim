@@ -57,13 +57,6 @@
            <groupId>io.github.cdimascio</groupId>
            <artifactId>dotenv-java</artifactId>
            <version>3.0.0</version>
-           <scope>test</scope> <!-- or remove scope to use in main -->
-       </dependency>
-       <dependency>
-           <groupId>io.github.cdimascio</groupId>
-           <artifactId>dotenv-java</artifactId>
-           <version>3.0.0</version>
-           <scope>compile</scope>
        </dependency>
    </dependencies>
 
@@ -105,7 +98,7 @@
                     <configuration>
                         <rules>
                             <requireJavaVersion>
-                                <version>[21,22)</version>
+                                <version>[21,26)</version>
                             </requireJavaVersion>
                         </rules>
                     </configuration>
