@@ -5,6 +5,7 @@ import java.awt.*;
 import java.util.Objects;
 
 public class GUIComponents {
+    // hi
    // color palette
    public static final Color BG_DARKER = new Color(25, 25, 25);
    public static final Color BG_DARK = new Color(35, 35, 35);
