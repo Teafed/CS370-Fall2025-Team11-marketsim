@@ -6,7 +6,7 @@ public class Stock extends TradeItem {
         super(name, symbol);
     }
 
-    public Stock(String name, String symbol, int price, double changePercent) {
+    public Stock(String name, String symbol, double price, double changePercent) {
         super(name, symbol, price, changePercent);
     }
 }

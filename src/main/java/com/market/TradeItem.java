@@ -3,7 +3,7 @@ package com.market;
 public abstract class TradeItem {
     private String name;
     private String symbol;
-    private int price;
+    private double price;
     private double changePercent;
     private double change;
 
@@ -13,7 +13,7 @@ public abstract class TradeItem {
         price = 0;
     }
 
-    public TradeItem(String name, String symbol, int price, double changePercent) {
+    public TradeItem(String name, String symbol, double price, double changePercent) {
         this.name = name;
         this.symbol = symbol;
         this.price = price;
@@ -28,7 +28,7 @@ public abstract class TradeItem {
         return symbol;
     }
 
-    public int getCurrentPrice() {
+    public double getCurrentPrice() {
         //updatePrice();
         return price;
     }
@@ -41,7 +41,7 @@ public abstract class TradeItem {
         return change;
     }
 
-    public boolean updatePrice(int price) {
+    public boolean updatePrice(double price) {
         if (price < 0) {
             return false;
         }
