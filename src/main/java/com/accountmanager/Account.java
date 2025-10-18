@@ -8,8 +8,8 @@ import java.util.Map;
 // One account
 public class Account {
 
-    private int accountTotalValue; // Current total account value stored in cents
-    private int availableBalance; // the amount the user can currently trade
+    private double accountTotalValue; // Current total account value stored in cents
+    private double availableBalance; // the amount the user can currently trade
     private String accountName; // User defined name of account
     private Portfolio portfolio;
     private Watchlist watchList;
@@ -34,13 +34,13 @@ public class Account {
     }
 
     // Get account value
-    public int getAccountTotalValue() {
+    public double getAccountTotalValue() {
         updateAccountValue();
         return accountTotalValue;
     }
 
     // get the available balance
-    public int getAvailableBalance() {
+    public double getAvailableBalance() {
         return this.availableBalance;
     }
 
@@ -63,7 +63,7 @@ public class Account {
     // DEPOSIT WITHDRAW UPDATE
 
     // Add value to account
-    public boolean depositFunds(int amount) {
+    public boolean depositFunds(double amount) {
         if (amount < 1) {
             return false;
         }
@@ -73,7 +73,7 @@ public class Account {
     }
 
     // withdraw funds from account
-    public boolean withdrawFunds(int amount) {
+    public boolean withdrawFunds(double amount) {
         if (amount < 1) {
             return false;
         }

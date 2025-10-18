@@ -16,7 +16,7 @@ import java.util.Map;
 public class Portfolio {
 
     private Map<TradeItem, Integer> portfolioItems;
-    private int portfolioValue; // The total value of the portfolio
+    private double portfolioValue; // The total value of the portfolio
 
     // implement options, ETFs, other as necessary
 
@@ -86,12 +86,12 @@ public class Portfolio {
     /*
         Updates the portfolio value by looping through all holdings.
      */
-    public int getPortfolioValue() {
-        int aggregateValue = 0;
+    public double getPortfolioValue() {
+        double aggregateValue = 0;
         for (Map.Entry<TradeItem, Integer> entry : portfolioItems.entrySet()) {
-            int sharePrice = entry.getKey().getCurrentPrice();
+            double sharePrice = entry.getKey().getCurrentPrice();
             int shares = entry.getValue();
-            int totalValue = sharePrice * shares;
+            double totalValue = sharePrice * shares;
             aggregateValue += totalValue;
         }
         this.portfolioValue = aggregateValue;

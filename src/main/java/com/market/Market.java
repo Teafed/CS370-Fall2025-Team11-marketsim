@@ -16,16 +16,16 @@ public class Market implements TradeListener {
     private MarketListener marketListener;
 
     private String[] initialSymbols = {
-            "AAPL", // Apple
-            "MSFT", // Microsoft
-            "GOOGL", // Alphabet
-            "NVDA", // NVIDIA
-            "AMZN", // Amazon
-            "META", // Meta Platforms
-            "TSLA", // Tesla
-            "AVGO", // Broadcom
-            "TSM",  // Taiwan Semiconductor Manufacturing Company
-            "BRK.B" // Berkshire Hathaway
+            "AAPL",     // Apple
+            "MSFT",     // Microsoft
+            "GOOGL",    // Alphabet
+            "NVDA",     // NVIDIA
+            "AMZN",     // Amazon
+            "META",     // Meta Platforms
+            "TSLA",     // Tesla
+            "AVGO",     // Broadcom
+            "TSM",      // Taiwan Semiconductor Manufacturing Company
+            "BRK.B"     // Berkshire Hathaway
     };
 
     public Market(DatabaseManager db) throws Exception {
@@ -69,13 +69,8 @@ public class Market implements TradeListener {
         // Get the stock from the map
         TradeItem stock = stocks.get(symbol);
 
-        //TODO Maybe change this later
-        // convert price from double to int
-        int price = (int) (p * 100);
-        //TODO
-
         // Update its price
-        stock.updatePrice(price);
+        stock.updatePrice(p);
 
     }
 

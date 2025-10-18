@@ -3,7 +3,7 @@ package com.market;
 public abstract class TradeItem {
     private String name;
     private String symbol;
-    private int price;
+    private double price;
     private double changePercent;
     private double change;
 
@@ -21,7 +21,7 @@ public abstract class TradeItem {
         return symbol;
     }
 
-    public int getCurrentPrice() {
+    public double getCurrentPrice() {
         //updatePrice();
         return price;
     }
@@ -34,7 +34,7 @@ public abstract class TradeItem {
         return change;
     }
 
-    public boolean updatePrice(int price) {
+    public boolean updatePrice(double price) {
         if (price < 0) {
             return false;
         }

@@ -50,7 +50,8 @@ public class SymbolCellRenderer extends JPanel implements ListCellRenderer<Trade
       
       if (value != null) {
          symbolLabel.setText(value.getSymbol());
-         float price = (value.getCurrentPrice() * 100f) / 100;
+         double price = value.getCurrentPrice();
+         System.out.println(price);
          priceLabel.setText(String.format("$%.2f", price));
          
          double changePercent = value.getChangePercent();
