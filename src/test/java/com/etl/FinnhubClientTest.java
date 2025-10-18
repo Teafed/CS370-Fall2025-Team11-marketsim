@@ -35,7 +35,7 @@ class FinnhubClientParserTest {
         db.close();
     }
 
-    // @Disabled("Enable when you have FINNHUB_API_KEY set")
+    @org.junit.jupiter.api.Disabled("This test is for the old WebSocket client and is not compatible with the new REST polling client.")
     @Test
     void liveFinnhubSmokeTest() throws Exception {
         DatabaseManager db = new DatabaseManager("data/market.db"); // or ":memory:"
