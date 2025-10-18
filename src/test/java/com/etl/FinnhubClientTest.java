@@ -47,7 +47,7 @@ class FinnhubClientParserTest {
         long ts = db.getLatestTimestamp("AAPL");
         assertTrue(ts > 0, "expected at least one trade");
 
-        client.stop();
+        client.stopPolling();
         db.close();
     }
 }

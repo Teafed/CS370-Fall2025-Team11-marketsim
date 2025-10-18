@@ -18,6 +18,8 @@ import java.util.function.Consumer;
 
 public class FinnhubClient {
     private static final String API_URL = "https://finnhub.io/api/v1/stock/candle";
+    private static final String LOG_PREFIX = "[FinnhubClient]";
+    private static final int POLL_INTERVAL_SECONDS = 60;
 
     private final String apiKey;
     private final String symbol;
@@ -27,13 +29,22 @@ public class FinnhubClient {
 
     public FinnhubClient(String symbol) {
         this.symbol = symbol;
-        this.apiKey = System.getenv("FINNHUB_API_KEY");
-        if (this.apiKey == null || this.apiKey.isBlank()) {
-            throw new IllegalStateException("The environment variable 'FINNHUB_API_KEY' is not set.");
-        }
+        this.apiKey = getApiKey();
         this.httpClient = HttpClient.newHttpClient();
         this.gson = new Gson();
-        this.scheduler = Executors.newSingleThreadScheduledExecutor(r -> {
+        this.scheduler = createScheduler(symbol);
+    }
+
+    private String getApiKey() {
+        String key = System.getenv("FINNHUB_API_KEY");
+        if (key == null || key.isBlank()) {
+            throw new IllegalStateException("The environment variable 'FINNHUB_API_KEY' is not set.");
+        }
+        return key;
+    }
+
+    private ScheduledExecutorService createScheduler(String symbol) {
+        return Executors.newSingleThreadScheduledExecutor(r -> {
             Thread t = new Thread(r, "FinnhubClient-poller-" + symbol);
             t.setDaemon(true);
             return t;
@@ -45,45 +56,47 @@ public class FinnhubClient {
      * onError receives any Exception that occurs while polling or parsing.
      */
     public void startPolling(Consumer<CandleResponse> onData, Consumer<Exception> onError) {
-        Runnable task = () -> {
-            try {
-                long to = Instant.now().getEpochSecond();
-                long from = Instant.now().minus(1, ChronoUnit.DAYS).getEpochSecond();
-                String resolution = "1"; // 1 minute candles
+        Runnable task = () -> fetchCandleData(onData, onError);
+        scheduler.scheduleAtFixedRate(task, 0, POLL_INTERVAL_SECONDS, TimeUnit.SECONDS);
+    }
 
-                String url = String.format("%s?symbol=%s&resolution=%s&from=%d&to=%d&token=%s",
-                        API_URL, symbol, resolution, from, to, apiKey);
+    private void fetchCandleData(Consumer<CandleResponse> onData, Consumer<Exception> onError) {
+        try {
+            long to = Instant.now().getEpochSecond();
+            long from = Instant.now().minus(1, ChronoUnit.DAYS).getEpochSecond();
+            String resolution = "1"; // 1 minute candles
 
-                HttpRequest req = HttpRequest.newBuilder()
-                        .uri(URI.create(url))
-                        .GET()
-                        .build();
+            String url = String.format("%s?symbol=%s&resolution=%s&from=%d&to=%d&token=%s",
+                    API_URL, symbol, resolution, from, to, apiKey);
 
-                httpClient.sendAsync(req, HttpResponse.BodyHandlers.ofString())
-                        .thenApply(HttpResponse::body)
-                        .thenAccept(body -> {
-                            try {
-                                CandleResponse resp = gson.fromJson(body, CandleResponse.class);
-                                if (resp != null && "ok".equalsIgnoreCase(resp.getS())) {
-                                    onData.accept(resp);
-                                } else {
-                                    onError.accept(new RuntimeException("Finnhub returned non-ok status or empty response: " + body));
-                                }
-                            } catch (Exception e) {
-                                onError.accept(e);
-                            }
-                        })
-                        .exceptionally(ex -> {
-                            onError.accept(new RuntimeException(ex));
-                            return null;
-                        });
+            HttpRequest req = HttpRequest.newBuilder()
+                    .uri(URI.create(url))
+                    .GET()
+                    .build();
 
-            } catch (Exception e) {
-                onError.accept(e);
+            httpClient.sendAsync(req, HttpResponse.BodyHandlers.ofString())
+                    .thenApply(HttpResponse::body)
+                    .thenAccept(body -> processResponse(body, onData, onError))
+                    .exceptionally(ex -> {
+                        onError.accept(new RuntimeException(ex));
+                        return null;
+                    });
+        } catch (Exception e) {
+            onError.accept(e);
+        }
+    }
+
+    private void processResponse(String body, Consumer<CandleResponse> onData, Consumer<Exception> onError) {
+        try {
+            CandleResponse resp = gson.fromJson(body, CandleResponse.class);
+            if (resp != null && "ok".equalsIgnoreCase(resp.getS())) {
+                onData.accept(resp);
+            } else {
+                onError.accept(new RuntimeException("Finnhub returned non-ok status or empty response: " + body));
             }
-        };
-
-        scheduler.scheduleAtFixedRate(task, 0, 60, TimeUnit.SECONDS);
+        } catch (Exception e) {
+            onError.accept(e);
+        }
     }
 
     public void stopPolling() {
@@ -99,33 +112,43 @@ public class FinnhubClient {
         FinnhubClient client = new FinnhubClient(symbol);
 
         client.startPolling(candle -> {
-            long[] times = candle.getT();
-            double[] opens = candle.getO();
-            double[] highs = candle.getH();
-            double[] lows = candle.getL();
-            double[] closes = candle.getC();
-            double[] vols = candle.getV();
-
-            if (times == null) return;
-
-            for (int i = 0; i < times.length; i++) {
-                long ts = times[i] * 1000L;
-                double open = (opens != null && i < opens.length) ? opens[i] : closes[i];
-                double high = (highs != null && i < highs.length) ? highs[i] : closes[i];
-                double low = (lows != null && i < lows.length) ? lows[i] : closes[i];
-                double close = (closes != null && i < closes.length) ? closes[i] : open;
-                long vol = (vols != null && i < vols.length) ? (long) vols[i] : 0L;
-                try {
-                    db.insertPrice(symbol, ts, open, high, low, close, vol);
-                } catch (Exception e) {
-                    System.err.println("[FinnhubClient] Failed to insert candle into DB: " + e.getMessage());
-                }
-            }
+            processCandle(candle, symbol, db);
         }, ex -> {
-            System.err.println("[FinnhubClient] polling error: " + ex.getMessage());
+            System.err.println(LOG_PREFIX + " polling error: " + ex.getMessage());
         });
 
         return client;
+    }
+
+    private static void processCandle(CandleResponse candle, String symbol, DatabaseManager db) {
+        long[] times = candle.getT();
+        if (times == null) return;
+
+        double[] opens = candle.getO();
+        double[] highs = candle.getH();
+        double[] lows = candle.getL();
+        double[] closes = candle.getC();
+        double[] vols = candle.getV();
+
+        for (int i = 0; i < times.length; i++) {
+            long ts = times[i] * 1000L;
+            double close = (closes != null && i < closes.length) ? closes[i] : 0;
+            double open = (opens != null && i < opens.length) ? opens[i] : close;
+            double high = (highs != null && i < highs.length) ? highs[i] : close;
+            double low = (lows != null && i < lows.length) ? lows[i] : close;
+            long vol = (vols != null && i < vols.length) ? (long) vols[i] : 0L;
+            
+            insertPriceSafely(db, symbol, ts, open, high, low, close, vol);
+        }
+    }
+
+    private static void insertPriceSafely(DatabaseManager db, String symbol, long timestamp, 
+                                         double open, double high, double low, double close, long volume) {
+        try {
+            db.insertPrice(symbol, timestamp, open, high, low, close, volume);
+        } catch (Exception e) {
+            System.err.println(LOG_PREFIX + " Failed to insert candle into DB: " + e.getMessage());
+        }
     }
 
     static void parseAndStore(String msg, DatabaseManager db) {
@@ -138,15 +161,12 @@ public class FinnhubClient {
                 double price = trade.get("p").getAsDouble();
                 long timestamp = trade.get("t").getAsLong();
                 long volume = trade.get("v").getAsLong();
-                String s = trade.get("s").getAsString();
-                try {
-                    db.insertPrice(s, timestamp, price, price, price, price, volume);
-                } catch (Exception ex) {
-                    throw new RuntimeException(ex);
-                }
+                String symbol = trade.get("s").getAsString();
+                
+                insertPriceSafely(db, symbol, timestamp, price, price, price, price, volume);
             }
         } catch (Exception ex) {
-            throw new RuntimeException(ex);
+            System.err.println(LOG_PREFIX + " Error parsing trade data: " + ex.getMessage());
         }
     }
 }
