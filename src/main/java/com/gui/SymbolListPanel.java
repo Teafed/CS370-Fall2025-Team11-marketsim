@@ -32,7 +32,7 @@ public class SymbolListPanel extends ContentPanel implements MarketListener {
         this.db = db;
         this.listeners = new ArrayList<>();
         initializeComponents();
-        //loadSymbolsFromDb();   // NEW
+        loadSymbolsFromDb();
 
         setupListeners();
     }
@@ -69,7 +69,7 @@ public class SymbolListPanel extends ContentPanel implements MarketListener {
                         ? 0.0
                         : (last - prev) / prev * 100.0;
 
-                symbolModel.addElement(new Stock(sym, sym));
+                symbolModel.addElement(new Stock(sym, sym, last, pct));
             }
         } catch (Exception ex) {
             ex.printStackTrace();
