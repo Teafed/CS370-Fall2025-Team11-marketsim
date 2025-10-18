@@ -2,7 +2,7 @@ package com.market;
 
 public class Stock extends TradeItem {
 
-    public Stock(String symbol, String name) {
+    public Stock(String name, String symbol) {
         super(name, symbol);
     }
 

@@ -87,6 +87,10 @@ public class MainWindow extends JFrame implements SymbolListPanel.SymbolSelectio
         });
     }
 
+    public SymbolListPanel getSymbolListPanel() {
+        return symbolPanel;
+    }
+
     // implement the SymbolSelectionListener interface
     @Override
     public void onSymbolSelected(TradeItem item) {

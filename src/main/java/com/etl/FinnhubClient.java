@@ -1,5 +1,6 @@
 package com.etl;
 
+import com.market.TradeListener;
 import jakarta.websocket.*;
 
 import java.io.IOException;
@@ -12,28 +13,26 @@ import io.github.cdimascio.dotenv.Dotenv;
 import com.market.DatabaseManager;
 
 @ClientEndpoint
-public class FinnhubClient {
+public class FinnhubClient implements TradeSource {
     private final DatabaseManager db;
-    private final String symbol;
     private Session session;
     private final CountDownLatch received = new CountDownLatch(1); // or N
+    private TradeListener tradeListener;
 
-    public FinnhubClient(DatabaseManager db, String symbol) {
+    public FinnhubClient(DatabaseManager db) {
         this.db = db;
-        this.symbol = symbol;
     }
 
     @OnOpen
     public void onOpen(Session s) throws IOException {
         this.session = s;
-        // subscribe to trades for this.symbol (double-check Finnhub’s expected payload)
-        String msg = "{\"type\":\"subscribe\",\"symbol\":\"" + symbol + "\"}";
-        s.getBasicRemote().sendText(msg);
     }
 
     @OnMessage
     public void onMessage(String msg) {
-        parseAndStore(msg, db);
+        parseAndNotify(msg);
+        //parseAndStore(msg, db);
+        //System.out.println("Message received: " + msg);
         received.countDown(); // signals “we got something”
     }
 
@@ -48,17 +47,19 @@ public class FinnhubClient {
         t.printStackTrace();
     }
 
-    public static FinnhubClient start(DatabaseManager db, String symbol) throws Exception {
+    public static FinnhubClient start(DatabaseManager db) throws Exception {
         Dotenv dotenv = Dotenv.configure().ignoreIfMissing().load();
         String k = System.getenv("FINNHUB_API_KEY");
         if (k == null || k.isBlank()) k = dotenv.get("FINNHUB_API_KEY");
 
-        FinnhubClient client = new FinnhubClient(db, symbol);
+        FinnhubClient client = new FinnhubClient(db);
         WebSocketContainer c = ContainerProvider.getWebSocketContainer();
         URI uri = new URI("wss", "ws.finnhub.io", "/", "token=" + k, null);
         c.connectToServer(client, uri);
         return client;
     }
+
+    public void start(){};
 
     public void stop() {
         try { if (session != null && session.isOpen()) session.close(); } catch (Exception ignore) {}
@@ -96,6 +97,37 @@ public class FinnhubClient {
             } catch (Exception e) {
                 throw new RuntimeException(e);
             }
+        }
+    }
+
+    /**
+     * To subscribe to specific stocks
+     * @param symbol The symbol of the stock you want to add
+     */
+    public void subscribe(String symbol) throws Exception {
+        if (session != null && session.isOpen()) {
+            String msg = "{\"type\":\"subscribe\",\"symbol\":\"" + symbol + "\"}";
+            session.getAsyncRemote().sendText(msg);
+        }
+    }
+
+    /**
+     * To listen for trades to update stocks
+     */
+    public void setTradeListener(TradeListener tradeListener) {
+        this.tradeListener = tradeListener;
+    }
+
+    public void parseAndNotify(String msg) {
+        JsonObject obj = JsonParser.parseString(msg).getAsJsonObject();
+        if (!obj.has("data")) return;
+
+        for (JsonElement el : obj.getAsJsonArray("data")) {
+            System.out.println("JSON: ");
+            JsonObject trade = el.getAsJsonObject();
+            double price = trade.get("p").getAsDouble();
+            String symbol = trade.get("s").getAsString();
+            tradeListener.onTrade(symbol, price);
         }
     }
 }

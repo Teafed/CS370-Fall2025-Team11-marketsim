@@ -13,6 +13,7 @@ public class BuildSampleDb {
         try (DatabaseManager db = new DatabaseManager(dbFile)) {
             if (!force && isSeeded(db)) {
                 System.out.println("[seed] Already seeded. Use --force to overwrite. DB: " + dbFile);
+                System.out.println(db.listSymbols());
                 return;
             }
             seedAll(db);

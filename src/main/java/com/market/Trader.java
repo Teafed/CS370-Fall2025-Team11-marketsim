@@ -1,6 +1,4 @@
-package com.markets;
-
-import com.accountmanager.Account;
+package com.market;
 
 // Handles buying and selling of stocks
 public class Trader {

@@ -155,5 +155,35 @@ public class DatabaseManager implements AutoCloseable {
             conn.setAutoCommit(prev);
         }
     }
+
+    public List<PriceRow> listRecentPrices(String symbol, int limit) throws SQLException {
+        String sql = """
+        SELECT symbol, timestamp, open, high, low, close, volume
+        FROM prices
+        WHERE symbol = ?
+        ORDER BY timestamp DESC
+        LIMIT ?
+    """;
+        List<PriceRow> rows = new ArrayList<>();
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, symbol);
+            ps.setInt(2, limit);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    rows.add(new PriceRow(
+                            rs.getString("symbol"),
+                            rs.getLong("timestamp"),
+                            rs.getDouble("open"),
+                            rs.getDouble("high"),
+                            rs.getDouble("low"),
+                            rs.getDouble("close"),
+                            rs.getLong("volume")
+                    ));
+                }
+            }
+        }
+        return rows;
+    }
+
 }
 

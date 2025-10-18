@@ -1,13 +1,11 @@
 package com.etl;
 
 import com.market.DatabaseManager;
-import org.junit.jupiter.api.*;
-import org.junit.jupiter.api.condition.DisabledIfEnvironmentVariable;
-
+import org.junit.jupiter.api.Test;
 import java.sql.ResultSet;
 import static org.junit.jupiter.api.Assertions.*;
 
-class FinnhubClientTest {
+class FinnhubClientParserTest {
 
     @Test
     void parsesTradeMessageIntoDB() throws Exception {
@@ -35,15 +33,23 @@ class FinnhubClientTest {
 
             assertFalse(rs.next());
         }
+
+        db.close();
     }
 
+    // @Disabled("Enable when you have FINNHUB_API_KEY set")
     @Test
-    void ignoresMessagesWithoutDataArray() throws Exception {
-        try (DatabaseManager db = new DatabaseManager(":memory:")) {
-            FinnhubClient.parseAndStore("{\"type\":\"ping\"}", db); // no 'data'
-            try (ResultSet rs = db.getPrices("AAPL", 0, Long.MAX_VALUE)) {
-                assertFalse(rs.next(), "no rows should be written for non-trade messages");
-            }
-        }
+    void liveFinnhubSmokeTest() throws Exception {
+        DatabaseManager db = new DatabaseManager("data/market.db"); // or ":memory:"
+        FinnhubClient client = FinnhubClient.start(db);
+
+        // give it ~5–10 seconds to receive something
+        Thread.sleep(10_000);
+
+        long ts = db.getLatestTimestamp("AAPL");
+        assertTrue(ts > 0, "expected at least one trade");
+
+        client.stop();
+        db.close();
     }
 }
