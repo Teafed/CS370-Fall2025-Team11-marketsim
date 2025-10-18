@@ -55,7 +55,7 @@ public class Account {
     // DEPOSIT WITHDRAW UPDATE
 
     // Add value to account
-    public boolean depositFunds(int amount) {
+    public boolean depositFunds(double amount) {
         if (amount < 1) {
             return false;
         }
@@ -65,7 +65,7 @@ public class Account {
     }
 
     // withdraw funds from account
-    public boolean withdrawFunds(int amount) {
+    public boolean withdrawFunds(double amount) {
         if (amount < 1) {
             return false;
         }
