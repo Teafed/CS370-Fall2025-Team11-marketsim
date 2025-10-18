@@ -18,7 +18,7 @@ class FinnhubClientParserTest {
         ]}
         """;
 
-        FinnhubClient.parseAndStore(sample, db);
+        FinnhubWebSocketClient.parseAndStore(sample, db);
 
         try (ResultSet rs = db.getPrices("AAPL", 0, Long.MAX_VALUE)) {
             assertTrue(rs.next());
@@ -39,7 +39,7 @@ class FinnhubClientParserTest {
     @Test
     void liveFinnhubSmokeTest() throws Exception {
         DatabaseManager db = new DatabaseManager("data/market.db"); // or ":memory:"
-        FinnhubClient client = FinnhubClient.start(db);
+        TradeSource client = FinnhubWebSocketClient.start();
 
         // give it ~5–10 seconds to receive something
         Thread.sleep(10_000);
@@ -47,7 +47,7 @@ class FinnhubClientParserTest {
         long ts = db.getLatestTimestamp("AAPL");
         assertTrue(ts > 0, "expected at least one trade");
 
-        client.stop();
+        //client.stop();
         db.close();
     }
 }

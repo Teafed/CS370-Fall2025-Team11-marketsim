@@ -1,6 +1,5 @@
 package com.market;
 
-import com.etl.FinnhubClient;
 import com.etl.TradeSource;
 
 import java.util.*;
@@ -14,6 +13,8 @@ public class Market implements TradeListener {
     private DatabaseManager dbManager;
     private TradeSource client;
     private MarketListener marketListener;
+    private boolean ready = false;
+    public Market(Map<String, TradeItem> stocks, DatabaseManager dbManager) {}
 
     private String[] initialSymbols = {
             "AAPL",     // Apple
@@ -28,10 +29,8 @@ public class Market implements TradeListener {
             "BRK.B"     // Berkshire Hathaway
     };
 
-    public Market(DatabaseManager db) throws Exception {
+    public Market() throws Exception {
         stocks =  new LinkedHashMap<>();
-        this.dbManager = db;
-
     }
 
     /**
@@ -42,6 +41,15 @@ public class Market implements TradeListener {
         this.client = client;
         this.add(initialSymbols);
         client.setTradeListener(this);
+        this.ready = true;
+    }
+
+    public void setDataBase(DatabaseManager dbManager) {
+        this.dbManager = dbManager;
+    }
+
+    public boolean isReady() {
+        return ready;
     }
 
     public void add(String symbol) throws Exception {
@@ -49,11 +57,7 @@ public class Market implements TradeListener {
         client.subscribe(symbol);
         Stock stock = new Stock("name", symbol);
         stocks.put(symbol, stock);
-        Thread.sleep(200);
-
-        // instantiate symbol using database
-
-
+        //Thread.sleep(200);
     }
 
 

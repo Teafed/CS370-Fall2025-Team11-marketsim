@@ -5,7 +5,6 @@ import jakarta.websocket.*;
 
 import java.io.IOException;
 import java.net.URI;
-import java.sql.ResultSet;
 import java.util.concurrent.CountDownLatch;
 
 import com.google.gson.*;
@@ -13,14 +12,12 @@ import io.github.cdimascio.dotenv.Dotenv;
 import com.market.DatabaseManager;
 
 @ClientEndpoint
-public class FinnhubClient implements TradeSource {
-    private final DatabaseManager db;
+public class FinnhubWebSocketClient implements TradeSource {
     private Session session;
     private final CountDownLatch received = new CountDownLatch(1); // or N
     private TradeListener tradeListener;
 
-    public FinnhubClient(DatabaseManager db) {
-        this.db = db;
+    public FinnhubWebSocketClient() {
     }
 
     @OnOpen
@@ -47,19 +44,19 @@ public class FinnhubClient implements TradeSource {
         t.printStackTrace();
     }
 
-    public static FinnhubClient start(DatabaseManager db) throws Exception {
+    public static TradeSource start() throws Exception {
         Dotenv dotenv = Dotenv.configure().ignoreIfMissing().load();
         String k = System.getenv("FINNHUB_API_KEY");
         if (k == null || k.isBlank()) k = dotenv.get("FINNHUB_API_KEY");
 
-        FinnhubClient client = new FinnhubClient(db);
+        FinnhubWebSocketClient client = new FinnhubWebSocketClient();
         WebSocketContainer c = ContainerProvider.getWebSocketContainer();
         URI uri = new URI("wss", "ws.finnhub.io", "/", "token=" + k, null);
         c.connectToServer(client, uri);
         return client;
     }
 
-    public void start(){};
+
 
     public void stop() {
         try { if (session != null && session.isOpen()) session.close(); } catch (Exception ignore) {}
