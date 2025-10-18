@@ -37,12 +37,13 @@ public class GUIComponents {
       scrollPane.setBackground(BG_DARK);
       scrollPane.setBorder(BorderFactory.createLineBorder(BORDER_COLOR, 1));
       scrollPane.getViewport().setBackground(BG_DARK);
-      
+      scrollPane.getViewport().setOpaque(true);
+
       scrollPane.setCorner(JScrollPane.UPPER_RIGHT_CORNER, createCorner());
       scrollPane.setCorner(JScrollPane.LOWER_RIGHT_CORNER, createCorner());
       scrollPane.setCorner(JScrollPane.UPPER_LEFT_CORNER, createCorner());
       scrollPane.setCorner(JScrollPane.LOWER_LEFT_CORNER, createCorner());
-      
+
       return scrollPane;
    }
 
@@ -80,6 +81,9 @@ public class GUIComponents {
       
       list.setFocusable(true);
       list.setBorder(createBorder());
+
+      list.setOpaque(true);
+      list.setBackground(GUIComponents.BG_MEDIUM);
       
       return list;
    }

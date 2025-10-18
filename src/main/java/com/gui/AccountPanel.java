@@ -28,8 +28,8 @@ public class AccountPanel extends ContentPanel {
         name.setForeground(GUIComponents.TEXT_PRIMARY);
         name.setFont(new Font("Segoe UI", Font.PLAIN, 14));
 
-        NumberFormat money = NumberFormat.getCurrencyInstance();
-        JLabel total = new JLabel(money.format(account.getTotalValue()));
+        NumberFormat balance = NumberFormat.getCurrencyInstance();
+        JLabel total = new JLabel(balance.format(account.getAvailableBalance()));
         total.setForeground(GUIComponents.TEXT_SECONDARY);
         total.setFont(new Font("Segoe UI", Font.PLAIN, 13));
 
@@ -43,6 +43,12 @@ public class AccountPanel extends ContentPanel {
         // future sections can stack here; keep scrollable now
         JScrollPane scroller = new JScrollPane(content);
         scroller.setBorder(BorderFactory.createEmptyBorder());
+        scroller.setOpaque(false);
+        scroller.getViewport().setOpaque(false);
+
+        setOpaque(true);
+        setBackground(GUIComponents.BG_DARK);
+
         add(scroller, BorderLayout.CENTER);
     }
 }

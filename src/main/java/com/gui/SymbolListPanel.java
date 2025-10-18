@@ -2,10 +2,8 @@
 
 package com.gui;
 
-import com.market.DatabaseManager;
-import com.market.MarketListener;
-import com.market.TradeItem;
-import com.market.Stock;
+import com.market.*;
+import com.accountmanager.Account;
 
 import javax.swing.*;
 import java.awt.*;
@@ -13,10 +11,13 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class SymbolListPanel extends ContentPanel implements MarketListener {
-    private DefaultListModel<TradeItem> symbolModel;
-    private JList<TradeItem> symbolList;
-    private final List<SymbolSelectionListener> listeners;
+    private final DefaultListModel<TradeItem> symbolModel = new DefaultListModel<>();
+    private final JList<TradeItem> symbolList = new JList<>(symbolModel);
+    private final List<SymbolSelectionListener> symbolListener;
     private final DatabaseManager db;
+    private Account account;
+    private AccountSelectionListener accountListener;
+    private AccountBar accountBar;
 
     @Override
     public void onMarketUpdate() {
@@ -27,10 +28,13 @@ public class SymbolListPanel extends ContentPanel implements MarketListener {
     public interface SymbolSelectionListener {
         void onSymbolSelected(TradeItem symbol);
     }
+    public interface AccountSelectionListener {
+        void onAccountSelected(Account account);
+    }
 
     public SymbolListPanel(DatabaseManager db) {
         this.db = db;
-        this.listeners = new ArrayList<>();
+        this.symbolListener = new ArrayList<>();
         initializeComponents();
         loadSymbolsFromDb();
 
@@ -42,8 +46,7 @@ public class SymbolListPanel extends ContentPanel implements MarketListener {
         setBackground(GUIComponents.BG_MEDIUM);
         setBorder(GUIComponents.createBorder());
 
-        symbolModel = new DefaultListModel<>();
-        symbolList = GUIComponents.createList(symbolModel);
+        GUIComponents.createList(symbolModel);
 
         symbolList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         symbolList.setCellRenderer(new SymbolCellRenderer());
@@ -53,6 +56,17 @@ public class SymbolListPanel extends ContentPanel implements MarketListener {
         scrollPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
         scrollPane.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
 
+        JPanel listWrapper = new JPanel(new BorderLayout());
+        listWrapper.add(symbolList, BorderLayout.NORTH);
+        listWrapper.setOpaque(true);
+        listWrapper.setBackground(GUIComponents.BG_MEDIUM);
+
+        scrollPane.setViewportView(listWrapper);
+
+        accountBar = new AccountBar();
+        accountBar.setVisible(false); // setAccount() will make this visible
+
+        add(accountBar, BorderLayout.SOUTH);
         add(scrollPane, BorderLayout.CENTER);
     }
 
@@ -64,8 +78,8 @@ public class SymbolListPanel extends ContentPanel implements MarketListener {
         try {
             for (String sym : db.listSymbols()) {
                 double[] lp = db.latestAndPrevClose(sym); // [last, prev]
-                int last = (int)lp[0], prev = (int)lp[1];
-                double pct = (Double.isNaN(last) || Double.isNaN(prev) || prev == 0)
+                double last = lp[0], prev = lp[1];
+                double pct = (Double.isNaN(last) || Double.isNaN(prev) || prev == 0.0)
                         ? 0.0
                         : (last - prev) / prev * 100.0;
 
@@ -78,6 +92,21 @@ public class SymbolListPanel extends ContentPanel implements MarketListener {
 
     public void loadSymbols(List<TradeItem> symbols) {
         symbols.forEach(s -> symbolModel.addElement(s));
+    }
+
+    public void setAccount(Account account, AccountSelectionListener listener) {
+        this.account = account;
+        this.accountListener = listener;
+
+        accountBar.setAccount(account);
+        accountBar.setOnClick(() -> {
+            if (this.accountListener != null) {
+                this.accountListener.onAccountSelected(this.account);
+            }
+        });
+        accountBar.setVisible(true);
+        revalidate();
+        repaint();
     }
 
     private void setupListeners() {
@@ -93,15 +122,15 @@ public class SymbolListPanel extends ContentPanel implements MarketListener {
 
     // methods for managing listeners
     public void addSymbolSelectionListener(SymbolSelectionListener listener) {
-        listeners.add(listener);
+        symbolListener.add(listener);
     }
 
     public void removeSymbolSelectionListener(SymbolSelectionListener listener) {
-        listeners.remove(listener);
+        symbolListener.remove(listener);
     }
 
     private void notifyListeners(TradeItem symbol) {
-        for (SymbolSelectionListener listener : listeners) {
+        for (SymbolSelectionListener listener : symbolListener) {
             listener.onSymbolSelected(symbol);
         }
     }
