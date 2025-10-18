@@ -23,7 +23,7 @@ public class AccountSystemTest {
         assertEquals("account1", account1.getName());
 
         // An Account has a beginning value of 0
-        assertEquals(0,account1.getAccountTotalValue());
+        assertEquals(0,account1.getTotalValue());
 
         // An account has a beginning available balance of 0
         assertEquals(0, account1.getAvailableBalance());
@@ -32,12 +32,12 @@ public class AccountSystemTest {
     @Test
     void testAccountDeposit() {
         Account account1 = new Account("account1");
-        assertEquals(0, account1.getAccountTotalValue());
+        assertEquals(0, account1.getTotalValue());
         assertEquals(0, account1.getAvailableBalance());
 
         // An account can accept deposits
         assertTrue(account1.depositFunds(10));
-        assertEquals(10, account1.getAccountTotalValue());
+        assertEquals(10, account1.getTotalValue());
         assertEquals(10, account1.getAvailableBalance());
 
         // An account will not accept a $0 deposit
@@ -54,7 +54,7 @@ public class AccountSystemTest {
 
         // An account allows a withdrawal
         assertTrue(account1.withdrawFunds(1));
-        assertEquals(9, account1.getAccountTotalValue());
+        assertEquals(9, account1.getTotalValue());
         assertEquals(9, account1.getAvailableBalance());
 
         // An account does not allow withdrawing more than the available balance
@@ -85,16 +85,16 @@ public class AccountSystemTest {
         // An account can return its total value
         // (available balance + portfolio value)
         assertEquals(10, account1.getAvailableBalance());
-        assertEquals(20, account1.getAccountTotalValue());
+        assertEquals(20, account1.getTotalValue());
 
         // An account allows withdrawals from its available balance
         assertTrue(account1.withdrawFunds(10));
         assertEquals(0, account1.getAvailableBalance());
-        assertEquals(10, account1.getAccountTotalValue());
+        assertEquals(10, account1.getTotalValue());
 
         // An account will not allow withdrawals if its available balance is <1
         assertFalse(account1.withdrawFunds(10));
-        assertEquals(10, account1.getAccountTotalValue());
+        assertEquals(10, account1.getTotalValue());
     }
 
     @Test
@@ -105,11 +105,11 @@ public class AccountSystemTest {
         // Despoited funds are in available balance
         assertEquals(10, accountOne.getAvailableBalance());
         // the available balance updates the account total value
-        assertEquals(10, accountOne.getAccountTotalValue());
+        assertEquals(10, accountOne.getTotalValue());
         // An account can have funds withdrawn
         accountOne.withdrawFunds(2);
         assertEquals(8, accountOne.getAvailableBalance());
-        assertEquals(8, accountOne.getAccountTotalValue());
+        assertEquals(8, accountOne.getTotalValue());
         // Withdrawn request cannot exceed available funds
         assertFalse(accountOne.withdrawFunds(10));
         assertEquals(8, accountOne.getAvailableBalance());

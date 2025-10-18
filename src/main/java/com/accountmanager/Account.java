@@ -1,42 +1,37 @@
 package com.accountmanager;
 
-import com.market.*;
-
-import java.util.ArrayList;
-import java.util.Map;
-
 // One account
 public class Account {
 
-    private int accountTotalValue; // Current total account value stored in cents
+    private int totalValue; // Current total account value stored in cents
     private int availableBalance; // the amount the user can currently trade
-    private String accountName; // User defined name of account
+    private String name; // User defined name of account
     private Portfolio portfolio;
     private Watchlist watchList;
 
     // constructor
-    public Account(String accountName) {
-        this.accountTotalValue = 0;
-        this.accountName = accountName;
+    public Account(String name) {
+        this.totalValue = 0;
+        this.name = name;
         this.portfolio = new Portfolio();
         this.watchList = new Watchlist();
     }
 
     // Set name
-    public void setAccountName(String accountName) {
+    public void setName(String name) {
 
-        this.accountName = accountName;
+        this.name = name;
     }
 
     // Get name
     public String getName() {
-        return accountName;
+        return name;
     }
 
     // Get account value
-    public int getAccountTotalValue() {
-        updateAccountValue();
-        return accountTotalValue;
+    public int getTotalValue() {
+        updateValue();
+        return totalValue;
     }
 
     // get the available balance
@@ -68,7 +63,7 @@ public class Account {
             return false;
         }
         this.availableBalance += amount;
-        updateAccountValue();
+        updateValue();
         return true;
     }
 
@@ -79,15 +74,15 @@ public class Account {
         }
         if (availableBalance >= amount) {
             availableBalance -= amount;
-            updateAccountValue();
+            updateValue();
             return true;
         }
         return false;
         // TODO else throw error
     }
 
-    public void updateAccountValue() {
-        accountTotalValue = availableBalance + portfolio.getPortfolioValue();
+    public void updateValue() {
+        totalValue = availableBalance + portfolio.getPortfolioValue();
     }
 
 
