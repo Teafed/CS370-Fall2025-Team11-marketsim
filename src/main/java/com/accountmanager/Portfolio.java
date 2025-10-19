@@ -2,104 +2,231 @@ package com.accountmanager;
 
 import com.market.*;
 
-
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
-/*
-    A portfolio manages all trade items for an account. It provides information about which trade items an
-    account owns as well as how many of each. A portfolio knows its total value and provides methods to
-    update and return this value.
+/**
+ * A portfolio manages all trade items for an account. It provides information about which trade items an
+ * account owns as well as how many of each. A portfolio knows its total value and provides methods to
+ * update and return this value.
  */
 public class Portfolio {
-
-    private Map<TradeItem, Integer> portfolioItems;
+    private Map<String, PortfolioItem> holdings;
     private int portfolioValue; // The total value of the portfolio
 
-    // implement options, ETFs, other as necessary
-
     public Portfolio() {
-        portfolioItems = new HashMap<>();
+        holdings = new HashMap<>();
         this.portfolioValue = 0;
     }
 
-
     /**
-     * Add a TradeItem to the portfolio.
-     * @param tradeItem
-     * @param n The number of items to add, must be >0
-     * @return True if successfule, false if not
+     * Add a stock to the portfolio
+     * @param stock The stock to add
+     * @param quantity The number of shares to add, must be >0
+     * @param purchasePrice The price per share
+     * @return True if successful, false if not
      */
-    boolean addTradeItem(TradeItem tradeItem, int n) {
-        if (tradeItem == null) {
-            // TODO Error
+    public boolean addStock(Stock stock, int quantity, double purchasePrice) {
+        if (stock == null) {
             return false;
         }
-        if (n < 1) {
+        if (quantity < 1) {
             return false;
         }
-        // add tradeItem to map with value, if it already exists, update value by adding new value
-        portfolioItems.merge(tradeItem, n, Integer::sum);
+        
+        String symbol = stock.getSymbol();
+        PortfolioItem item = holdings.get(symbol);
+        
+        if (item == null) {
+            // First time buying this stock
+            item = new PortfolioItem(stock, quantity, purchasePrice);
+            holdings.put(symbol, item);
+        } else {
+            // Average down the purchase price
+            double totalValue = (item.getQuantity() * item.getAveragePurchasePrice()) + 
+                               (quantity * purchasePrice);
+            int newQuantity = item.getQuantity() + quantity;
+            double newAvgPrice = totalValue / newQuantity;
+            
+            item.setQuantity(newQuantity);
+            item.setAveragePurchasePrice(newAvgPrice);
+        }
+        
+        updatePortfolioValue();
         return true;
     }
 
-    /*
-        Remove a TradeItem from a portfolio. Removes the entry if entire value is removed.
-        Otherwise, subtracts from existing value.
-        @param tradeItem The item to be removed.
-        @param n The amount of the item to be removed. If -1 removes all that item.
+    /**
+     * Remove shares of a stock from the portfolio
+     * @param symbol The stock symbol
+     * @param quantity The number of shares to remove
+     * @return True if successful, false if not enough shares
      */
-    boolean removeTradeItem(TradeItem tradeItem, int n) {
-        if (tradeItem == null | n < 1 | !portfolioItems.containsKey(tradeItem)) {
-            //TODO Handle error
+    public boolean removeStock(String symbol, int quantity) {
+        PortfolioItem item = holdings.get(symbol);
+        if (item == null || item.getQuantity() < quantity) {
             return false;
         }
-        if (portfolioItems.get(tradeItem) == n) {
-            portfolioItems.remove(tradeItem);
+        
+        int newQuantity = item.getQuantity() - quantity;
+        if (newQuantity == 0) {
+            holdings.remove(symbol);
+        } else {
+            item.setQuantity(newQuantity);
         }
-        else
-            portfolioItems.merge(tradeItem, -n, Integer::sum);
-
+        
+        updatePortfolioValue();
         return true;
     }
 
-    public boolean hasTradeItem(TradeItem tradeItem) {
-        return portfolioItems.containsKey(tradeItem);
+    /**
+     * Add a trade item (stock) to the portfolio
+     * @param stock The stock to add
+     * @param quantity The quantity to add
+     * @return True if successful
+     */
+    public boolean addTradeItem(Stock stock, int quantity) {
+        return addStock(stock, quantity, stock.getPrice());
     }
-
-    public List<TradeItem> listTradeItems() {
-        return new ArrayList<TradeItem>(portfolioItems.keySet());
-    }
-
 
     /**
-     * Gets the number of shares held for a particular TradeItem
-     * @param tradeItem The item queried.
-     * @return The number of shares held.
+     * Check if the portfolio has a trade item (stock)
+     * @param stock The stock to check
+     * @return True if has the stock
      */
-    public int getNumberOfShares(TradeItem tradeItem) {
-        return portfolioItems.get(tradeItem);
+    public boolean hasTradeItem(Stock stock) {
+        return holdings.containsKey(stock.getSymbol());
     }
 
-    /*
-        Updates the portfolio value by looping through all holdings.
+    /**
+     * Remove a trade item (stock) from the portfolio
+     * @param stock The stock to remove
+     * @param quantity The quantity to remove
+     * @return True if successful
+     */
+    public boolean removeTradeItem(Stock stock, int quantity) {
+        return removeStock(stock.getSymbol(), quantity);
+    }
+    
+    /**
+     * Check if the portfolio has enough shares of a stock
+     * @param symbol The stock symbol
+     * @param quantity The quantity to check
+     * @return True if the portfolio has enough shares
+     */
+    public boolean hasEnoughShares(String symbol, int quantity) {
+        PortfolioItem item = holdings.get(symbol);
+        return item != null && item.getQuantity() >= quantity;
+    }
+    
+    /**
+     * Get the current value of the portfolio
+     * @return The total value of all holdings
      */
     public int getPortfolioValue() {
-        int aggregateValue = 0;
-        for (Map.Entry<TradeItem, Integer> entry : portfolioItems.entrySet()) {
-            int sharePrice = entry.getKey().getCurrentPrice();
-            int shares = entry.getValue();
-            int totalValue = sharePrice * shares;
-            aggregateValue += totalValue;
-        }
-        this.portfolioValue = aggregateValue;
+        updatePortfolioValue();
         return portfolioValue;
     }
-
-
-    // TODO implement individual maps for Stock, ETF, Option, etc?
-
-
+    
+    /**
+     * Update the total value of the portfolio based on current stock prices
+     */
+    private void updatePortfolioValue() {
+        portfolioValue = 0;
+        for (PortfolioItem item : holdings.values()) {
+            int currentPrice = (int) item.getStock().getPrice();
+            portfolioValue += currentPrice * item.getQuantity();
+        }
+    }
+    
+    /**
+     * Get all holdings in the portfolio
+     * @return Map of stock symbols to portfolio items
+     */
+    public Map<String, PortfolioItem> getHoldings() {
+        return holdings;
+    }
+    
+    /**
+     * Get the quantity of a specific stock
+     * @param symbol The stock symbol
+     * @return The quantity owned, or 0 if none
+     */
+    public int getQuantity(String symbol) {
+        PortfolioItem item = holdings.get(symbol);
+        return item != null ? item.getQuantity() : 0;
+    }
+    
+    /**
+     * Get the average purchase price of a specific stock
+     * @param symbol The stock symbol
+     * @return The average purchase price, or 0 if none
+     */
+    public double getAveragePurchasePrice(String symbol) {
+        PortfolioItem item = holdings.get(symbol);
+        return item != null ? item.getAveragePurchasePrice() : 0.0;
+    }
+    
+    /**
+     * Get the current value of a specific holding
+     * @param symbol The stock symbol
+     * @return The current value of the holding
+     */
+    public double getCurrentValue(String symbol) {
+        PortfolioItem item = holdings.get(symbol);
+        if (item == null) {
+            return 0.0;
+        }
+        return item.getStock().getPrice() * item.getQuantity();
+    }
+    
+    /**
+     * Get the profit/loss for a specific holding
+     * @param symbol The stock symbol
+     * @return The profit/loss amount
+     */
+    public double getProfitLoss(String symbol) {
+        PortfolioItem item = holdings.get(symbol);
+        if (item == null) {
+            return 0.0;
+        }
+        double currentValue = getCurrentValue(symbol);
+        double costBasis = item.getAveragePurchasePrice() * item.getQuantity();
+        return currentValue - costBasis;
+    }
+    
+    /**
+     * Inner class to represent a holding in the portfolio
+     */
+    public static class PortfolioItem {
+        private final Stock stock;
+        private int quantity;
+        private double averagePurchasePrice;
+        
+        public PortfolioItem(Stock stock, int quantity, double purchasePrice) {
+            this.stock = stock;
+            this.quantity = quantity;
+            this.averagePurchasePrice = purchasePrice;
+        }
+        
+        public Stock getStock() {
+            return stock;
+        }
+        
+        public int getQuantity() {
+            return quantity;
+        }
+        
+        public void setQuantity(int quantity) {
+            this.quantity = quantity;
+        }
+        
+        public double getAveragePurchasePrice() {
+            return averagePurchasePrice;
+        }
+        
+        public void setAveragePurchasePrice(double price) {
+            this.averagePurchasePrice = price;
+        }
+    }
 }

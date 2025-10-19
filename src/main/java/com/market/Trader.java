@@ -1,38 +1,13 @@
-package com.markets;
+package com.market;
 
-import com.accountmanager.Account;
-
-// Handles buying and selling of stocks
-public class Trader {
-
-
-    //Constructor
-    // Construct one for each account? or pass values to functions in here?
-    public Trader() {
-    }
-
-
-    // Buy stock
-//    public boolean buyStock(Account account, String stock, int quantityOfShares) {
-//        int stockPrice = broker.getStockPrice("stock");        // get stock price
-//        int cost = stockPrice * quantityOfShares;       // calculate total cost
-//        if (account.getAccountTotalValue() > cost) {         // check account has enough to make purchase
-//            account.addOwnedStock(stock);               // add stock to account
-//            account.removeValue(cost);                  // reduce account value
-//            return true;                                // shares were bought
-//        }
-//        return false;   // shares were unable to be purchased
-//    }
-
-    // Sell stock
-//    public boolean sellStock(Account account, String stock, int quantityOfShares) {
-//        if (account.ownsStock(stock)) {
-//            int stockPrice = broker.getStockPrice("stock");
-//            int cost = stockPrice * quantityOfShares;
-//            account.removeOwnedStock(stock);
-//            account.removeValue(cost);
-//            return true;
-//        }
-//        return false;
-//    }
+/**
+ * Interface for entities that can trade in the market
+ */
+public interface Trader {
+    /**
+     * Notify the trader that a trade has been executed
+     * @param request The original trade request
+     * @param executionPrice The price at which the trade was executed
+     */
+    void notifyTradeExecuted(TradeRequest request, double executionPrice);
 }

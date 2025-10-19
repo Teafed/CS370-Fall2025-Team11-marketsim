@@ -1,14 +1,6 @@
-// includes chart area and orders panel
-
 package com.gui;
 
-import javax.swing.*;
-import java.awt.*;
-import java.io.*;
-import java.util.List;
 import com.etl.ReadData;
-
-import javax.swing.JPanel;
 import javax.swing.BorderFactory;
 import java.awt.Color;
 import java.awt.Dimension;
@@ -28,10 +20,8 @@ import java.util.List;
 import java.util.Map;
 
 public class ChartPanel extends ContentPanel {
-    private ReadData reader;
     private long[] times;
     private double[] prices;
-    private String symbol;
 
     private double minPrice = Double.MAX_VALUE;
     private double maxPrice = Double.MIN_VALUE;
@@ -42,7 +32,6 @@ public class ChartPanel extends ContentPanel {
     private static final SimpleDateFormat sdf = new SimpleDateFormat("HH:mm:ss.SSS");
 
     public ChartPanel() {
-        this.symbol = null;
         this.times = null;
         this.prices = null;
         setPreferredSize(new Dimension(800, 400));
@@ -57,7 +46,6 @@ public class ChartPanel extends ContentPanel {
      * Loads, filters, and processes a new symbol's data to be displayed on the chart.
      */
     public void openChart(ReadData reader, String symbol) {
-        this.symbol = symbol;
         List<String[]> rows = reader.getFileData(symbol + ".csv");
 
         if (rows == null || rows.size() < 2) {

@@ -16,6 +16,13 @@
         <maven.compiler.parameters>true</maven.compiler.parameters>
     </properties>
 
+    <repositories>
+        <repository>
+            <id>jitpack.io</id>
+            <url>https://jitpack.io</url>
+        </repository>
+    </repositories>
+
    <dependencies>
        <dependency>
            <groupId>org.xerial</groupId>
@@ -58,10 +65,54 @@
            <artifactId>dotenv-java</artifactId>
            <version>3.0.0</version>
        </dependency>
+       <!-- Kotlin dependencies -->
+       <dependency>
+           <groupId>org.jetbrains.kotlin</groupId>
+           <artifactId>kotlin-stdlib</artifactId>
+           <version>1.9.22</version>
+       </dependency>
+       <dependency>
+           <groupId>org.jetbrains.kotlin</groupId>
+           <artifactId>kotlin-reflect</artifactId>
+           <version>1.9.22</version>
+       </dependency>
+       <!-- Finnhub Kotlin SDK from JitPack - commented out as not available -->
+       <!-- <dependency>
+           <groupId>com.github.Finnhub-Stock-API</groupId>
+           <artifactId>finnhub-kotlin</artifactId>
+           <version>main-SNAPSHOT</version>
+       </dependency> -->
+       <!-- OkHttp for REST API calls -->
+       <dependency>
+           <groupId>com.squareup.okhttp3</groupId>
+           <artifactId>okhttp</artifactId>
+           <version>4.12.0</version>
+       </dependency>
    </dependencies>
 
    <build>
     <plugins>
+        <plugin>
+            <groupId>org.jetbrains.kotlin</groupId>
+            <artifactId>kotlin-maven-plugin</artifactId>
+            <version>1.9.22</version>
+            <executions>
+                <execution>
+                    <id>compile</id>
+                    <phase>compile</phase>
+                    <goals>
+                        <goal>compile</goal>
+                    </goals>
+                </execution>
+                <execution>
+                    <id>test-compile</id>
+                    <phase>test-compile</phase>
+                    <goals>
+                        <goal>test-compile</goal>
+                    </goals>
+                </execution>
+            </executions>
+        </plugin>
         <plugin>
             <groupId>org.apache.maven.plugins</groupId>
             <artifactId>maven-compiler-plugin</artifactId>
@@ -69,6 +120,22 @@
             <configuration>
                 <release>${maven.compiler.release}</release>
             </configuration>
+            <executions>
+                <execution>
+                    <id>compile</id>
+                    <phase>compile</phase>
+                    <goals>
+                        <goal>compile</goal>
+                    </goals>
+                </execution>
+                <execution>
+                    <id>testCompile</id>
+                    <phase>test-compile</phase>
+                    <goals>
+                        <goal>testCompile</goal>
+                    </goals>
+                </execution>
+            </executions>
         </plugin>
         <plugin>
             <groupId>org.apache.maven.plugins</groupId>

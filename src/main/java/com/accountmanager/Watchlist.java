@@ -1,85 +1,78 @@
 package com.accountmanager;
 
-import com.market.*;
+import com.market.Stock;
 import java.util.ArrayList;
-import java.util.LinkedHashSet;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
-
-/*
-    A portfolio manages all trade items for an account. It provides information about which trade items an
-    account owns as well as how many of each. A portfolio knows its total value and provides methods to
-    update and return this value.
+/**
+ * Represents a watchlist of stocks that a user is interested in
  */
 public class Watchlist {
-
-    private LinkedHashSet<TradeItem> watchlist;
-    private final int maxSize = 50;
-    private int watchlistSize;
-
-
+    private final Map<String, Stock> watchedStocks;
+    
     public Watchlist() {
-        watchlist = new LinkedHashSet<>();
-        this.watchlistSize = 0;
+        this.watchedStocks = new HashMap<>();
     }
-
-
+    
     /**
-     * Adds a specified TradeItem to the watchlist.
-     * @param tradeItem The TradeItem to add
-     * @return True if successful, False if list is full.
+     * Add a stock to the watchlist
+     * @param stock The stock to add
+     * @return True if added successfully, false if already in watchlist
      */
-    public boolean addWatchlistItem(TradeItem tradeItem) {
-        if (tradeItem == null) {
-            // trade item must not be null
+    public boolean addStock(Stock stock) {
+        if (stock == null) {
             return false;
         }
-        if (watchlist.contains(tradeItem)) {
+        
+        String symbol = stock.getSymbol();
+        if (watchedStocks.containsKey(symbol)) {
             return false;
         }
-        if (watchlistSize < maxSize) {
-            watchlist.add(tradeItem);
-            watchlistSize++;
-            return true;
-        }
-        else
-            // cannot add more than max size
-            return false;
+        
+        watchedStocks.put(symbol, stock);
+        return true;
     }
-
+    
     /**
-     * Removes a specified TradeItem from the watchlist.
-     * @param tradeItem The TradeItem to remove
-     * @return True if successful, False if the list did not contain that item.
+     * Remove a stock from the watchlist
+     * @param symbol The stock symbol to remove
+     * @return True if removed, false if not in watchlist
      */
-    public boolean removeWatchlistItem(TradeItem tradeItem) {
-        if (watchlist.remove(tradeItem)) {
-            watchlistSize--;
-            return true;
-        }
-        else
-            return false;
+    public boolean removeStock(String symbol) {
+        return watchedStocks.remove(symbol) != null;
     }
-
-    public void clearList(){
-        watchlist.clear();
-        watchlistSize = 0;
+    
+    /**
+     * Check if a stock is in the watchlist
+     * @param symbol The stock symbol
+     * @return True if in watchlist
+     */
+    public boolean containsStock(String symbol) {
+        return watchedStocks.containsKey(symbol);
     }
-
-    public int  getWatchlistSize() {
-        return watchlistSize;
+    
+    /**
+     * Get all stocks in the watchlist
+     * @return List of watched stocks
+     */
+    public List<Stock> getStocks() {
+        return new ArrayList<>(watchedStocks.values());
     }
-
-    public int getMaxSize() {
-        return maxSize;
+    
+    /**
+     * Get the number of stocks in the watchlist
+     * @return Number of watched stocks
+     */
+    public int size() {
+        return watchedStocks.size();
     }
-
-    public boolean hasTradeItem(TradeItem tradeItem) {
-        return watchlist.contains(tradeItem);
+    
+    /**
+     * Clear the watchlist
+     */
+    public void clear() {
+        watchedStocks.clear();
     }
-
-    public List<TradeItem> getWatchlist() {
-        return new ArrayList(watchlist);
-    }
-
 }

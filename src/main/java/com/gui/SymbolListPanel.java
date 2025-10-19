@@ -3,14 +3,19 @@
 package com.gui;
 
 import com.etl.ReadData;
+import com.market.Market;
 import com.market.TradeItem;
 import com.market.Stock;
 import javax.swing.*;
 import java.awt.*;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Timer;
+import java.util.TimerTask;
 
 public class SymbolListPanel extends JPanel {
     private DefaultListModel<TradeItem> symbolModel;
@@ -18,6 +23,9 @@ public class SymbolListPanel extends JPanel {
     private final List<SymbolSelectionListener> listeners;
     private final String dataFolderPath;
     private ReadData reader;
+    private Timer refreshTimer;
+    private JButton addSymbolButton;
+    private JButton refreshButton;
 
     // interface that listeners must implement
     public interface SymbolSelectionListener {
@@ -36,6 +44,7 @@ public class SymbolListPanel extends JPanel {
         initializeComponents();
         loadSymbols();
         setupListeners();
+        startAutoRefresh();
     }
 
     private void initializeComponents() {
@@ -55,6 +64,31 @@ public class SymbolListPanel extends JPanel {
         scrollPane.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
 
         add(scrollPane, BorderLayout.CENTER);
+        
+        // Add control panel at the bottom
+        JPanel controlPanel = new JPanel(new FlowLayout(FlowLayout.CENTER));
+        controlPanel.setBackground(GUIComponents.BG_MEDIUM);
+        
+        addSymbolButton = new JButton("Add Symbol");
+        addSymbolButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                showAddSymbolDialog();
+            }
+        });
+        
+        refreshButton = new JButton("Refresh");
+        refreshButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                refreshSymbols();
+            }
+        });
+        
+        controlPanel.add(addSymbolButton);
+        controlPanel.add(refreshButton);
+        
+        add(controlPanel, BorderLayout.SOUTH);
     }
 
     private void loadSymbols() {
@@ -81,17 +115,60 @@ public class SymbolListPanel extends JPanel {
         // sort and add symbols
         Arrays.sort(csvFiles, (a, b) -> a.getName().compareToIgnoreCase(b.getName()));
 
-        // TEMPORARY! please remove and replace with data
-        java.util.Random random = new java.util.Random();
+        // Load symbols from Market instead of creating temporary ones
+        Market market = Market.getInstance();
         for (File file : csvFiles) {
             String fileName = file.getName();
             String symbol = fileName.substring(0, fileName.lastIndexOf('.'));
-
-            double basePrice = 50 + random.nextDouble() * 200;
-            double change = (random.nextDouble() - 0.5) * 10;
-            double changePercent = (change / basePrice) * 100;
-
-            symbolModel.addElement(new Stock(symbol, symbol));
+            
+            Stock stock = market.getStock(symbol);
+            if (stock != null) {
+                addSymbolIfNotExists(stock);
+            }
+        }
+    }
+    
+    /**
+     * Add a symbol to the list if it doesn't already exist
+     */
+    public void addSymbol(TradeItem item) {
+        addSymbolIfNotExists(item);
+    }
+    
+    private void addSymbolIfNotExists(TradeItem item) {
+        // Check if symbol already exists in the list
+        for (int i = 0; i < symbolModel.size(); i++) {
+            if (symbolModel.getElementAt(i).getSymbol().equals(item.getSymbol())) {
+                return; // Symbol already exists
+            }
+        }
+        symbolModel.addElement(item);
+    }
+    
+    private void showAddSymbolDialog() {
+        String symbol = JOptionPane.showInputDialog(
+                this, 
+                "Enter stock symbol to add:", 
+                "Add Symbol", 
+                JOptionPane.PLAIN_MESSAGE);
+        
+        if (symbol != null && !symbol.trim().isEmpty()) {
+            symbol = symbol.trim().toUpperCase();
+            Market market = Market.getInstance();
+            
+            // Check if the symbol already exists in the market
+            Stock stock = market.getStock(symbol);
+            
+            if (stock == null) {
+                // If not, add it to the market
+                stock = new Stock(symbol, symbol);
+                market.addStock(symbol, stock);
+                // startDataCollection requires a DatabaseManager parameter
+                stock.startDataCollection(market.getDatabaseManager());
+            }
+            
+            // Add to the symbol list
+            addSymbol(stock);
         }
     }
 
@@ -104,6 +181,51 @@ public class SymbolListPanel extends JPanel {
                 }
             }
         });
+    }
+    
+    private void startAutoRefresh() {
+        // Refresh the list every 5 seconds to update prices
+        refreshTimer = new Timer(true);
+        refreshTimer.scheduleAtFixedRate(new TimerTask() {
+            @Override
+            public void run() {
+                SwingUtilities.invokeLater(() -> {
+                    // Store the current selection
+                    TradeItem selectedItem = symbolList.getSelectedValue();
+                    
+                    // Update the list
+                    updateSymbolData();
+                    
+                    // Restore selection if possible
+                    if (selectedItem != null) {
+                        for (int i = 0; i < symbolModel.size(); i++) {
+                            if (symbolModel.getElementAt(i).getSymbol().equals(selectedItem.getSymbol())) {
+                                symbolList.setSelectedIndex(i);
+                                break;
+                            }
+                        }
+                    }
+                });
+            }
+        }, 5000, 5000);
+    }
+    
+    private void updateSymbolData() {
+        // This method updates the data for all symbols without clearing the model
+        Market market = Market.getInstance();
+        
+        for (int i = 0; i < symbolModel.size(); i++) {
+            TradeItem item = symbolModel.getElementAt(i);
+            Stock stock = market.getStock(item.getSymbol());
+            
+            if (stock != null) {
+                // The model will be updated automatically when the stock price changes
+                symbolModel.set(i, stock);
+            }
+        }
+        
+        // Force the list to repaint
+        symbolList.repaint();
     }
 
     // methods for managing listeners
@@ -123,7 +245,7 @@ public class SymbolListPanel extends JPanel {
 
     // utility methods
     public void refreshSymbols() {
-        loadSymbols();
+        updateSymbolData();
     }
 
     public String getSelectedSymbol() {
@@ -138,5 +260,15 @@ public class SymbolListPanel extends JPanel {
     /** Helper: return the underlying ReadData instance */
     public ReadData getReader() {
         return reader;
+    }
+    
+    /**
+     * Clean up resources when the panel is no longer needed
+     */
+    public void cleanup() {
+        if (refreshTimer != null) {
+            refreshTimer.cancel();
+            refreshTimer = null;
+        }
     }
 }

@@ -7,6 +7,7 @@ import java.awt.*;
 // handles cell rendering in SymbolListPanel
 public class SymbolCellRenderer extends JPanel implements ListCellRenderer<TradeItem> {
    private final JLabel symbolLabel;
+   private final JLabel nameLabel;
    private final JLabel priceLabel;
    private final JLabel changeLabel;
    
@@ -16,6 +17,10 @@ public class SymbolCellRenderer extends JPanel implements ListCellRenderer<Trade
       
       symbolLabel = new JLabel();
       symbolLabel.setFont(new Font("Segoe UI", Font.BOLD, 16));
+      
+      nameLabel = new JLabel();
+      nameLabel.setFont(new Font("Segoe UI", Font.ITALIC, 11));
+      nameLabel.setForeground(GUIComponents.TEXT_SECONDARY);
       
       priceLabel = new JLabel();
       priceLabel.setFont(new Font("Segoe UI", Font.PLAIN, 13));
@@ -27,13 +32,14 @@ public class SymbolCellRenderer extends JPanel implements ListCellRenderer<Trade
       
       // layout
       JPanel leftPanel = new JPanel(new BorderLayout());
-      leftPanel.add(symbolLabel, BorderLayout.WEST);
+      leftPanel.add(symbolLabel, BorderLayout.NORTH);
+      leftPanel.add(nameLabel, BorderLayout.SOUTH);
       leftPanel.setOpaque(false);
       
       JPanel rightPanel = new JPanel(new BorderLayout());
       rightPanel.add(priceLabel, BorderLayout.NORTH);
       rightPanel.add(changeLabel, BorderLayout.SOUTH);
-      rightPanel.setPreferredSize(new Dimension(80, 40));
+      rightPanel.setPreferredSize(new Dimension(100, 40));
       rightPanel.setOpaque(false);
       
       add(leftPanel, BorderLayout.WEST);
@@ -50,12 +56,14 @@ public class SymbolCellRenderer extends JPanel implements ListCellRenderer<Trade
       
       if (value != null) {
          symbolLabel.setText(value.getSymbol());
-         float price = (value.getCurrentPrice() * 100f) / 100;
+         nameLabel.setText(value.getName());
+         
+         double price = value.getPrice();
          priceLabel.setText(String.format("$%.2f", price));
          
          double changePercent = value.getChangePercent();
          double change = value.getChange();
-         String changeText = String.format("%+.2f %+.2f%%", change, changePercent);
+         String changeText = String.format("%+.2f (%+.2f%%)", change, changePercent);
          changeLabel.setText(changeText);
          
          // color coding for change
@@ -72,6 +80,7 @@ public class SymbolCellRenderer extends JPanel implements ListCellRenderer<Trade
       if (isSelected) {
          setBackground(GUIComponents.ACCENT_BLUE);
          symbolLabel.setForeground(Color.WHITE);
+         nameLabel.setForeground(Color.WHITE);
          priceLabel.setForeground(Color.WHITE);
       } else {
          // alternating row colors
@@ -81,6 +90,7 @@ public class SymbolCellRenderer extends JPanel implements ListCellRenderer<Trade
             setBackground(GUIComponents.BG_MEDIUM);
          }
          symbolLabel.setForeground(GUIComponents.TEXT_PRIMARY);
+         nameLabel.setForeground(GUIComponents.TEXT_SECONDARY);
          priceLabel.setForeground(GUIComponents.TEXT_PRIMARY);
       }
       
