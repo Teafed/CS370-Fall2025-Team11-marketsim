@@ -26,7 +26,8 @@ public class ChartPanel extends ContentPanel {
 
     public ChartPanel() {
         super();
-        this.symbol = null;setLayout(new BorderLayout(0, 10));
+        this.symbol = null;
+        setLayout(new BorderLayout(0, 10));
         setOpaque(true);
         setBackground(GUIComponents.BG_DARK); // container color
 
@@ -39,7 +40,11 @@ public class ChartPanel extends ContentPanel {
         south.setOpaque(false);
         south.setLayout(new BoxLayout(south, BoxLayout.Y_AXIS));
 
-        this.timeframeBar = new TimeframeBar();
+        this.timeframeBar = new TimeframeBar((startMs, endMs) -> {
+            if (dbRef != null && symbol != null) {
+                openChart(dbRef, symbol, startMs, endMs, 400);
+            }
+        });
         south.add(timeframeBar);
 
         this.orderPanel = new OrderPanel();
@@ -50,23 +55,22 @@ public class ChartPanel extends ContentPanel {
     }
 
     /**
-     * load data for a symbol from database and prep it for painting
+     * load data for a symbol from database
+     * timeframe default to 90 days
      * @param db
      * @param symbol
      */
     public void openChart(DatabaseManager db, String symbol) {
         this.dbRef = db;
         this.symbol = symbol;
-        timeframeBar.setCurrentSymbol(symbol);
 
-        if (!timeframeBar.loadSelectedIfAny(dbRef)) {
+        if (!timeframeBar.fireCurrentSelection()) {
             try {
                 long latest = db.getLatestTimestamp(symbol);
                 if (latest == 0L) { canvas.clear(symbol); return; }
                 long ninetyDays = 90L * 24 * 60 * 60 * 1000L;
                 long start = Math.max(0, latest - ninetyDays);
-                long end = latest;
-                openChart(db, symbol, start, end, 400);
+                openChart(db, symbol, start, latest, 400);
             } catch (Exception e) {
                 canvas.clear(symbol);
             }
@@ -92,7 +96,7 @@ public class ChartPanel extends ContentPanel {
     // ===========
     // ChartCanvas
     // ===========
-    private static final class ChartCanvas extends JPanel {
+    private static final class ChartCanvas extends ContentPanel {
         private long[] times;
         private double[] prices;
         private String symbol;
@@ -219,143 +223,6 @@ public class ChartPanel extends ContentPanel {
             String endLabel = timeFormat.format(new Date(maxTime));
             g2.drawString(startLabel, in.left, h - in.bottom + fm.getAscent() + 5);
             g2.drawString(endLabel, w - in.right - fm.stringWidth(endLabel), h - in.bottom + fm.getAscent() + 5);
-        }
-    }
-
-    // ============
-    // TimeframeBar
-    // ============
-    private final class TimeframeBar extends JPanel {
-        private final ButtonGroup group = new ButtonGroup();
-        private final JToggleButton btn1D = createBtn("1D");
-        private final JToggleButton btn1W = createBtn("1W");
-        private final JToggleButton btn1M = createBtn("1M");
-        private String currentSymbol;
-
-        private static final long ONE_DAY   = 24L * 60 * 60 * 1000;
-        private static final long ONE_WEEK  = 7L * ONE_DAY;
-        private static final long ONE_MONTH = 30L * ONE_DAY;
-
-        TimeframeBar() {
-            setLayout(new FlowLayout(FlowLayout.LEFT, 8, 6));
-            setBackground(GUIComponents.BG_DARK);
-            setBorder(BorderFactory.createCompoundBorder(
-                    BorderFactory.createLineBorder(GUIComponents.BORDER_COLOR, 1),
-                    BorderFactory.createEmptyBorder(6, 8, 6, 8)
-            ));
-
-            group.add(btn1D); group.add(btn1W); group.add(btn1M);
-            add(btn1D); add(btn1W); add(btn1M);
-            btn1W.setSelected(true); // sensible default
-        }
-
-        private JToggleButton createBtn(String text) {
-            JToggleButton b = new JToggleButton(text);
-            b.setFont(new Font("Segoe UI", Font.BOLD, 12));
-            b.setFocusPainted(false);
-            b.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-            b.setPreferredSize(new Dimension(65, 28));
-            b.setBackground(GUIComponents.BG_MEDIUM);
-            b.setForeground(GUIComponents.TEXT_SECONDARY);
-            b.setBorder(BorderFactory.createLineBorder(GUIComponents.BORDER_COLOR, 1));
-
-            b.addActionListener(e -> applySelection());
-            b.addChangeListener(e -> {
-                if (b.isSelected()) {
-                    b.setBackground(GUIComponents.ACCENT_BLUE);
-                    b.setForeground(Color.WHITE);
-                    b.setBorder(BorderFactory.createLineBorder(GUIComponents.ACCENT_BLUE, 2));
-                } else {
-                    b.setBackground(GUIComponents.BG_MEDIUM);
-                    b.setForeground(GUIComponents.TEXT_SECONDARY);
-                    b.setBorder(BorderFactory.createLineBorder(GUIComponents.BORDER_COLOR, 1));
-                }
-            });
-            return b;
-        }
-
-        void setCurrentSymbol(String symbol) { this.currentSymbol = symbol; }
-
-        /**
-         * returns true if it reloaded using a selected button
-         * @param db
-         * @return
-         */
-        boolean loadSelectedIfAny(DatabaseManager db) {
-            if (db == null || currentSymbol == null) return false;
-            if (!btn1D.isSelected() && !btn1W.isSelected() && !btn1M.isSelected()) return false;
-            applySelection();
-            return true;
-        }
-
-        void applySelection() {
-            if (dbRef == null || currentSymbol == null) return;
-            try {
-                long now = System.currentTimeMillis();
-                long start = now - ONE_WEEK; // default
-                if (btn1D.isSelected()) start = now - ONE_DAY;
-                else if (btn1M.isSelected()) start = now - ONE_MONTH;
-                openChart(dbRef, currentSymbol, start, now, 400);
-            } catch (Exception ignored) {}
-        }
-    }
-
-    // ==========
-    // OrderPanel
-    // ==========
-    private static final class OrderPanel extends JPanel {
-        private final JPanel header;
-        private final JLabel title;
-        private final JButton toggle;
-        private final JTabbedPane tabs;
-        private boolean collapsed = false;
-
-        OrderPanel() {
-            setLayout(new BorderLayout());
-            setOpaque(true);
-            setBackground(GUIComponents.BG_DARK);
-            setBorder(BorderFactory.createEmptyBorder(6, 0, 0, 0));
-
-            header = new JPanel(new BorderLayout());
-            header.setOpaque(true);
-            header.setBackground(GUIComponents.BG_MEDIUM);
-            header.setBorder(BorderFactory.createCompoundBorder(
-                    BorderFactory.createLineBorder(GUIComponents.BORDER_COLOR, 1),
-                    BorderFactory.createEmptyBorder(8, 10, 8, 10)
-            ));
-
-            title = new JLabel("Orders & Portfolio");
-            title.setForeground(GUIComponents.TEXT_PRIMARY);
-            title.setFont(new Font("Segoe UI", Font.BOLD, 12));
-
-            toggle = new JButton("▾");
-            toggle.setFocusPainted(false);
-            toggle.setBorder(BorderFactory.createEmptyBorder(2, 6, 2, 6));
-            toggle.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-            toggle.addActionListener(e -> setCollapsed(!collapsed));
-
-            header.add(title, BorderLayout.WEST);
-            header.add(toggle, BorderLayout.EAST);
-
-            tabs = new JTabbedPane();
-            tabs.setBackground(GUIComponents.BG_DARK);
-            tabs.setForeground(GUIComponents.TEXT_PRIMARY);
-            tabs.setBorder(BorderFactory.createCompoundBorder(
-                    BorderFactory.createLineBorder(GUIComponents.BORDER_COLOR, 1),
-                    BorderFactory.createEmptyBorder(10, 10, 10, 10)
-            ));
-            tabs.addTab("Trade", new TradingPanel());
-            tabs.addTab("Portfolio", new PortfolioPanel());
-
-            add(header, BorderLayout.NORTH);
-            add(tabs, BorderLayout.CENTER);
-        }
-
-        void setCollapsed(boolean collapse) {
-            this.collapsed = collapse;
-            tabs.setVisible(!collapse);
-            toggle.setText(collapse ? "▸" : "▾");
-            revalidate();
         }
     }
 }
