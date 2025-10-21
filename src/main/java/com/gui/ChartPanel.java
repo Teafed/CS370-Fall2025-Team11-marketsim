@@ -15,11 +15,9 @@ import java.util.Map;
 import java.util.TreeMap;
 
 public class ChartPanel extends ContentPanel {
-    // --- data access & state ---
     private DatabaseManager dbRef; // set on first openChart call
     private String symbol;
 
-    // --- child components ---
     private final ChartCanvas canvas;
     private final TimeframeBar timeframeBar;
     private final OrderPanel orderPanel;

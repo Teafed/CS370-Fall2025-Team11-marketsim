@@ -32,14 +32,10 @@ public class TabStripUI extends BasicTabbedPaneUI {
         g.setFont(font);
         g.setColor(isSelected ? Color.WHITE : GUIComponents.TEXT_SECONDARY);
 
-
-// Draw label text
         int x = textRect.x;
         int y = textRect.y + metrics.getAscent();
         g.drawString(title, x, y);
 
-
-// Optional mnemonic underline (no SwingUtilities2 dependency)
         int mnemIndex = tabPane.getDisplayedMnemonicIndexAt(tabIndex);
         if (mnemIndex >= 0 && mnemIndex < title.length()) {
             int underlineX = x + metrics.stringWidth(title.substring(0, mnemIndex));

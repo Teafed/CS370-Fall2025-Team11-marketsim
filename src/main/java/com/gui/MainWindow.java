@@ -91,17 +91,6 @@ public class MainWindow extends JFrame
 
     // create
     private void createPanels() {
-        /*
-        // data panel - contains list of symbols from csv data folder
-        symbolPanel = new SymbolListPanel(db);
-        symbolPanel.setPreferredSize(new Dimension(LEFT_PANEL_WIDTH, 0));
-        symbolPanel.setMinimumSize(new Dimension(MIN_LEFT_WIDTH, 0));
-        symbolPanel.addSymbolSelectionListener(this);
-
-        // right panel - will show selected symbol content
-        chartPanel = new ChartPanel();
-        chartPanel.setMinimumSize(new Dimension(MIN_RIGHT_WIDTH, 0));
-         */
         chartPanel = new ChartPanel();
         cards = new CardLayout();
         rightCards = new JPanel(cards);
@@ -133,7 +122,6 @@ public class MainWindow extends JFrame
         return symbolPanel;
     }
 
-    // implement the SymbolSelectionListener interface
     @Override
     public void onSymbolSelected(TradeItem item) {
         cards.show(rightCards, CARD_CHART);

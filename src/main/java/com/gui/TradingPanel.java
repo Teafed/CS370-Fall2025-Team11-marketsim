@@ -25,7 +25,7 @@ public class TradingPanel extends JPanel {
         sellButton = createActionButton("Sell", GUIComponents.ACCENT_RED);
         portfolioButton = createActionButton("My Portfolio", GUIComponents.ACCENT_BLUE);
 
-        // Add action listeners (placeholder for now)
+        // placeholder action listeners
         buyButton.addActionListener(e -> handleBuy());
         sellButton.addActionListener(e -> handleSell());
         portfolioButton.addActionListener(e -> handlePortfolio());

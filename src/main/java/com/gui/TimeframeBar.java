@@ -15,9 +15,6 @@ public class TimeframeBar extends ContentPanel {
     private final JToggleButton btn1W = makeToggle("1W");
     private final JToggleButton btn1M = makeToggle("1M");
 
-    // maybe remove this
-    private String currentSymbol;
-
     private static final long ONE_DAY   = 24L * 60 * 60 * 1000;
     private static final long ONE_WEEK  = 7L * ONE_DAY;
     private static final long ONE_MONTH = 30L * ONE_DAY;
@@ -30,7 +27,7 @@ public class TimeframeBar extends ContentPanel {
 
         group.add(btn1D); group.add(btn1W); group.add(btn1M);
         add(btn1D); add(btn1W); add(btn1M);
-        btn1W.setSelected(true); // default
+        btn1W.setSelected(true); // default to week
 
         ActionListener handler = e -> applySelection();
         btn1D.addActionListener(handler);
@@ -61,7 +58,7 @@ public class TimeframeBar extends ContentPanel {
         b.setFont(new Font("Segoe UI", Font.BOLD, 12));
         b.setFocusPainted(false);
         b.setBorder(BorderFactory.createEmptyBorder(6, 8, 6, 8));
-        b.setContentAreaFilled(false); // no background block
+        b.setContentAreaFilled(false);
         b.setOpaque(false);
         b.setForeground(GUIComponents.TEXT_SECONDARY);
         b.addChangeListener(e -> {
