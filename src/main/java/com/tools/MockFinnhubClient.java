@@ -12,39 +12,12 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Random;
 
-public class MockFinnhubClient implements TradeSource {
-    private final DatabaseManager db;
-    private TradeListener listener;
-    private final List<String> subscribedSymbols = new ArrayList<>();
-    private final Random rand = new Random();
+public class MockFinnhubClient implements TradeSource { ;
+    private static TradeListener listener;
+    private static final List<String> subscribedSymbols = new ArrayList<>();
+    private static final Random rand = new Random();
 
-    public MockFinnhubClient(DatabaseManager db){
-        this.db = db;
-    }
-
-    public void setTradeListener(TradeListener listener) {
-        this.listener = listener;
-    }
-
-    @OnMessage
-    public void onMessage(String msg) {
-        System.out.println(msg);
-    }
-
-    public void subscribe(String symbol) {
-        System.out.println("[Mock] Subscribed to " + symbol);
-        subscribedSymbols.add(symbol);
-    }
-
-    public ArrayList<String> returnRandomSymbolList() {
-            int count = rand.nextInt(8)+1;
-            ArrayList<String> symbols = new ArrayList<>(subscribedSymbols);
-            Collections.shuffle(symbols);
-            ArrayList<String> symbolList = new ArrayList<>(symbols.subList(0, count));
-            return symbolList;
-    }
-
-    public void start() {
+    public MockFinnhubClient(){
         new Thread(() -> {
             try {
                 Thread.sleep(5000);
@@ -92,6 +65,32 @@ public class MockFinnhubClient implements TradeSource {
                 } catch (InterruptedException ignore) {}
             }
         }).start();
+    }
+
+    public void setTradeListener(TradeListener listener) {
+        this.listener = listener;
+    }
+
+    @OnMessage
+    public void onMessage(String msg) {
+        System.out.println(msg);
+    }
+
+    public void subscribe(String symbol) {
+        System.out.println("[Mock] Subscribed to " + symbol);
+        subscribedSymbols.add(symbol);
+    }
+
+    public static ArrayList<String> returnRandomSymbolList() {
+            int count = rand.nextInt(8)+1;
+            ArrayList<String> symbols = new ArrayList<>(subscribedSymbols);
+            Collections.shuffle(symbols);
+            ArrayList<String> symbolList = new ArrayList<>(symbols.subList(0, count));
+            return symbolList;
+    }
+
+    public static TradeSource start() {
+        return new MockFinnhubClient();
     }
 }
 

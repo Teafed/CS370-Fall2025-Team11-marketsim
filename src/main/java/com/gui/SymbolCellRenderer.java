@@ -96,7 +96,7 @@ public class SymbolCellRenderer extends JPanel implements ListCellRenderer<Trade
        } else {
            setBorder(padding);
        }
-      
+
       setOpaque(true);
       return this;
    }
