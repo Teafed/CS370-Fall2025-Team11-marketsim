@@ -22,7 +22,7 @@ public class HistoricalService {
             this.from = from;
             this.to = to;
         }
-
+        /* might be useful idk
         public Range lastSpans(Timespan timespan, int multiplier, int spansBack) {
             if (spansBack < 1) spansBack = 1;
             LocalDate todayUtc = java.time.Instant.ofEpochMilli(System.currentTimeMillis())
@@ -37,6 +37,7 @@ public class HistoricalService {
             LocalDate from = todayUtc.minusDays(backDays);
             return new Range(timespan, multiplier, from, todayUtc);
         }
+         */
     }
 
     public enum Timespan {
@@ -96,15 +97,7 @@ public class HistoricalService {
         return new Range(requested.timespan, requested.multiplier, from, to);
     }
 
-    /**
-     * format url string for candles
-     * @param symbol
-     * @param multiplier
-     * @param timespan
-     * @param from
-     * @param to
-     * @return
-     */
+    /* format url string for candles */
     private String buildCandlesUrl(String symbol, int multiplier, Timespan timespan,
                                    LocalDate from, LocalDate to) {
         return String.format(
@@ -115,9 +108,9 @@ public class HistoricalService {
 
     /**
      * pulls range in chunks, parses polygon json, and batch-inserts
-     * @param symbol
-     * @param requested
-     * @throws Exception
+     * @param symbol the symbol to fetch
+     * @param requested requested range (ensured valid)
+     * @throws Exception throws if status code != 200
      */
     public void backfillRange(String symbol,
                               Range requested) throws Exception {
@@ -137,7 +130,7 @@ public class HistoricalService {
 
             String url = buildCandlesUrl(symbol, range.multiplier, range.timespan, cursor, chunkEnd);
             var req = java.net.http.HttpRequest.newBuilder(java.net.URI.create(url)).GET().build();
-            var resp = http.send(req, java.net.http.HttpResponse.BodyHandlers.ofString()); // getting an error with "send"
+            var resp = http.send(req, java.net.http.HttpResponse.BodyHandlers.ofString());
 
             if (resp.statusCode() != 200) {
                 throw new RuntimeException("[HistoricalService] " + resp.statusCode() + " " + resp.body());
