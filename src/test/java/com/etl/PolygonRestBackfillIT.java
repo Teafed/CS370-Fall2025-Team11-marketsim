@@ -22,7 +22,8 @@ class PolygonRestBackfillIT {
 
         try (DatabaseManager db = new DatabaseManager(dbFile)) {
             HistoricalService svc = new HistoricalService(db);
-            svc.backfillRange(symbol, from, to, HistoricalService.Span.DAY, 1);
+            HistoricalService.Range range = new HistoricalService.Range(HistoricalService.Timespan.DAY, 1, from, to);
+            svc.backfillRange(symbol, range);
         }
 
         // Verify by reading the same DB

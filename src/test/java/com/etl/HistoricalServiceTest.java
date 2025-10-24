@@ -16,7 +16,7 @@ import static org.mockito.Mockito.*;
 class HistoricalServiceTest {
 
     @Test
-    void ensureSeedData_insertsDailyBars() throws Exception {
+    void ensureRange_insertsDailyBars() throws Exception {
         HttpClient mockHttp = mock(HttpClient.class);
         @SuppressWarnings("unchecked")
         HttpResponse<String> mockResp = (HttpResponse<String>) mock(HttpResponse.class);
@@ -38,14 +38,15 @@ class HistoricalServiceTest {
         when(mockHttp.send(any(), any(HttpResponse.BodyHandler.class))).thenReturn(mockResp);
 
         try (DatabaseManager db = new DatabaseManager(":memory:")) {
-            HistoricalService svc =
-                    new HistoricalService(db, mockHttp, "test-key", "https://fake");
+            HistoricalService svc = new HistoricalService(db, mockHttp, "test-key", "https://fake");
 
-            svc.backfillRange("AAPL",
+            HistoricalService.Range range = new HistoricalService.Range(
+                    HistoricalService.Timespan.DAY, 1,
                     LocalDate.parse("2025-09-01"),
-                    LocalDate.parse("2025-09-10"),
-                    HistoricalService.Span.DAY,
-                    1);
+                    LocalDate.parse("2025-09-10")
+            );
+
+            svc.backfillRange("AAPL", range);
 
             long latest = db.getLatestTimestamp("AAPL");
             assertEquals(d2, latest);
@@ -63,7 +64,7 @@ class HistoricalServiceTest {
     }
 
     @Test
-    void ensureSeedData_throwsOnNon200() throws Exception {
+    void ensureRange_throwsOnNon200() throws Exception {
         HttpClient mockHttp = mock(HttpClient.class);
         @SuppressWarnings("unchecked")
         HttpResponse<String> mockResp = (HttpResponse<String>) mock(HttpResponse.class);
@@ -76,10 +77,16 @@ class HistoricalServiceTest {
             HistoricalService svc =
                     new HistoricalService(db, mockHttp, "test-key", "https://fake");
 
-            RuntimeException ex = assertThrows(RuntimeException.class,
-                    () -> svc.ensureSeedData("AAPL", 7, HistoricalService.Span.DAY, 1));
+            HistoricalService.Range range = new HistoricalService.Range(
+                    HistoricalService.Timespan.DAY, 1,
+                    LocalDate.parse("2025-09-01"),
+                    LocalDate.parse("2025-09-02")
+            );
 
-            assertTrue(ex.getMessage().contains("Polygon: 403"));
+            RuntimeException ex = assertThrows(RuntimeException.class,
+                    () -> svc.backfillRange("AAPL", range));
+
+            assertTrue(ex.getMessage().contains("[HistoricalService] 403"));
         }
     }
 
