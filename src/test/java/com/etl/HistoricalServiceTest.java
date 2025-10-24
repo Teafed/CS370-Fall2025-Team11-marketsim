@@ -50,7 +50,7 @@ class HistoricalServiceTest {
             long latest = db.getLatestTimestamp("AAPL");
             assertEquals(d2, latest);
 
-            try (var rs = db.getPrices("AAPL", 0, Long.MAX_VALUE)) {
+            try (var rs = db.getCandles("AAPL", 0, Long.MAX_VALUE)) {
                 assertTrue(rs.next());
                 assertEquals(d1, rs.getLong("timestamp"));
                 assertEquals(105.0, rs.getDouble("close"), 1e-9);

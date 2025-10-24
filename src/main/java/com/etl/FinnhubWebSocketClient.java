@@ -90,7 +90,7 @@ public class FinnhubWebSocketClient implements TradeSource {
             long volume = trade.get("v").getAsLong();
             String s = trade.get("s").getAsString();
             try {
-                db.insertPrice(s, timestamp, price, price, price, price, volume);
+                db.insertCandle(s, timestamp, price, price, price, price, volume);
             } catch (Exception e) {
                 throw new RuntimeException(e);
             }

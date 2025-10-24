@@ -7,8 +7,9 @@ import java.util.List;
 public class DatabaseManager implements AutoCloseable {
     private final Connection conn;
 
-    public record PriceRow(String symbol, long timestamp,
-                           double open, double high, double low, double close, long volume) { }
+    // used to insert a candle entry into database
+    public record CandleData(String symbol, long timestamp,
+                             double open, double high, double low, double close, long volume) { }
 
     public DatabaseManager(String dbFile) throws SQLException {
         String url = "jdbc:sqlite:" + dbFile + "?busy_timeout=5000"; // 5s
@@ -20,6 +21,15 @@ public class DatabaseManager implements AutoCloseable {
         if (conn != null && !conn.isClosed()) conn.close();
     }
 
+    /**
+     * creates table of prices. each entry contains:
+     * id: entry indentifier
+     * symbol: the symbol
+     * timestamp: the time in ms
+     * open, high, low, close: candle data
+     * volume: candle volume
+     * @throws SQLException
+     */
     private void createSchema() throws SQLException {
         String table = "CREATE TABLE IF NOT EXISTS prices ("
                 + "id INTEGER PRIMARY KEY AUTOINCREMENT,"
@@ -60,14 +70,14 @@ public class DatabaseManager implements AutoCloseable {
     }
 
     /**
-     * candles in [startMs, endMs], ordered by time asc (for ChartPanel)
-     * @param symbol
-     * @param startMs
-     * @param endMs
-     * @return
+     * get candles from startMs to endMs, ordered by time asc (for ChartPanel)
+     * @param symbol symbol to fetch
+     * @param startMs start time in ms
+     * @param endMs end time in ms
+     * @return set of candles
      * @throws SQLException
      */
-    public ResultSet getPrices(String symbol, long startMs, long endMs) throws SQLException {
+    public ResultSet getCandles(String symbol, long startMs, long endMs) throws SQLException {
         PreparedStatement ps = conn.prepareStatement("""
             SELECT timestamp, open, high, low, close, volume
             FROM prices
@@ -81,6 +91,12 @@ public class DatabaseManager implements AutoCloseable {
         return ps.executeQuery();
     }
 
+    /**
+     * gets the latest price timestamp in ms for a particular symbol
+     * @param symbol symbol to fetch
+     * @return latest timestamp, or 0 if none exist
+     * @throws SQLException
+     */
     public long getLatestTimestamp(String symbol) throws SQLException {
         String sql = "SELECT MAX(timestamp) FROM prices WHERE symbol=?";
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
@@ -91,9 +107,9 @@ public class DatabaseManager implements AutoCloseable {
     }
 
     /**
-     * get latest close and previous close for % change (NaN if not available)
-     * @param symbol
-     * @return
+     * get latest two closes for % change
+     * @param symbol symbol to fetch
+     * @return double[last,prev] (NaN if doesn't exist)
      * @throws SQLException
      */
     public double[] latestAndPrevClose(String symbol) throws SQLException {
@@ -117,9 +133,20 @@ public class DatabaseManager implements AutoCloseable {
         }
     }
 
-    public void insertPrice(String symbol, long timestamp,
-                            double open, double high, double low,
-                            double close, long volume) throws SQLException {
+    /**
+     * insert a single candle into database
+     * @param symbol
+     * @param timestamp
+     * @param open
+     * @param high
+     * @param low
+     * @param close
+     * @param volume
+     * @throws SQLException
+     */
+    public void insertCandle(String symbol, long timestamp,
+                             double open, double high, double low,
+                             double close, long volume) throws SQLException {
         String sql = "INSERT OR REPLACE INTO prices(symbol, timestamp, open, high, low, close, volume) VALUES(?,?,?,?,?,?,?)";
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, symbol);
@@ -133,13 +160,13 @@ public class DatabaseManager implements AutoCloseable {
         }
     }
 
-    public void insertPricesBatch(java.util.List<PriceRow> rows) throws SQLException {
+    public void insertCandlesBatch(java.util.List<CandleData> rows) throws SQLException {
         boolean prev = conn.getAutoCommit();
         conn.setAutoCommit(false);
         String sql = "INSERT OR REPLACE INTO prices(symbol, timestamp, open, high, low, close, volume) "
                 + "VALUES(?,?,?,?,?,?,?)";
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
-            for (PriceRow r : rows) {
+            for (CandleData r : rows) {
                 ps.setString(1, r.symbol());
                 ps.setLong(2, r.timestamp());
                 ps.setDouble(3, r.open());
@@ -156,7 +183,7 @@ public class DatabaseManager implements AutoCloseable {
         }
     }
 
-    public List<PriceRow> listRecentPrices(String symbol, int limit) throws SQLException {
+    public List<CandleData> listRecentCandles(String symbol, int limit) throws SQLException {
         String sql = """
         SELECT symbol, timestamp, open, high, low, close, volume
         FROM prices
@@ -164,13 +191,13 @@ public class DatabaseManager implements AutoCloseable {
         ORDER BY timestamp DESC
         LIMIT ?
     """;
-        List<PriceRow> rows = new ArrayList<>();
+        List<CandleData> rows = new ArrayList<>();
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, symbol);
             ps.setInt(2, limit);
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
-                    rows.add(new PriceRow(
+                    rows.add(new CandleData(
                             rs.getString("symbol"),
                             rs.getLong("timestamp"),
                             rs.getDouble("open"),

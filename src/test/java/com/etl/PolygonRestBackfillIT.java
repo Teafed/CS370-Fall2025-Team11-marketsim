@@ -6,7 +6,6 @@ import org.junit.jupiter.api.condition.DisabledIfEnvironmentVariable;
 
 import java.sql.ResultSet;
 import java.time.LocalDate;
-import java.sql.*;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -35,7 +34,7 @@ class PolygonRestBackfillIT {
             long endMs   = to.plusDays(1).atStartOfDay(java.time.ZoneOffset.UTC).toInstant().toEpochMilli() - 1;
 
             int count = 0;
-            try (ResultSet rs = db.getPrices(symbol, startMs, endMs)) {
+            try (ResultSet rs = db.getCandles(symbol, startMs, endMs)) {
                 while (rs.next()) count++;
             }
             assertTrue(count > 0, "Expected candles in requested window, got 0");

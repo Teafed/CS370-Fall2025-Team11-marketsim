@@ -24,7 +24,7 @@ class SampleDbTest {
                 assertTrue(db.getLatestTimestamp(s) > 0, "Latest timestamp missing for " + s);
 
                 int count = 0;
-                try (ResultSet rs = db.getPrices(s, 0, System.currentTimeMillis())) {
+                try (ResultSet rs = db.getCandles(s, 0, System.currentTimeMillis())) {
                     while (rs.next()) count++;
                 }
                 assertTrue(count >= 60, s + " should have at least ~60 rows");

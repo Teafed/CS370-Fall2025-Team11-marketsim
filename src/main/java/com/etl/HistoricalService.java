@@ -1,11 +1,8 @@
 package com.etl;
 
-import com.google.gson.*;
 import com.market.DatabaseManager;
 
 import java.net.http.*;
-import java.time.*;
-import java.util.*;
 
 public class HistoricalService {
     public static enum Span {
@@ -96,8 +93,8 @@ public class HistoricalService {
      * @param to
      * @return
      */
-    private String buildAggsUrl(String symbol, int interval, Span span,
-                                java.time.LocalDate from, java.time.LocalDate to) {
+    private String buildCandlesUrl(String symbol, int interval, Span span,
+                                   java.time.LocalDate from, java.time.LocalDate to) {
         return String.format(
                 "%s/v2/aggs/ticker/%s/range/%d/%s/%s/%s?adjusted=true&sort=asc&limit=50000&apiKey=%s",
                 baseUrl, symbol, interval, span.token, from, to, apiKey
@@ -145,7 +142,7 @@ public class HistoricalService {
             java.time.LocalDate chunkEnd = cursor.plusDays(maxChunkDays - 1);
             if (chunkEnd.isAfter(to)) chunkEnd = to;
 
-            String url = buildAggsUrl(symbol, interval, span, cursor, chunkEnd);
+            String url = buildCandlesUrl(symbol, interval, span, cursor, chunkEnd);
             var req = java.net.http.HttpRequest.newBuilder(java.net.URI.create(url)).GET().build();
             var resp = http.send(req, java.net.http.HttpResponse.BodyHandlers.ofString());
 
@@ -161,7 +158,7 @@ public class HistoricalService {
                 continue;
             }
 
-            var rows = new java.util.ArrayList<com.market.DatabaseManager.PriceRow>();
+            var rows = new java.util.ArrayList<DatabaseManager.CandleData>();
             if (root.has("results")) {
                 for (var e : root.getAsJsonArray("results")) {
                     var r = e.getAsJsonObject();
@@ -171,11 +168,11 @@ public class HistoricalService {
                     double l = r.get("l").getAsDouble();
                     double c = r.get("c").getAsDouble();
                     long   v = r.get("v").getAsLong();
-                    rows.add(new com.market.DatabaseManager.PriceRow(symbol, t, o, h, l, c, v));
+                    rows.add(new DatabaseManager.CandleData(symbol, t, o, h, l, c, v));
                 }
             }
 
-            if (!rows.isEmpty()) db.insertPricesBatch(rows);
+            if (!rows.isEmpty()) db.insertCandlesBatch(rows);
 
             cursor = chunkEnd.plusDays(1);
         }

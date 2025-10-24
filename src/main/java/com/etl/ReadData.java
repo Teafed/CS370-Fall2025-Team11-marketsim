@@ -31,7 +31,7 @@ public class ReadData {
      */
     public List<Row> loadSeries(String symbol, long startMillis, long endMillis) throws SQLException {
         List<Row> out = new ArrayList<>();
-        try (ResultSet rs = db.getPrices(symbol, startMillis, endMillis)) {
+        try (ResultSet rs = db.getCandles(symbol, startMillis, endMillis)) {
             while (rs.next()) {
                 out.add(new Row(
                         rs.getLong("timestamp"),

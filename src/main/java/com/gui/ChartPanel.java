@@ -9,7 +9,6 @@ import java.sql.Date;
 import java.sql.ResultSet;
 import javax.swing.*;
 import java.awt.*;
-import java.io.*;
 import java.text.*;
 import java.util.Map;
 import java.util.TreeMap;
@@ -122,7 +121,7 @@ public class ChartPanel extends ContentPanel {
 
         void loadFromDb(DatabaseManager db, String symbol, long startMs, long endMs, int maxPoints) {
             this.symbol = symbol;
-            try (ResultSet rs = db.getPrices(symbol, startMs, endMs)) {
+            try (ResultSet rs = db.getCandles(symbol, startMs, endMs)) {
                 TreeMap<Long, Double> sorted = new TreeMap<>();
                 while (rs.next()) {
                     long t = rs.getLong("timestamp");

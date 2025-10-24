@@ -20,7 +20,7 @@ class FinnhubClientParserTest {
 
         FinnhubWebSocketClient.parseAndStore(sample, db);
 
-        try (ResultSet rs = db.getPrices("AAPL", 0, Long.MAX_VALUE)) {
+        try (ResultSet rs = db.getCandles("AAPL", 0, Long.MAX_VALUE)) {
             assertTrue(rs.next());
             assertEquals(1714060800123L, rs.getLong("timestamp"));
             assertEquals(185.12, rs.getDouble("close"), 1e-9);

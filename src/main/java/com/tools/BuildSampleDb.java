@@ -31,13 +31,13 @@ public class BuildSampleDb {
 
         for (String sym : symbols) {
             var rows = makeDailySeries(sym, days);
-            db.insertPricesBatch(rows);
+            db.insertCandlesBatch(rows);
         }
         System.out.println("[seed] Inserted " + symbols.size() + " symbols × " + days + " days");
     }
 
     /** Make a simple, repeatable OHLCV series (daily close around 16:00 UTC). */
-    private static java.util.List<DatabaseManager.PriceRow> makeDailySeries(String symbol, int days) {
+    private static java.util.List<DatabaseManager.CandleData> makeDailySeries(String symbol, int days) {
         // deterministic RNG per symbol
         long seed = symbol.chars().asLongStream().reduce(0, (a, b) -> a * 131L + b);
         Random rng = new Random(seed);
@@ -53,7 +53,7 @@ public class BuildSampleDb {
         double vol   = 0.01;
         double close = base;
 
-        var out = new ArrayList<DatabaseManager.PriceRow>(days);
+        var out = new ArrayList<DatabaseManager.CandleData>(days);
         LocalDate end = LocalDate.now(ZoneOffset.UTC);
         LocalDate start = end.minusDays(days - 1);
 
@@ -68,7 +68,7 @@ public class BuildSampleDb {
             long volume = (long) (5_000_000 + Math.abs(rng.nextGaussian()) * 2_000_000);
 
             long ts = d.atTime(16, 0).toInstant(ZoneOffset.UTC).toEpochMilli(); // 16:00 UTC
-            out.add(new DatabaseManager.PriceRow(symbol, ts, open, high, low, newClose, volume));
+            out.add(new DatabaseManager.CandleData(symbol, ts, open, high, low, newClose, volume));
             close = newClose;
         }
         return out;
