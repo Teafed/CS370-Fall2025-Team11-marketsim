@@ -69,6 +69,7 @@ public class SymbolListPanel extends ContentPanel implements MarketListener {
         add(scrollPane, BorderLayout.CENTER);
     }
 
+    @Override
     public void loadSymbols(List<TradeItem> symbols) {
         symbols.forEach(s -> symbolModel.addElement(s));
     }
