@@ -114,11 +114,6 @@ public class SymbolListPanel extends ContentPanel implements MarketListener {
         }
     }
 
-    // utility methods
-    public void refreshSymbols() {
-        repaint();
-    }
-
     public String getSelectedSymbol() {
         TradeItem selected = symbolList.getSelectedValue();
         return selected != null ? selected.getSymbol() : null;
