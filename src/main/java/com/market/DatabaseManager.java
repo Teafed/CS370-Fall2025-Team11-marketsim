@@ -135,13 +135,13 @@ public class DatabaseManager implements AutoCloseable {
 
     /**
      * insert a single candle into database
-     * @param symbol
-     * @param timestamp
-     * @param open
-     * @param high
-     * @param low
-     * @param close
-     * @param volume
+     * @param symbol : String
+     * @param timestamp : long
+     * @param open : double
+     * @param high : double
+     * @param low : double
+     * @param close : double
+     * @param volume : long
      * @throws SQLException
      */
     public void insertCandle(String symbol, long timestamp,
@@ -185,12 +185,12 @@ public class DatabaseManager implements AutoCloseable {
 
     public List<CandleData> listRecentCandles(String symbol, int limit) throws SQLException {
         String sql = """
-        SELECT symbol, timestamp, open, high, low, close, volume
-        FROM prices
-        WHERE symbol = ?
-        ORDER BY timestamp DESC
-        LIMIT ?
-    """;
+            SELECT symbol, timestamp, open, high, low, close, volume
+            FROM prices
+            WHERE symbol = ?
+            ORDER BY timestamp DESC
+            LIMIT ?
+        """;
         List<CandleData> rows = new ArrayList<>();
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, symbol);
