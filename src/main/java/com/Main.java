@@ -67,6 +67,5 @@ public class Main {
             MainWindow mw = new MainWindow();
             market.setMarketListener(mw.getSymbolListPanel());
         });
-        ;
     }
 }

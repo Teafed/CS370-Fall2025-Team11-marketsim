@@ -36,7 +36,7 @@ public class SymbolListPanel extends ContentPanel implements MarketListener {
         this.db = db;
         this.symbolListener = new ArrayList<>();
         initializeComponents();
-        loadSymbolsFromDb();
+        //loadSymbolsFromDb();
 
         setupListeners();
     }
