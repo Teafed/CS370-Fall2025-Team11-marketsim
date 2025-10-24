@@ -36,7 +36,6 @@ public class SymbolListPanel extends ContentPanel implements MarketListener {
         this.db = db;
         this.symbolListener = new ArrayList<>();
         initializeComponents();
-        //loadSymbolsFromDb();
 
         setupListeners();
     }
@@ -68,26 +67,6 @@ public class SymbolListPanel extends ContentPanel implements MarketListener {
 
         add(accountBar, BorderLayout.SOUTH);
         add(scrollPane, BorderLayout.CENTER);
-    }
-
-    /**
-     * load symbols from database
-     */
-    private void loadSymbolsFromDb() {
-        symbolModel.clear();
-        try {
-            for (String sym : db.listSymbols()) {
-                double[] lp = db.latestAndPrevClose(sym); // [last, prev]
-                double last = lp[0], prev = lp[1];
-                double pct = (Double.isNaN(last) || Double.isNaN(prev) || prev == 0.0)
-                        ? 0.0
-                        : (last - prev) / prev * 100.0;
-
-                symbolModel.addElement(new Stock(sym, sym, last, pct));
-            }
-        } catch (Exception ex) {
-            ex.printStackTrace();
-        }
     }
 
     public void loadSymbols(List<TradeItem> symbols) {
@@ -137,7 +116,6 @@ public class SymbolListPanel extends ContentPanel implements MarketListener {
 
     // utility methods
     public void refreshSymbols() {
-        //loadSymbolsFromDb();
         repaint();
     }
 
