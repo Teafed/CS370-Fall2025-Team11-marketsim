@@ -44,7 +44,7 @@ public class Market implements TradeListener {
         this.ready = true;
     }
 
-    public void setDataBase(DatabaseManager dbManager) {
+    public void setDatabase(DatabaseManager dbManager) {
         this.dbManager = dbManager;
     }
 

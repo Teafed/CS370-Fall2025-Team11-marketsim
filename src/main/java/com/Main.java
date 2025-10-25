@@ -4,6 +4,7 @@ package com;
 import com.etl.*;
 import com.market.*;
 import com.gui.*;
+import com.accountmanager.*;
 import com.tools.MockFinnhubClient;
 
 import javax.swing.*;
@@ -12,18 +13,12 @@ import java.util.Arrays;
 
 public class Main {
     public static void main(String[] args) throws Exception {
-
-        // Initialize database for use
-        String dbFile = "data/marketsim-sample1.db";
-        boolean force = Arrays.asList(args).contains("--force");
-        TradeSource client;
-        Market market;
+        String dbFile = "data/marketsim-sample.db";
 
         // Check if market is open or closed
-        boolean marketHours;
         System.out.println("Checking market status...");
-        marketHours = FinnhubMarketStatus.checkStatus();
-
+        boolean marketHours = FinnhubMarketStatus.checkStatus();
+        TradeSource client;
         if (marketHours) {
             try {
                 System.out.println("Market open, starting Finnhub...");
@@ -39,9 +34,8 @@ public class Main {
             System.out.println("Mock client started...");
         }
 
-
         // Initialize market
-        market = new Market();
+        Market market = new Market();
         market.setClient(client);
         while (!market.isReady()) {
             System.out.println("Waiting for Market status...");
@@ -49,22 +43,20 @@ public class Main {
         System.out.println("Market started...");
 
         // Initialize Database
-        try (DatabaseManager db = new DatabaseManager(dbFile)) {
-            market.setDataBase(db);
-        } catch (SQLException e) {
-            //TODO
-            e.printStackTrace();
-            throw new RuntimeException(e);
+        DatabaseManager db;
+        try {
+            db = new DatabaseManager(dbFile);
         } catch (Exception e) {
-            //TODO
-            e.printStackTrace();
-            throw new RuntimeException(e);
+            throw new SQLException("Failed to open database: " + dbFile, e);
         }
+        market.setDatabase(db);
 
+        // Initialize account (demo for now)
+        Account account = com.tools.BuildDemoAccount.buildDemoAccount();
 
         // Initialize GUI Client
         SwingUtilities.invokeLater(() -> {
-            MainWindow mw = new MainWindow();
+            MainWindow mw = new MainWindow(db, account, market);
             market.setMarketListener(mw.getSymbolListPanel());
         });
     }
