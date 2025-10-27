@@ -17,6 +17,7 @@ public class SymbolListPanel extends ContentPanel implements MarketListener {
     private final DatabaseManager db;
     private Account account;
     private AccountSelectionListener accountListener;
+    private String lastNotifiedSymbol = null;
     private AccountBar accountBar;
 
     @Override
@@ -71,7 +72,11 @@ public class SymbolListPanel extends ContentPanel implements MarketListener {
 
     @Override
     public void loadSymbols(List<TradeItem> symbols) {
-        symbols.forEach(s -> symbolModel.addElement(s));
+        symbolModel.clear();
+        symbols.forEach(symbolModel::addElement);
+        lastNotifiedSymbol = null;
+        symbolList.revalidate();
+        symbolList.repaint();
     }
 
     public void setAccount(Account account, AccountSelectionListener listener) {
@@ -92,9 +97,13 @@ public class SymbolListPanel extends ContentPanel implements MarketListener {
     private void setupListeners() {
         symbolList.addListSelectionListener(e -> {
             if (!e.getValueIsAdjusting()) { // only fire when selection is final
-                TradeItem selectedSymbol = symbolList.getSelectedValue();
-                if (selectedSymbol != null) {
-                    notifyListeners(selectedSymbol);
+                TradeItem selected = symbolList.getSelectedValue();
+                if (selected != null) {
+                    String sym = selected.getSymbol();
+                    if (!sym.equals(lastNotifiedSymbol)) { // guard against reloading same
+                        lastNotifiedSymbol = sym;
+                        notifyListeners(selected);
+                    }
                 }
             }
         });
@@ -122,5 +131,6 @@ public class SymbolListPanel extends ContentPanel implements MarketListener {
 
     public void clearSelection() {
         symbolList.clearSelection();
+        lastNotifiedSymbol = null;
     }
 }

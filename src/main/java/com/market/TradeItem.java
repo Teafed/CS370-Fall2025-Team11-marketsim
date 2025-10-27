@@ -76,4 +76,12 @@ public class TradeItem {
     public String toString() {
         return this.getClass().getSimpleName() + "{" + "name=" + name + ", symbol=" + symbol + ", price=" + price + '}';
     }
+
+    @Override public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof TradeItem ti)) return false;
+        return symbol != null && symbol.equalsIgnoreCase(ti.getSymbol());
+    }
+    @Override public int hashCode() { return symbol == null ? 0 : symbol.toUpperCase().hashCode(); }
+
 }

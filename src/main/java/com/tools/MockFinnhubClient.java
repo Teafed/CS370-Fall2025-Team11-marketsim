@@ -13,7 +13,7 @@ import java.util.List;
 import java.util.Random;
 
 public class MockFinnhubClient implements TradeSource { ;
-    private static TradeListener listener;
+    private TradeListener listener;
     private static final List<String> subscribedSymbols = new ArrayList<>();
     private static final Random rand = new Random();
 
@@ -41,13 +41,6 @@ public class MockFinnhubClient implements TradeSource { ;
                     trade.addProperty("s", symbol);
                     trades.add(trade);
 
-                    // Insert into DB
-//                    try {
-//                        db.insertPrice(symbol, timestamp, price, price, price, price, volume);
-//                    } catch (Exception e) {
-//                        e.printStackTrace();
-//                    }
-
                     // Notify listener
                     if (listener != null) {
                         listener.onTrade(symbol, price);
@@ -64,7 +57,7 @@ public class MockFinnhubClient implements TradeSource { ;
                     Thread.sleep(900);
                 } catch (InterruptedException ignore) {}
             }
-        }).start();
+        }, "MockFinnhub-Emitter").start();
     }
 
     public void setTradeListener(TradeListener listener) {
@@ -78,7 +71,9 @@ public class MockFinnhubClient implements TradeSource { ;
 
     public void subscribe(String symbol) {
         System.out.println("[Mock] Subscribed to " + symbol);
-        subscribedSymbols.add(symbol);
+        if (!subscribedSymbols.contains(symbol)) {
+            subscribedSymbols.add(symbol);
+        }
     }
 
     public static List<String> returnRandomSymbolList() {

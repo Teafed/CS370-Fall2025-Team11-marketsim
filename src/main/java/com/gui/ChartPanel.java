@@ -40,9 +40,14 @@ public class ChartPanel extends ContentPanel {
         south.setOpaque(false);
         south.setLayout(new BoxLayout(south, BoxLayout.Y_AXIS));
 
-        this.timeframeBar = new TimeframeBar((startMs, endMs) -> {
+        this.timeframeBar = new TimeframeBar((startMs, endMs, multiplier, timespanToken) -> {
             if (dbRef != null && symbol != null) {
-                openChart(dbRef, symbol, startMs, endMs, 400);
+                HistoricalService.Timespan ts = switch (timespanToken) {
+                    case "minute" -> HistoricalService.Timespan.MINUTE;
+                    case "hour"   -> HistoricalService.Timespan.HOUR;
+                    default       -> HistoricalService.Timespan.DAY;
+                };
+                openChart(dbRef, symbol, multiplier, ts, startMs, endMs, 400);
             }
         });
         south.add(timeframeBar);
@@ -90,12 +95,8 @@ public class ChartPanel extends ContentPanel {
     public void openChart(DatabaseManager db, String symbol, long startMs, long endMs, int maxPoints) {
         HistoricalService.Timespan timespan = HistoricalService.Timespan.DAY;
         openChart(db, symbol, 1, timespan, startMs, endMs, maxPoints);
-//        this.dbRef = db;
-//        this.symbol = symbol;
-//        canvas.loadFromDb(db, symbol, startMs, endMs, maxPoints);
     }
 
-    // ✅ new overload that includes timeframe
     public void openChart(DatabaseManager db,
                           String symbol,
                           int multiplier,
@@ -103,6 +104,11 @@ public class ChartPanel extends ContentPanel {
                           long startMs, long endMs, int maxPoints) {
         this.dbRef = db;
         this.symbol = symbol;
+        canvas.setLoading(true);
+
+        final long now = System.currentTimeMillis();
+        final long endMsClamped = Math.min(endMs, now);
+        final long startMsClamped = Math.min(startMs, endMsClamped);
 
         // request backfill for the requested timeframe, then load from DB and paint
         new javax.swing.SwingWorker<Integer, Void>() {
@@ -110,8 +116,10 @@ public class ChartPanel extends ContentPanel {
                 try {
                     HistoricalService svc = new HistoricalService(dbRef);
 
-                    LocalDate from = Instant.ofEpochMilli(startMs).atZone(ZoneOffset.UTC).toLocalDate();
-                    LocalDate to   = Instant.ofEpochMilli(endMs).atZone(ZoneOffset.UTC).toLocalDate();
+                    java.time.LocalDate from = java.time.Instant.ofEpochMilli(startMsClamped)
+                            .atZone(java.time.ZoneOffset.UTC).toLocalDate();
+                    java.time.LocalDate to = java.time.Instant.ofEpochMilli(endMsClamped)
+                            .atZone(java.time.ZoneOffset.UTC).toLocalDate();
 
                     HistoricalService.Range range = new HistoricalService.Range(timespan, multiplier, from, to);
                     return svc.backfillRange(symbol, range);
@@ -122,7 +130,11 @@ public class ChartPanel extends ContentPanel {
             }
 
             @Override protected void done() {
-                canvas.loadFromDb(dbRef, symbol, startMs, endMs, maxPoints);
+                try {
+                    canvas.loadFromDb(dbRef, symbol, startMsClamped, endMsClamped, maxPoints);
+                } finally {
+                    canvas.setLoading(false);
+                }
             }
         }.execute();
     }
@@ -134,6 +146,7 @@ public class ChartPanel extends ContentPanel {
         private long[] times;
         private double[] prices;
         private String symbol;
+        private boolean loading = false;
 
         private double minPrice = Double.MAX_VALUE;
         private double maxPrice = Double.MIN_VALUE;
@@ -155,6 +168,8 @@ public class ChartPanel extends ContentPanel {
             this.prices = null;
             repaint();
         }
+
+        void setLoading(boolean v) { loading = v; repaint(); }
 
         void loadFromDb(DatabaseManager db, String symbol, long startMs, long endMs, int maxPoints) {
             this.symbol = symbol;
@@ -257,6 +272,18 @@ public class ChartPanel extends ContentPanel {
             String endLabel = timeFormat.format(new Date(maxTime));
             g2.drawString(startLabel, in.left, h - in.bottom + fm.getAscent() + 5);
             g2.drawString(endLabel, w - in.right - fm.stringWidth(endLabel), h - in.bottom + fm.getAscent() + 5);
+
+            if (loading) {
+                g2 = (Graphics2D) g.create();
+                g2.setColor(new Color(0,0,0,120));
+                g2.fillRect(0, 0, getWidth(), getHeight());
+                g2.setFont(new Font("Segoe UI", Font.BOLD, 16));
+                g2.setColor(Color.WHITE);
+                String msg = "Loading…";
+                fm = g2.getFontMetrics();
+                g2.drawString(msg, (getWidth()-fm.stringWidth(msg))/2, (getHeight()+fm.getAscent())/2);
+                g2.dispose();
+            }
         }
     }
 }

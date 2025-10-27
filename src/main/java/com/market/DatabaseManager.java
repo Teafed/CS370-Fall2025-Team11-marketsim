@@ -144,7 +144,7 @@ public class DatabaseManager implements AutoCloseable {
         return ps.executeQuery();
     }
 
-    /* ld version */
+    /* old version */
     public long getLatestTimestamp(String symbol) throws SQLException {
         return getLatestTimestamp(symbol, 1, "day");
     }
@@ -161,21 +161,56 @@ public class DatabaseManager implements AutoCloseable {
         }
     }
 
-    /**
-     * get latest close and previous close for % change (NaN if not available)
-     * @param symbol
-     * @return
-     * @throws SQLException
-     */
+    public long getEarliestTimestamp(String symbol, int multiplier, String timespan) throws SQLException {
+        String sql = "SELECT MIN(timestamp) FROM prices WHERE symbol=? AND timespan=? AND multiplier=?";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, symbol);
+            ps.setString(2, timespan);
+            ps.setInt(3, multiplier);
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next() ? rs.getLong(1) : 0L;
+            }
+        }
+    }
+
+    public java.util.List<Long> listTimestamps(String symbol, int multiplier, String timespan,
+                                               long startMs, long endMs) throws SQLException {
+        String sql = """
+            SELECT timestamp FROM prices
+            WHERE symbol=? AND timespan=? AND multiplier=?
+              AND timestamp BETWEEN ? AND ?
+            ORDER BY timestamp ASC
+        """;
+        java.util.ArrayList<Long> out = new java.util.ArrayList<>();
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, symbol);
+            ps.setString(2, timespan);
+            ps.setInt(3, multiplier);
+            ps.setLong(4, startMs);
+            ps.setLong(5, endMs);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) out.add(rs.getLong(1));
+            }
+        }
+        return out;
+    }
+
+    /* old voision */
     public double[] latestAndPrevClose(String symbol) throws SQLException {
+        return latestAndPrevClose(symbol, 1, "day");
+    }
+
+    public double[] latestAndPrevClose(String symbol, int multiplier, String timespan) throws SQLException {
         String sql = """
             SELECT close FROM prices
-            WHERE symbol = ?
+            WHERE symbol = ? AND timespan = ? AND multiplier = ?
             ORDER BY timestamp DESC
             LIMIT 2
         """;
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, symbol);
+            ps.setString(2, timespan);
+            ps.setInt(3, multiplier);
             try (ResultSet rs = ps.executeQuery()) {
                 Double last = null, prev = null;
                 if (rs.next()) last = rs.getDouble(1);
@@ -187,6 +222,7 @@ public class DatabaseManager implements AutoCloseable {
             }
         }
     }
+
 
     public void insertCandle(String symbol, int multiplier, String timespan,
                              long timestamp, double open, double high, double low,
