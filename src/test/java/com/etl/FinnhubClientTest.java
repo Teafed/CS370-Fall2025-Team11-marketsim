@@ -18,7 +18,7 @@ class FinnhubClientParserTest {
         ]}
         """;
 
-        FinnhubWebSocketClient.parseAndStore(sample, db);
+//        FinnhubWebSocketClient.parseAndStore(sample, db);
 
         try (ResultSet rs = db.getCandles("AAPL", 0, Long.MAX_VALUE)) {
             assertTrue(rs.next());

@@ -22,7 +22,7 @@ public class BuildSampleDb {
     }
 
     private static boolean isSeeded(DatabaseManager db) throws Exception {
-        return !db.listSymbols().isEmpty() && db.getLatestTimestamp("AAPL") > 0;
+        return !db.listSymbols().isEmpty() && db.getLatestTimestamp("AAPL", 1, "day") > 0;
     }
 
     private static void seedAll(DatabaseManager db) throws Exception {
@@ -31,7 +31,7 @@ public class BuildSampleDb {
 
         for (String sym : symbols) {
             var rows = makeDailySeries(sym, days);
-            db.insertCandlesBatch(rows);
+            db.insertCandlesBatch(sym, 1, "day", rows);
         }
         System.out.println("[seed] Inserted " + symbols.size() + " symbols × " + days + " days");
     }
@@ -65,7 +65,7 @@ public class BuildSampleDb {
             double open = close * (1.0 + (rng.nextGaussian() * vol * 0.05));
             double high = Math.max(open, newClose) * (1.0 + Math.abs(rng.nextGaussian()) * 0.01);
             double low  = Math.min(open, newClose) * (1.0 - Math.abs(rng.nextGaussian()) * 0.01);
-            long volume = (long) (5_000_000 + Math.abs(rng.nextGaussian()) * 2_000_000);
+            double volume = (5_000_000 + Math.abs(rng.nextGaussian()) * 2_000_000);
 
             long ts = d.atTime(16, 0).toInstant(ZoneOffset.UTC).toEpochMilli(); // 16:00 UTC
             out.add(new DatabaseManager.CandleData(symbol, ts, open, high, low, newClose, volume));

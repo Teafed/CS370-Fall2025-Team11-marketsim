@@ -63,13 +63,46 @@ public class Market implements TradeListener {
 
     }
 
+    public void addFromWatchlist(com.accountmanager.Watchlist watchlist) throws Exception {
+        for (TradeItem stock : watchlist.getWatchlist()) {
+            String sym = stock.getSymbol();
+            if (!stocks.containsKey(sym)) {
+                client.subscribe(sym);
+                stocks.put(sym, stock);
+                initChangeBaseline(stock);
+            }
+        }
+    }
+
+    private void initChangeBaseline(TradeItem stock) {
+        try {
+            double[] lp = dbManager.latestAndPrevClose(stock.getSymbol());
+            double last = lp[0], prev = lp[1];
+
+            double baseline = (!Double.isNaN(prev) && prev > 0) ? prev :
+                    (!Double.isNaN(last) && last > 0) ? last : Double.NaN;
+
+            if (!Double.isNaN(baseline) && baseline > 0) {
+                stock.setPrevClose(baseline);
+            }
+        } catch (Exception e) {
+            //
+        }
+    }
+
     public void updateStock(String symbol, double p) {
         // Get the stock from the map
         TradeItem stock = stocks.get(symbol);
+        double prev = stock.getCurrentPrice();
 
         // Update its price
         stock.updatePrice(p);
 
+        if (prev > 0) {
+            double change = p - prev;
+            double changePercent = (change / prev) * 100.0;
+            stock.setChange(change, changePercent);
+        }
     }
 
     @Override

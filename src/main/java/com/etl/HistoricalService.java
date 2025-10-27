@@ -72,29 +72,30 @@ public class HistoricalService {
     }
 
     Range ensureRange(String symbol, Range requested) throws SQLException {
-        long nowMs = System.currentTimeMillis();
-        LocalDate todayUtc = java.time.Instant.ofEpochMilli(nowMs)
+        LocalDate todayUtc = java.time.Instant.ofEpochMilli(System.currentTimeMillis())
                 .atZone(java.time.ZoneOffset.UTC).toLocalDate();
 
-        LocalDate to = (requested.to != null) ? requested.to : todayUtc;
-        LocalDate from = (requested.from != null) ? requested.from : to;
-        if (to.isBefore(from)) return null;
+        LocalDate reqTo = (requested.to == null) ? todayUtc
+                : (requested.to.isAfter(todayUtc) ? todayUtc : requested.to);
+        if (requested.timespan == Timespan.DAY) {
+            reqTo = reqTo.minusDays(1);  // prevents DELAYED/empty on “today”
+        }
 
-        long haveUntil = db.getLatestTimestamp(symbol); // 0 if none
+        if (reqTo.getDayOfWeek() == java.time.DayOfWeek.SATURDAY) reqTo = reqTo.minusDays(1);
+        if (reqTo.getDayOfWeek() == java.time.DayOfWeek.SUNDAY)   reqTo = reqTo.minusDays(2);
+
+        LocalDate reqFrom = (requested.from != null) ? requested.from : reqTo;
+        if (reqTo.isBefore(reqFrom)) return null;
+
+        long haveUntil = db.getLatestTimestamp(symbol, requested.multiplier, requested.timespan.token);
         if (haveUntil > 0) {
             LocalDate haveDate = java.time.Instant.ofEpochMilli(haveUntil)
                     .atZone(java.time.ZoneOffset.UTC).toLocalDate();
             LocalDate nextAfterHave = haveDate.plusDays(1);
-
-            if (nextAfterHave.isAfter(to)) {
-                // already up to date
-                return null;
-            }
-            // start at the latter of 'from' and what we already have
-            from = (from.isBefore(nextAfterHave)) ? nextAfterHave : from;
+            if (nextAfterHave.isAfter(reqTo)) return null;    // up to date
+            if (reqFrom.isBefore(nextAfterHave)) reqFrom = nextAfterHave;
         }
-
-        return new Range(requested.timespan, requested.multiplier, from, to);
+        return new Range(requested.timespan, requested.multiplier, reqFrom, reqTo);
     }
 
     /* format url string for candles */
@@ -112,10 +113,14 @@ public class HistoricalService {
      * @param requested requested range (ensured valid)
      * @throws Exception throws if status code != 200
      */
-    public void backfillRange(String symbol,
+    public int backfillRange(String symbol,
                               Range requested) throws Exception {
         Range range = ensureRange(symbol, requested);
-        if (range == null || range.to.isBefore(range.from)) return;
+        if (range == null || range.to.isBefore(range.from)) {
+            System.out.printf("[HistoricalService] Up-to-date for %s %d/%s%n",
+                    symbol, requested.multiplier, requested.timespan);
+            return 0;
+        }
 
         final int maxChunkDays = switch (range.timespan) {
             case DAY    -> 30;
@@ -123,12 +128,14 @@ public class HistoricalService {
             case MINUTE -> 7;
         };
 
+        int totalInserted = 0;
         LocalDate cursor = range.from;
         while (!cursor.isAfter(range.to)) {
             LocalDate chunkEnd = cursor.plusDays(maxChunkDays - 1);
             if (chunkEnd.isAfter(range.to)) chunkEnd = range.to;
 
             String url = buildCandlesUrl(symbol, range.multiplier, range.timespan, cursor, chunkEnd);
+
             var req = java.net.http.HttpRequest.newBuilder(java.net.URI.create(url)).GET().build();
             var resp = http.send(req, java.net.http.HttpResponse.BodyHandlers.ofString());
 
@@ -137,12 +144,12 @@ public class HistoricalService {
             }
 
             var root = JsonParser.parseString(resp.body()).getAsJsonObject();
-            if (!root.has("status") || !"OK".equals(root.get("status").getAsString())) {
-                // note: some Polygon responses can be "OK" with empty results; others can return error
-                // ignore not found and advance cursor anyway
-                // maybe add retry if this is a problem
-                cursor = chunkEnd.plusDays(1);
-                continue;
+            String status = root.has("status") ? root.get("status").getAsString() : "(missing)";
+            if (!"OK".equals(status)) {
+                String err = root.has("error") ? root.get("error").getAsString() : "(none)";
+                System.out.printf("[HistoricalService] status=%s error=%s for %s %s→%s%n",
+                        status, err, symbol, cursor, chunkEnd);
+                // if no results, just move on; DELAYED often means “not final yet”
             }
 
             var rows = new java.util.ArrayList<DatabaseManager.CandleData>();
@@ -154,14 +161,21 @@ public class HistoricalService {
                     double h = res.get("h").getAsDouble();
                     double l = res.get("l").getAsDouble();
                     double c = res.get("c").getAsDouble();
-                    long   v = res.get("v").getAsLong();
+                    double v = res.get("v").getAsDouble();
                     rows.add(new DatabaseManager.CandleData(symbol, t, o, h, l, c, v));
                 }
             }
 
-            if (!rows.isEmpty()) db.insertCandlesBatch(rows);
-
+            if (!rows.isEmpty()) {
+                db.insertCandlesBatch(symbol, range.multiplier, range.timespan.token, rows);
+                totalInserted += rows.size();
+                System.out.printf("[HistoricalService] Inserted %d rows for %s %s→%s (total=%d)%n",
+                        rows.size(), symbol, cursor, chunkEnd, totalInserted);
+            } else {
+                System.out.printf("[HistoricalService] No rows for %s %s→%s%n", symbol, cursor, chunkEnd);
+            }
             cursor = chunkEnd.plusDays(1);
         }
+    return totalInserted;
     }
 }

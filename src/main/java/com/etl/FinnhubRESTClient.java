@@ -144,11 +144,11 @@ public class FinnhubRESTClient {
 
     private static void insertPriceSafely(DatabaseManager db, String symbol, long timestamp, 
                                          double open, double high, double low, double close, long volume) {
-        try {
-            db.insertCandle(symbol, timestamp, open, high, low, close, volume);
-        } catch (Exception e) {
-            System.err.println(LOG_PREFIX + " Failed to insert candle into DB: " + e.getMessage());
-        }
+//        try {
+//            db.insertCandle(symbol, timestamp, open, high, low, close, volume);
+//        } catch (Exception e) {
+//            System.err.println(LOG_PREFIX + " Failed to insert candle into DB: " + e.getMessage());
+//        }
     }
 
     static void parseAndStore(String msg, DatabaseManager db) {

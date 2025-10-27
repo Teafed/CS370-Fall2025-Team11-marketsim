@@ -8,19 +8,20 @@ public class BuildDemoAccount {
     public static Account buildDemoAccount() {
         TradeItem[] initialSymbols = {
                 new TradeItem("Apple", "AAPL"),
-                new TradeItem("MSFT", "Microsoft"),
-                new TradeItem("GOOGL","Alphabet"),
-                new TradeItem("NVDA", "NVIDIA"),
-                new TradeItem("AMZN", "Amazon"),
-                new TradeItem("META", "Meta Platforms"),
-                new TradeItem("TSLA", "Tesla"),
-                new TradeItem("AVGO", "Broadcom"),
-                new TradeItem("TSM", "Taiwan Semiconductor Manufacturing Company"),
-                new TradeItem("BRK.B", "Berkshire Hathaway")
+                new TradeItem("Microsoft", "MSFT"),
+                new TradeItem("Alphabet", "GOOGL"),
+                new TradeItem("NVIDIA", "NVDA"),
+                new TradeItem("Amazon", "AMZN"),
+                new TradeItem("Meta Platforms", "META"),
+                new TradeItem("Tesla", "TSLA"),
+                new TradeItem("Broadcom", "AVGO"),
+                new TradeItem("Taiwan Semiconductor Manufacturing Company", "TSM"),
+                new TradeItem("Berkshire Hathaway", "BRK.B")
         };
 
         Account account = new Account("Demo Account");
         account.depositFunds(42069.0f);
+        account.setWatchlist(initialSymbols);
         System.out.printf("[BuildDemoAccount]: Created \"" + account.getName() + "\" with balance $%.2f%n", account.getAvailableBalance());
         return account;
     }

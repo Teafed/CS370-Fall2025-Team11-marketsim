@@ -2,6 +2,7 @@
 
 package com.gui;
 
+import com.etl.HistoricalService;
 import com.market.DatabaseManager;
 
 import java.awt.geom.Path2D;
@@ -10,6 +11,7 @@ import java.sql.ResultSet;
 import javax.swing.*;
 import java.awt.*;
 import java.text.*;
+import java.time.*;
 import java.util.Map;
 import java.util.TreeMap;
 
@@ -86,9 +88,43 @@ public class ChartPanel extends ContentPanel {
      * @param maxPoints cap plotted points to keep the line smooth (e.g. 200)
      */
     public void openChart(DatabaseManager db, String symbol, long startMs, long endMs, int maxPoints) {
+        HistoricalService.Timespan timespan = HistoricalService.Timespan.DAY;
+        openChart(db, symbol, 1, timespan, startMs, endMs, maxPoints);
+//        this.dbRef = db;
+//        this.symbol = symbol;
+//        canvas.loadFromDb(db, symbol, startMs, endMs, maxPoints);
+    }
+
+    // ✅ new overload that includes timeframe
+    public void openChart(DatabaseManager db,
+                          String symbol,
+                          int multiplier,
+                          HistoricalService.Timespan timespan,
+                          long startMs, long endMs, int maxPoints) {
         this.dbRef = db;
         this.symbol = symbol;
-        canvas.loadFromDb(db, symbol, startMs, endMs, maxPoints);
+
+        // request backfill for the requested timeframe, then load from DB and paint
+        new javax.swing.SwingWorker<Integer, Void>() {
+            @Override protected Integer doInBackground() throws Exception {
+                try {
+                    HistoricalService svc = new HistoricalService(dbRef);
+
+                    LocalDate from = Instant.ofEpochMilli(startMs).atZone(ZoneOffset.UTC).toLocalDate();
+                    LocalDate to   = Instant.ofEpochMilli(endMs).atZone(ZoneOffset.UTC).toLocalDate();
+
+                    HistoricalService.Range range = new HistoricalService.Range(timespan, multiplier, from, to);
+                    return svc.backfillRange(symbol, range);
+                } catch (Exception e) {
+                    System.err.println("[ChartPanel] Backfill failed: " + e.getMessage());
+                    return 0;
+                }
+            }
+
+            @Override protected void done() {
+                canvas.loadFromDb(dbRef, symbol, startMs, endMs, maxPoints);
+            }
+        }.execute();
     }
 
     // ===========
