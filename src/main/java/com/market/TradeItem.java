@@ -1,8 +1,8 @@
 package com.market;
 
-public abstract class TradeItem {
-    private String name;
-    private String symbol;
+public class TradeItem {
+    private final String name;
+    private final String symbol;
     private double price;
     private double changePercent;
     private double change;

@@ -1,5 +1,6 @@
 package com.market;
 
+import com.accountmanager.Account;
 import com.etl.TradeSource;
 
 import java.util.*;
@@ -12,40 +13,33 @@ public class Market implements TradeListener {
     private Map<String, TradeItem> stocks;
     private DatabaseManager dbManager;
     private TradeSource client;
+    private Account account;
     private MarketListener marketListener;
     private boolean ready = false;
     public Market(Map<String, TradeItem> stocks, DatabaseManager dbManager) {}
 
-    private String[] initialSymbols = {
-            "AAPL",     // Apple
-            "MSFT",     // Microsoft
-            "GOOGL",    // Alphabet
-            "NVDA",     // NVIDIA
-            "AMZN",     // Amazon
-            "META",     // Meta Platforms
-            "TSLA",     // Tesla
-            "AVGO",     // Broadcom
-            "TSM",      // Taiwan Semiconductor Manufacturing Company
-            "BRK.B"     // Berkshire Hathaway
-    };
-
-    public Market() throws Exception {
-        stocks =  new LinkedHashMap<>();
+    public Market(TradeSource client, DatabaseManager db, Account account) throws Exception {
+        setClient(client);
+        stocks = new LinkedHashMap<>();
+        setDatabase(db);
+        setAccount(account);
     }
 
     /**
      * This method opens a socket through the etl clients and pulls data for each stock.
      */
-
     public void setClient(TradeSource client) throws Exception {
         this.client = client;
-        this.add(initialSymbols);
         client.setTradeListener(this);
         this.ready = true;
     }
 
     public void setDatabase(DatabaseManager dbManager) {
         this.dbManager = dbManager;
+    }
+
+    private void setAccount(Account account) {
+        this.account = account;
     }
 
     public boolean isReady() {

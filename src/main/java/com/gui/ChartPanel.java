@@ -21,6 +21,7 @@ public class ChartPanel extends ContentPanel {
     private final TimeframeBar timeframeBar;
     private final OrderPanel orderPanel;
 
+    /* called once in MainWindow; loads first symbol on watchlist */
     public ChartPanel() {
         super();
         this.symbol = null;
