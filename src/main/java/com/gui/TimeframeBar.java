@@ -28,16 +28,18 @@ public class TimeframeBar extends ContentPanel {
         setOpaque(false);
         setBorder(BorderFactory.createEmptyBorder(2, 0, 2, 0));
 
-        group.add(btn1D); group.add(btn1W); group.add(btn1M); group.add(btn3M);
+        // group.add(btn1D);
+        group.add(btn1W); group.add(btn1M); group.add(btn3M);
         group.add(btn6M); group.add(btn1Y); group.add(btnYTD);
 
-        add(btn1D); add(btn1W); add(btn1M); add(btn3M);
+        // add(btn1D);
+        add(btn1W); add(btn1M); add(btn3M);
         add(btn6M); add(btn1Y); add(btnYTD);
 
         btn1W.setSelected(true); // default to week
 
         ActionListener handler = e -> applySelection();
-        btn1D.addActionListener(handler);
+        // btn1D.addActionListener(handler);
         btn1W.addActionListener(handler);
         btn1M.addActionListener(handler);
         btn3M.addActionListener(handler);
@@ -69,11 +71,15 @@ public class TimeframeBar extends ContentPanel {
         String timespan;
 
         if (btn1D.isSelected()) {
-            startDate = todayUtc.minusDays(1);
-            multiplier = 1; timespan = "minute";
+            startDate = todayUtc.minusDays(7);
+            // free plan doesn't allow candles for less than a day
+//            multiplier = 1; timespan = "minute";
+            multiplier = 1; timespan = "day";
         } else if (btn1W.isSelected()) {
             startDate = todayUtc.minusWeeks(1);
-            multiplier = 1; timespan = "hour";
+            // free plan doesn't allow candles for less than a day
+//            multiplier = 1; timespan = "hour";
+            multiplier = 1; timespan = "day";
         } else if (btn1M.isSelected()) {
             startDate = todayUtc.minusMonths(1);
             multiplier = 1; timespan = "day";

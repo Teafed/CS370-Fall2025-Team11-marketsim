@@ -23,6 +23,8 @@ public class ChartPanel extends ContentPanel {
     private final TimeframeBar timeframeBar;
     private final OrderPanel orderPanel;
 
+    private SwingWorker<?,?> currentWorker; // for backfilling
+
     /* called once in MainWindow; loads first symbol on watchlist */
     public ChartPanel() {
         super();
@@ -111,32 +113,36 @@ public class ChartPanel extends ContentPanel {
         final long startMsClamped = Math.min(startMs, endMsClamped);
 
         // request backfill for the requested timeframe, then load from DB and paint
-        new javax.swing.SwingWorker<Integer, Void>() {
-            @Override protected Integer doInBackground() throws Exception {
-                try {
-                    HistoricalService svc = new HistoricalService(dbRef);
+        startBackfillWorker(() -> {
+            HistoricalService svc = new HistoricalService(dbRef);
 
-                    java.time.LocalDate from = java.time.Instant.ofEpochMilli(startMsClamped)
-                            .atZone(java.time.ZoneOffset.UTC).toLocalDate();
-                    java.time.LocalDate to = java.time.Instant.ofEpochMilli(endMsClamped)
-                            .atZone(java.time.ZoneOffset.UTC).toLocalDate();
+            java.time.LocalDate from = java.time.Instant.ofEpochMilli(startMsClamped)
+                    .atZone(java.time.ZoneOffset.UTC).toLocalDate();
+            java.time.LocalDate to = java.time.Instant.ofEpochMilli(endMsClamped)
+                    .atZone(java.time.ZoneOffset.UTC).toLocalDate();
 
-                    HistoricalService.Range range = new HistoricalService.Range(timespan, multiplier, from, to);
-                    return svc.backfillRange(symbol, range);
-                } catch (Exception e) {
-                    System.err.println("[ChartPanel] Backfill failed: " + e.getMessage());
-                    return 0;
-                }
+            HistoricalService.Range range = new HistoricalService.Range(timespan, multiplier, from, to);
+            return svc.backfillRange(symbol, range);
+        }, () -> {
+            try {
+                canvas.loadFromDb(dbRef, symbol, startMsClamped, endMsClamped, maxPoints);
+            } finally {
+
+                canvas.setLoading(false);
             }
+        });
 
-            @Override protected void done() {
-                try {
-                    canvas.loadFromDb(dbRef, symbol, startMsClamped, endMsClamped, maxPoints);
-                } finally {
-                    canvas.setLoading(false);
-                }
-            }
-        }.execute();
+    }
+
+    // only one worker fetches historical data
+    private void startBackfillWorker(java.util.concurrent.Callable<Integer> task,
+                                     Runnable onDone) {
+        if (currentWorker != null && !currentWorker.isDone()) currentWorker.cancel(true);
+        currentWorker = new SwingWorker<Integer, Void>() {
+            @Override protected Integer doInBackground() throws Exception { return task.call(); }
+            @Override protected void done() { onDone.run(); }
+        };
+        currentWorker.execute();
     }
 
     // ===========

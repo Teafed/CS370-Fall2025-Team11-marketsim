@@ -6,15 +6,15 @@ import java.sql.SQLException;
 import com.google.gson.JsonParser;
 import java.time.LocalDate;
 import io.github.cdimascio.dotenv.Dotenv;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Semaphore;
 import java.net.http.*;
 import java.time.*;
 
-public class HistoricalService {
-    private static final Logger log = LoggerFactory.getLogger(HistoricalService.class);
+import static java.lang.Long.parseLong;
 
+public class HistoricalService {
     // desired range for
     public static class Range {
         public int multiplier;
@@ -59,6 +59,15 @@ public class HistoricalService {
     private final HttpClient http;
     private final String apiKey;
     private final String baseUrl;
+
+    // ensure only one caller can backfill
+    private static final ConcurrentHashMap<String, Object> KEY_LOCKS = new ConcurrentHashMap<>();
+    private static final ConcurrentHashMap<String, Boolean> IN_FLIGHT = new ConcurrentHashMap<>();
+    private static String key(String s, Range r){ return s+"|"+r.multiplier+"|"+r.timespan.token; }
+
+    // rate limiter - for acquiring tokens
+    private static final Semaphore TOKENS = new Semaphore(1);
+    private static long last = System.nanoTime();
 
     public HistoricalService(DatabaseManager db) {
         this(db, HttpClient.newHttpClient(), System.getenv("POLYGON_API_KEY"),
@@ -135,6 +144,7 @@ public class HistoricalService {
 
         return hole;
     }
+
     /* format url string for candles */
     private String buildCandlesUrl(String symbol, int multiplier, Timespan timespan,
                                    LocalDate from, LocalDate to) {
@@ -144,15 +154,28 @@ public class HistoricalService {
         );
     }
 
+    public int backfillRange(String symbol, Range requested) throws Exception {
+        String k = key(symbol, requested);
+        Object lock = KEY_LOCKS.computeIfAbsent(k, s -> new Object());
+        synchronized (lock) {
+            if (Boolean.TRUE.equals(IN_FLIGHT.putIfAbsent(k, true))) return 0;
+            try {
+                return doBackfillRange(symbol, requested); // extract existing logic into this
+            } finally { IN_FLIGHT.remove(k); }
+        }
+    }
+
     /**
      * pulls range in chunks, parses polygon json, and batch-inserts
      * @param symbol the symbol to fetch
      * @param requested requested range (ensured valid)
      * @throws Exception throws if status code != 200
      */
-    public int backfillRange(String symbol, Range requested) throws Exception {
+    public int doBackfillRange(String symbol, Range requested) throws Exception {
         final int MAX_PASSES = 6;  // enough to cover: forward, backward, and multiple holes
         int totalInsertedAll = 0;
+
+        Range prevRange = null;
 
         for (int pass = 1; pass <= MAX_PASSES; pass++) {
             Range range = ensureRange(symbol, requested);
@@ -161,6 +184,16 @@ public class HistoricalService {
                         symbol, requested.multiplier, requested.timespan, (pass - 1), totalInsertedAll);
                 break;
             }
+
+            // if ensureRange keeps returning the same span but we didn't insert anything last time, stop
+            if (prevRange != null
+                    && prevRange.from.equals(range.from)
+                    && prevRange.to.equals(range.to)) {
+                System.out.printf("[HistoricalService] Same range returned twice; stopping. %s %d/%s %s→%s%n",
+                        symbol, range.multiplier, range.timespan, range.from, range.to);
+                break;
+            }
+            prevRange = range;
 
             final int maxChunkDays = switch (range.timespan) {
                 case DAY    -> 30;
@@ -178,28 +211,35 @@ public class HistoricalService {
                 LocalDate chunkEnd = cursor.plusDays(maxChunkDays - 1);
 
                 LocalDate reqStart = nextTradingDay(cursor);
-                LocalDate reqEnd   = prevTradingDay(chunkEnd);
+                LocalDate reqEnd = prevTradingDay(chunkEnd);
 
                 if (reqEnd.isBefore(reqStart)) {
                     cursor = chunkEnd.plusDays(1);
                     continue;
                 }
 
-                String url = buildCandlesUrl(symbol, range.multiplier, range.timespan, cursor, chunkEnd);
+                String url = buildCandlesUrl(symbol, range.multiplier, range.timespan, reqStart, reqEnd);
 
-                int attempts = 0;
-                while (true) {
-                    attempts++;
-                    var req = java.net.http.HttpRequest.newBuilder(java.net.URI.create(url)).GET().build();
-                    var resp = http.send(req, java.net.http.HttpResponse.BodyHandlers.ofString());
+                int attempts;
+                for (attempts = 1; ; attempts++) {
+                    var req = HttpRequest.newBuilder(java.net.URI.create(url)).GET().build();
+
+                    // request only when you have a token (for rate limit, ~5/min)
+                    acquireToken();
+
+                    var resp = http.send(req, HttpResponse.BodyHandlers.ofString());
                     int sc = resp.statusCode();
 
                     if (sc == 429) {
-                        System.out.println("[HistoricalService] 429 rate limit; backing off for a moment...");
-                        Thread.sleep(15000L * attempts); // light backoff
+                        long base = parseLong(resp.headers().firstValue("Retry-After").orElse("5"), 5) * 1000L;
+                        long sleepMs = (long)(base * Math.pow(1.8, attempts-1) + (Math.random()*250));
+                        System.out.printf("[HistoricalService] 429 rate limit for %s %s→%s; sleeping %dms (attempt %d)%n",
+                                symbol, reqStart, reqEnd, sleepMs, attempts);
+                        Thread.sleep(sleepMs);
                         if (attempts < 3) continue; // retry a couple of times <3
+                        Thread.sleep(sleepMs); // cool-off before next chunk
                         System.out.println("[HistoricalService] giving up on this chunk due to 429");
-                        break; // break the retry loop; advance to next chunk (hole will be found later)
+                        break;
                     }
                     if (sc != 200) {
                         throw new RuntimeException("[HistoricalService] " + sc + " " + resp.body());
@@ -211,7 +251,7 @@ public class HistoricalService {
                         String err = root.has("error") ? root.get("error").getAsString() : "(none)";
                         System.out.printf("[HistoricalService] status=%s error=%s for %s %s→%s%n",
                                 status, err, symbol, cursor, chunkEnd);
-                        // DELAYED/empty: just skip this chunk; if rows exist below, we still insert them
+                        // just skip this chunk and continue; we still parse any results if present
                     }
 
                     var rows = new java.util.ArrayList<DatabaseManager.CandleData>();
@@ -236,18 +276,38 @@ public class HistoricalService {
                                 rows.size(), symbol, cursor, chunkEnd, totalInsertedThisPass, totalInsertedAll);
                     } else {
                         System.out.printf("[HistoricalService] No rows for %s %s→%s%n", symbol, cursor, chunkEnd);
-                        Thread.sleep(100);
                     }
-                    break; // exit retry loop on 200 (whatever the status text)
+                    break; // success, exit retry loop
                 }
 
-                // be nicer to the API
+                // be nicer to the API between chunks
                 try { Thread.sleep(400); } catch (InterruptedException ignore) {}
 
-                cursor = chunkEnd.plusDays(1);
+                cursor = reqEnd.plusDays(1);
+            }
+
+            // if this pass did nothing, there's probably nothing left or we’re rate-limited
+            if (totalInsertedThisPass == 0) {
+                System.out.printf("[HistoricalService] Pass %d inserted 0 rows; stopping early.%n", pass);
+                break;
             }
         }
+        System.out.println("[HistoricalService] Done.");
         return totalInsertedAll;
+    }
+
+    private static void acquireToken() throws InterruptedException {
+        // Refill 1 token every 12s
+        while (true) {
+            long now = System.nanoTime();
+            long elapsedMs = java.util.concurrent.TimeUnit.NANOSECONDS.toMillis(now - last);
+            if (elapsedMs >= 12000 && TOKENS.availablePermits() == 0) {
+                TOKENS.release();
+                last = now;
+            }
+            if (TOKENS.tryAcquire()) return;
+            Thread.sleep(100);
+        }
     }
 
     /** Count trading days (Mon–Fri) strictly between a and b, assuming a <= b. */
