@@ -69,30 +69,38 @@ public class TimeframeBar extends ContentPanel {
         LocalDate startDate;
         int multiplier;
         String timespan;
+        boolean log = true;
 
         if (btn1D.isSelected()) {
+            if (log) System.out.println("[TimeframeBar] huh??????");
             startDate = todayUtc.minusDays(7);
             // free plan doesn't allow candles for less than a day
 //            multiplier = 1; timespan = "minute";
             multiplier = 1; timespan = "day";
         } else if (btn1W.isSelected()) {
+            if (log) System.out.println("[TimeframeBar] 1W Selected");
             startDate = todayUtc.minusWeeks(1);
             // free plan doesn't allow candles for less than a day
 //            multiplier = 1; timespan = "hour";
             multiplier = 1; timespan = "day";
         } else if (btn1M.isSelected()) {
+            if (log) System.out.println("[TimeframeBar] 1M Selected");
             startDate = todayUtc.minusMonths(1);
             multiplier = 1; timespan = "day";
         } else if (btn3M.isSelected()) {
+            if (log) System.out.println("[TimeframeBar] 3M Selected");
             startDate = todayUtc.minusMonths(3);
             multiplier = 1; timespan = "day";
         } else if (btn6M.isSelected()) {
+            if (log) System.out.println("[TimeframeBar] 6M Selected");
             startDate = todayUtc.minusMonths(6);
             multiplier = 1; timespan = "day";
         } else if (btn1Y.isSelected()) {
+            if (log) System.out.println("[TimeframeBar] 1Y Selected");
             startDate = todayUtc.minusYears(1);
             multiplier = 1; timespan = "day";
         } else { // YTD
+            if (log) System.out.println("[TimeframeBar] YTD Selected");
             startDate = LocalDate.of(todayUtc.getYear(), 1, 1);
             multiplier = 1; timespan = "day";
         }

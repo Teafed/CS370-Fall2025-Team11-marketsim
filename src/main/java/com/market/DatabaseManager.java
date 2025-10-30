@@ -1,6 +1,8 @@
 package com.market;
 
 import java.sql.*;
+import java.time.LocalDate;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -193,6 +195,20 @@ public class DatabaseManager implements AutoCloseable {
             }
         }
         return out;
+    }
+
+    public boolean hasDaily(String symbol, LocalDate d) throws SQLException {
+        long t = d.atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli();
+        String sql = """
+        SELECT 1 FROM prices
+        WHERE symbol=? AND timespan='day' AND multiplier=1 AND timestamp=?
+        LIMIT 1
+    """;
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, symbol);
+            ps.setLong(2, t);
+            try (ResultSet rs = ps.executeQuery()) { return rs.next(); }
+        }
     }
 
     /* old voision */

@@ -86,7 +86,7 @@ public class HistoricalService {
         this.apiKey = k;
     }
 
-    Range ensureRange(String symbol, Range requested) throws SQLException {
+    public Range ensureRange(String symbol, Range requested) throws SQLException {
         LocalDate todayUtc = java.time.Instant.ofEpochMilli(System.currentTimeMillis())
                 .atZone(java.time.ZoneOffset.UTC).toLocalDate();
 
