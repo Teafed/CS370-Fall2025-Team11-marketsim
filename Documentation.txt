@@ -1,0 +1,5 @@
+-- October 30 2025 -- 
+Group members met to discuss Lab Project 10, identifying and creating objects, classes, and relationships for our level 3 package diagram.
+
+Order.java was created, identifying key information regarding trades; Including stock, price, execution time, sharesbought, ordercost, and userselect. 
+*Note that Order is different from Trader. Trader is responsible for computational processes while Order is handled and instanstiated by Orderspanel.
