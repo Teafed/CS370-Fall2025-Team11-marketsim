@@ -4,9 +4,9 @@ import com.market.DatabaseManager;
 
 import java.sql.SQLException;
 import com.google.gson.JsonParser;
-import java.time.LocalDate;
 import io.github.cdimascio.dotenv.Dotenv;
 
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Semaphore;
 import java.net.http.*;
@@ -28,22 +28,6 @@ public class HistoricalService {
             this.from = from;
             this.to = to;
         }
-        /* might be useful idk
-        public Range lastSpans(Timespan timespan, int multiplier, int spansBack) {
-            if (spansBack < 1) spansBack = 1;
-            LocalDate todayUtc = java.time.Instant.ofEpochMilli(System.currentTimeMillis())
-                    .atZone(java.time.ZoneOffset.UTC).toLocalDate();
-            int spanMinutes = switch(timespan) {
-                case MINUTE -> 1;
-                case HOUR   -> 60;
-                case DAY    -> 1440;
-            };
-            long totalMinutes = (long) spansBack * (long) multiplier * (long) spanMinutes;
-            int backDays = (int) ((totalMinutes + 1440 - 1) / 1440);
-            LocalDate from = todayUtc.minusDays(backDays);
-            return new Range(timespan, multiplier, from, todayUtc);
-        }
-         */
     }
 
     public enum Timespan {
@@ -87,30 +71,16 @@ public class HistoricalService {
     }
 
     public Range ensureRange(String symbol, Range requested) throws SQLException {
-        LocalDate todayUtc = java.time.Instant.ofEpochMilli(System.currentTimeMillis())
-                .atZone(java.time.ZoneOffset.UTC).toLocalDate();
+        LocalDate todayUtc = Instant.ofEpochMilli(System.currentTimeMillis())
+                .atZone(ZoneOffset.UTC).toLocalDate();
 
         LocalDate reqTo = (requested.to == null || requested.to.isAfter(todayUtc)) ? todayUtc : requested.to;
         LocalDate reqFrom = (requested.from == null) ? reqTo : requested.from;
 
-        if (requested.timespan == Timespan.DAY) {
-            reqTo = reqTo.minusDays(1);
-            // nudge weekends to previous friday
-            if (reqTo.getDayOfWeek() == java.time.DayOfWeek.SATURDAY) reqTo = reqTo.minusDays(1);
-            if (reqTo.getDayOfWeek() == java.time.DayOfWeek.SUNDAY)   reqTo = reqTo.minusDays(2);
-        } else {
-            // HOUR/MINUTE: clamp "to" to the previous trading day so we don't request weekends
-            reqTo = prevTradingDay(reqTo);
-            // And bump "from" forward if it starts on a weekend
-            reqFrom = nextTradingDay(reqFrom);
-            // Safety: if the range collapses (e.g., from==to and it's still weekend), expand a bit
-            if (reqFrom.isAfter(reqTo)) {
-                // heuristics: for 1W hour-bars it's reasonable to pull the last 5 trading days
-                reqTo = prevTradingDay(todayUtc);
-                reqFrom = reqTo.minusDays(7);
-                reqFrom = nextTradingDay(reqFrom);
-            }
-        }
+        requested.timespan = Timespan.DAY;
+
+        // is this good?
+        reqTo = prevTradingDay(reqTo.minusDays(1));
 
         if (reqTo.isBefore(reqFrom)) return null;
 
@@ -118,29 +88,40 @@ public class HistoricalService {
         long earliestMs = db.getEarliestTimestamp(symbol, requested.multiplier, requested.timespan.token);
 
         if (latestMs == 0L || earliestMs == 0L) {
-            // no data yet for this symbol/timeframe: fetch the whole requested window
+            System.out.printf("[HS.ensureRange] No data for %s %d/%s; fetching %s - %s%n",
+                    symbol, requested.multiplier, requested.timespan, reqFrom, reqTo);
             return new Range(requested.timespan, requested.multiplier, reqFrom, reqTo);
         }
 
-        LocalDate haveLatest = java.time.Instant.ofEpochMilli(latestMs).atZone(java.time.ZoneOffset.UTC).toLocalDate();
-        LocalDate haveEarliest = java.time.Instant.ofEpochMilli(earliestMs).atZone(java.time.ZoneOffset.UTC).toLocalDate();
+        LocalDate haveLatest = Instant.ofEpochMilli(latestMs).atZone(ZoneOffset.UTC).toLocalDate();
+        LocalDate haveEarliest = Instant.ofEpochMilli(earliestMs).atZone(ZoneOffset.UTC).toLocalDate();
 
         // forward fill
         LocalDate forwardFrom = haveLatest.plusDays(1);
         if (!forwardFrom.isAfter(reqTo)) {
             LocalDate from = (reqFrom.isAfter(forwardFrom)) ? reqFrom : forwardFrom;
-            if (!reqTo.isBefore(from)) return new Range(requested.timespan, requested.multiplier, from, reqTo);
+            if (!reqTo.isBefore(from)) {
+                System.out.printf("[HS.ensureRange] Forward fill %s %d/%s; fetching %s - %s%n",
+                        symbol, requested.multiplier, requested.timespan, from, reqTo);
+                return new Range(requested.timespan, requested.multiplier, from, reqTo);
+            }
         }
 
         // backfill (if there's older data missing)
         LocalDate backfillTo = haveEarliest.minusDays(1);
         if (!reqFrom.isAfter(backfillTo)) {
             LocalDate to = (reqTo.isBefore(backfillTo)) ? reqTo : backfillTo;
-            if (!to.isBefore(reqFrom)) return new Range(requested.timespan, requested.multiplier, reqFrom, to);
+            if (!to.isBefore(reqFrom)) {
+                System.out.printf("[HS.ensureRange] Backfill %s %d/%s; fetching %s - %s%n",
+                        symbol, requested.multiplier, requested.timespan, reqFrom, to);
+                return new Range(requested.timespan, requested.multiplier, reqFrom, to);
+            }
         }
 
-        // if there's a hole (may be null if none found)
+        // if there's a hole (null if none found)
         Range hole = findInteriorHole(symbol, new Range(requested.timespan, requested.multiplier, reqFrom, reqTo));
+        if (hole != null) System.out.printf("[HS.ensureRange] Hole fill %s %d/%s; fetching %s - %s%n",
+                symbol, requested.multiplier, requested.timespan, hole.from, hole.to);
 
         return hole;
     }
@@ -172,16 +153,30 @@ public class HistoricalService {
      * @throws Exception throws if status code != 200
      */
     public int doBackfillRange(String symbol, Range requested) throws Exception {
-        final int MAX_PASSES = 6;  // enough to cover: forward, backward, and multiple holes
+        final int MAX_PASSES = 6; // enough to cover: forward, backward, and multiple holes
         int totalInsertedAll = 0;
 
         Range prevRange = null;
 
         for (int pass = 1; pass <= MAX_PASSES; pass++) {
-            Range range = ensureRange(symbol, requested);
+            Range range;
+            if (pass == 1) {
+                range = requested;
+            } else {
+                range = ensureRange(symbol, requested);
+            }
+
+            if (range == null) {
+                System.out.printf("[HS.doBackfillRange] ensureRange returned NULL for %s %d/%s (req=%s..%s)%n",
+                        symbol, requested.multiplier, requested.timespan, requested.from, requested.to);
+            } else {
+                System.out.printf("[HS.doBackfillRange] ensureRange returned %s..%s (timespan=%s,%d)%n",
+                        range.from, range.to, range.timespan, range.multiplier);
+            }
+
             if (range == null || range.to.isBefore(range.from)) {
-                System.out.printf("[HistoricalService] Covered %s %d/%s after %d pass(es), totalInserted=%d%n",
-                        symbol, requested.multiplier, requested.timespan, (pass - 1), totalInsertedAll);
+                System.out.printf("[HistoricalService] Covered %s %d/%s after %d pass%s, totalInserted=%d%n",
+                        symbol, requested.multiplier, requested.timespan, (pass - 1), (pass - 1) == 1 ? "" : "es", totalInsertedAll);
                 break;
             }
 
@@ -189,7 +184,7 @@ public class HistoricalService {
             if (prevRange != null
                     && prevRange.from.equals(range.from)
                     && prevRange.to.equals(range.to)) {
-                System.out.printf("[HistoricalService] Same range returned twice; stopping. %s %d/%s %s→%s%n",
+                System.out.printf("[HistoricalService] Same range returned twice; stopping. %s %d/%s %s - %s%n",
                         symbol, range.multiplier, range.timespan, range.from, range.to);
                 break;
             }
@@ -201,7 +196,7 @@ public class HistoricalService {
                 case MINUTE -> 7;
             };
 
-            System.out.printf("[HistoricalService] Pass %d: fetching %s %d/%s %s→%s%n",
+            System.out.printf("[HistoricalService] Pass %d: fetching %s %d/%s %s - %s%n",
                     pass, symbol, range.multiplier, range.timespan, range.from, range.to);
 
             int totalInsertedThisPass = 0;
@@ -214,6 +209,8 @@ public class HistoricalService {
                 LocalDate reqEnd = prevTradingDay(chunkEnd);
 
                 if (reqEnd.isBefore(reqStart)) {
+                    System.out.printf("[HS.chunk] skip empty window (cursor=%s chunkEnd=%s reqStart=%s reqEnd=%s)%n",
+                            cursor, chunkEnd, reqStart, reqEnd);
                     cursor = chunkEnd.plusDays(1);
                     continue;
                 }
@@ -233,7 +230,7 @@ public class HistoricalService {
                     if (sc == 429) {
                         long base = parseLong(resp.headers().firstValue("Retry-After").orElse("5"), 5) * 1000L;
                         long sleepMs = (long)(base * Math.pow(1.8, attempts-1) + (Math.random()*250));
-                        System.out.printf("[HistoricalService] 429 rate limit for %s %s→%s; sleeping %dms (attempt %d)%n",
+                        System.out.printf("[HistoricalService] 429 rate limit for %s %s - %s; sleeping %dms (attempt %d)%n",
                                 symbol, reqStart, reqEnd, sleepMs, attempts);
                         Thread.sleep(sleepMs);
                         if (attempts < 3) continue; // retry a couple of times <3
@@ -249,7 +246,7 @@ public class HistoricalService {
                     String status = root.has("status") ? root.get("status").getAsString() : "(missing)";
                     if (!"OK".equals(status)) {
                         String err = root.has("error") ? root.get("error").getAsString() : "(none)";
-                        System.out.printf("[HistoricalService] status=%s error=%s for %s %s→%s%n",
+                        System.out.printf("[HistoricalService] status=%s error=%s for %s %s - %s%n",
                                 status, err, symbol, cursor, chunkEnd);
                         // just skip this chunk and continue; we still parse any results if present
                     }
@@ -272,10 +269,10 @@ public class HistoricalService {
                         db.insertCandlesBatch(symbol, range.multiplier, range.timespan.token, rows);
                         totalInsertedThisPass += rows.size();
                         totalInsertedAll += rows.size();
-                        System.out.printf("[HistoricalService] Inserted %d rows for %s %s→%s (passTotal=%d, all=%d)%n",
+                        System.out.printf("[HistoricalService] Inserted %d rows for %s %s - %s (passTotal=%d, all=%d)%n",
                                 rows.size(), symbol, cursor, chunkEnd, totalInsertedThisPass, totalInsertedAll);
                     } else {
-                        System.out.printf("[HistoricalService] No rows for %s %s→%s%n", symbol, cursor, chunkEnd);
+                        System.out.printf("[HistoricalService] No rows for %s %s - %s%n", symbol, cursor, chunkEnd);
                     }
                     break; // success, exit retry loop
                 }
@@ -288,7 +285,7 @@ public class HistoricalService {
 
             // if this pass did nothing, there's probably nothing left or we’re rate-limited
             if (totalInsertedThisPass == 0) {
-                System.out.printf("[HistoricalService] Pass %d inserted 0 rows; stopping early.%n", pass);
+                System.out.printf("[HistoricalService] Pass %d inserted 0 rows; stopping early%n", pass);
                 break;
             }
         }
@@ -310,30 +307,17 @@ public class HistoricalService {
         }
     }
 
-    /** Count trading days (Mon–Fri) strictly between a and b, assuming a <= b. */
-    private static int businessDaysBetween(LocalDate a, LocalDate b) {
-        int days = 0;
-        LocalDate d = a.plusDays(1);
-        while (!d.isAfter(b.minusDays(1))) {
-            if (!isWeekend(d)) days++;
-            d = d.plusDays(1);
-        }
-        return Math.max(0, days);
-    }
-
-    /** If there is a real trading-day hole inside [from..to], return that subrange (inclusive). Else null. */
+    /* search for subrange in case there's an interior hole */
     private Range findInteriorHole(String symbol, Range req) throws SQLException {
         long startMs = req.from.atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli();
-        long endMs   = req.to.atTime(23,59,59).toInstant(ZoneOffset.UTC).toEpochMilli();
+        long endMs = req.to.atTime(23,59,59).toInstant(ZoneOffset.UTC).toEpochMilli();
 
         var ts = db.listTimestamps(symbol, req.multiplier, req.timespan.token, startMs, endMs);
         if (ts.isEmpty()) {
-            // nothing in window — just fetch it all
+            // nothing in window, just fetch everything
             return new Range(req.timespan, req.multiplier, req.from, req.to);
         }
 
-        // We’ll detect holes using dates (UTC) at the day granularity,
-        // even for HOUR/MINUTE, which is fine: we backfill full-day spans.
         LocalDate prevDate = Instant.ofEpochMilli(ts.get(0)).atZone(ZoneOffset.UTC).toLocalDate();
 
         for (int i = 1; i < ts.size(); i++) {
@@ -341,17 +325,15 @@ public class HistoricalService {
 
             int missingTradingDays = businessDaysBetween(prevDate, currDate);
             if (missingTradingDays >= 1) {
-                // Bound the hole to trading days only
-                LocalDate holeFrom = nextTradingDay(prevDate);
-                LocalDate holeTo   = prevTradingDay(currDate);
+                LocalDate holeStart = nextTradingDay(prevDate);
+                LocalDate holeEnd = prevTradingDay(currDate);
 
-                // Constrain to the requested window
-                if (holeFrom.isBefore(req.from)) holeFrom = req.from;
-                if (holeTo.isAfter(req.to))       holeTo   = req.to;
+                if (holeStart.isBefore(req.from)) holeStart = req.from;
+                if (holeEnd.isAfter(req.to)) holeEnd = req.to;
 
-                // Skip if it collapses (e.g., weekend-only)
-                if (!holeTo.isBefore(holeFrom)) {
-                    return new Range(req.timespan, req.multiplier, holeFrom, holeTo);
+                if (!holeEnd.isBefore(holeStart)) {
+                    System.out.printf("[HS.findInteriorHole] holeFrom = %s, holeTo = %s%n", holeStart, holeEnd);
+                    return new Range(req.timespan, req.multiplier, holeStart, holeEnd);
                 }
             }
             prevDate = currDate;
@@ -359,17 +341,86 @@ public class HistoricalService {
         return null;
     }
 
+    /* count trading days (Mon–Fri) strictly between a and b, assuming a <= b. */
+    private static int businessDaysBetween(LocalDate a, LocalDate b) {
+        int days = 0;
+        LocalDate d = a.plusDays(1);
+        while (!d.isAfter(b.minusDays(1))) {
+            if (isTradingDay(d)) days++;
+            d = d.plusDays(1);
+        }
+        return Math.max(0, days);
+    }
+
+    private static boolean isTradingDay(LocalDate d) {
+        return !isWeekend(d) && !isHoliday(d);
+    }
     private static boolean isWeekend(LocalDate d) {
         var w = d.getDayOfWeek();
-        return w == java.time.DayOfWeek.SATURDAY || w == java.time.DayOfWeek.SUNDAY;
+        return w == DayOfWeek.SATURDAY || w == DayOfWeek.SUNDAY;
     }
     private static LocalDate prevTradingDay(LocalDate d) {
-        while (isWeekend(d)) d = d.minusDays(1);
+        while (!isTradingDay(d)) d = d.minusDays(1);
         return d;
     }
     private static LocalDate nextTradingDay(LocalDate d) {
-        while (isWeekend(d)) d = d.plusDays(1);
+        while (!isTradingDay(d)) d = d.plusDays(1);
         return d;
     }
+    private static boolean isHoliday(LocalDate d) {
+        // fixed-date holidays
+        final Set<MonthDay> FIXED_HOLIDAYS = Set.of(
+                MonthDay.of(1, 1),   // New Year's Day
+                MonthDay.of(1, 9),   // Day of Mourning for Jimmy Carter (2025)
+                MonthDay.of(6, 19),  // Juneteenth
+                MonthDay.of(7, 4),   // Independence Day
+                MonthDay.of(12, 25)  // Christmas
+        );
+        for (MonthDay md : FIXED_HOLIDAYS) {
+            LocalDate actual = md.atYear(d.getYear());
+            LocalDate observed = switch (actual.getDayOfWeek()) {
+                case SATURDAY -> actual.minusDays(1);
+                case SUNDAY -> actual.plusDays(1);
+                default -> actual;
+            };
+            if (d.equals(observed)) return true;
+        }
 
+        // moving holidays
+        int y = d.getYear();
+        if (d.equals(nthWeekdayOfMonth(y, Month.JANUARY, DayOfWeek.MONDAY, 3))) return true;   // MLK Day
+        if (d.equals(nthWeekdayOfMonth(y, Month.FEBRUARY, DayOfWeek.MONDAY, 3))) return true;  // Presidents’ Day
+        if (d.equals(lastWeekdayOfMonth(y, Month.MAY, DayOfWeek.MONDAY))) return true;         // Memorial Day
+        if (d.equals(nthWeekdayOfMonth(y, Month.SEPTEMBER, DayOfWeek.MONDAY, 1))) return true; // Labor Day
+        if (d.equals(nthWeekdayOfMonth(y, Month.NOVEMBER, DayOfWeek.THURSDAY, 4))) return true;// Thanksgiving
+
+        // Good Friday
+        if (d.equals(easterSunday(y).minusDays(2))) return true;
+
+        return false;
+    }
+    private static LocalDate nthWeekdayOfMonth(int y, Month m, DayOfWeek dow, int n) {
+        LocalDate d = LocalDate.of(y, m, 1);
+        int shift = (dow.getValue() - d.getDayOfWeek().getValue() + 7) % 7;
+        return d.plusDays(shift + (n - 1) * 7L);
+    }
+    private static LocalDate lastWeekdayOfMonth(int y, Month m, DayOfWeek dow) {
+        LocalDate d = LocalDate.of(y, m, m.length(Year.isLeap(y)));
+        int shiftBack = (d.getDayOfWeek().getValue() - dow.getValue() + 7) % 7;
+        return d.minusDays(shiftBack);
+    }
+    private static LocalDate easterSunday(int y) {
+        int a = y % 19;
+        int b = y / 100, c = y % 100;
+        int d = b / 4, e = b % 4;
+        int f = (b + 8) / 25;
+        int g = (b - f + 1) / 3;
+        int h = (19 * a + b - d - g + 15) % 30;
+        int i = c / 4, k = c % 4;
+        int l = (32 + 2 * e + 2 * i - h - k) % 7;
+        int m = (a + 11 * h + 22 * l) / 451;
+        int month = (h + l - 7 * m + 114) / 31;
+        int day = ((h + l - 7 * m + 114) % 31) + 1;
+        return LocalDate.of(y, month, day);
+    }
 }

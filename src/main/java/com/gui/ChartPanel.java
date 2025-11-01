@@ -13,6 +13,7 @@ import java.awt.*;
 import java.text.*;
 import java.time.*;
 import java.util.Map;
+import java.util.TimeZone;
 import java.util.TreeMap;
 
 public class ChartPanel extends ContentPanel {
@@ -117,7 +118,7 @@ public class ChartPanel extends ContentPanel {
         LocalDate from = Instant.ofEpochMilli(startMsClamped).atZone(ZoneOffset.UTC).toLocalDate();
         LocalDate to = Instant.ofEpochMilli(endMsClamped).atZone(ZoneOffset.UTC).toLocalDate();
         HistoricalService.Range requested = new HistoricalService.Range(timespan, multiplier, from, to);
-        System.out.printf("[ChartPanel] Requested %s %d/%s %s→%s%n", symbol, multiplier, timespan, from, to);
+        System.out.printf("[ChartPanel] Requested %s %d/%s %s - %s%n", symbol, multiplier, timespan, from, to);
         // check if it's already covered
         HistoricalService.Range missing = null;
         try {
@@ -279,6 +280,7 @@ public class ChartPanel extends ContentPanel {
             g2.drawString(String.format("%.0f", minPrice), w - in.right + 5, h - in.bottom);
 
             SimpleDateFormat timeFormat = new SimpleDateFormat("yyyy MMM d, HH:mm");
+            timeFormat.setTimeZone(TimeZone.getTimeZone("UTC"));
             String startLabel = timeFormat.format(new Date(minTime));
             String endLabel = timeFormat.format(new Date(maxTime));
             g2.drawString(startLabel, in.left, h - in.bottom + fm.getAscent() + 5);

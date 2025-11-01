@@ -1,8 +1,6 @@
 package com.market;
 
 import java.sql.*;
-import java.time.LocalDate;
-import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -197,20 +195,6 @@ public class DatabaseManager implements AutoCloseable {
         return out;
     }
 
-    public boolean hasDaily(String symbol, LocalDate d) throws SQLException {
-        long t = d.atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli();
-        String sql = """
-        SELECT 1 FROM prices
-        WHERE symbol=? AND timespan='day' AND multiplier=1 AND timestamp=?
-        LIMIT 1
-    """;
-        try (PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setString(1, symbol);
-            ps.setLong(2, t);
-            try (ResultSet rs = ps.executeQuery()) { return rs.next(); }
-        }
-    }
-
     /* old voision */
     public double[] latestAndPrevClose(String symbol) throws SQLException {
         return latestAndPrevClose(symbol, 1, "day");
@@ -262,7 +246,7 @@ public class DatabaseManager implements AutoCloseable {
     }
 
     public void insertCandlesBatch(String symbol, int multiplier, String timespan,
-                                   java.util.List<CandleData> rows) throws SQLException {
+                                   List<CandleData> rows) throws SQLException {
         boolean prev = conn.getAutoCommit();
         conn.setAutoCommit(false);
         String sql = """
@@ -333,7 +317,7 @@ public class DatabaseManager implements AutoCloseable {
         throw new SQLException("Failed to create account: " + accountName);
     }
 
-    public java.util.List<String> loadWatchlistSymbols(long accountId) throws SQLException {
+    public List<String> loadWatchlistSymbols(long accountId) throws SQLException {
         Long watchlistId = null;
         try (PreparedStatement sel = conn.prepareStatement(
                 "SELECT id FROM watchlists WHERE account_id=?")) {
@@ -355,7 +339,7 @@ public class DatabaseManager implements AutoCloseable {
         }
     }
 
-    public void saveWatchlistSymbols(long accountId, String watchlistName, java.util.List<String> symbols) throws SQLException {
+    public void saveWatchlistSymbols(long accountId, String watchlistName, List<String> symbols) throws SQLException {
         boolean prev = conn.getAutoCommit();
         conn.setAutoCommit(false);
         try {
@@ -413,4 +397,3 @@ public class DatabaseManager implements AutoCloseable {
         }
     }
 }
-
