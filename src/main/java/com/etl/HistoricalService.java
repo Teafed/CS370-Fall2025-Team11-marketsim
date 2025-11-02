@@ -30,6 +30,7 @@ public class HistoricalService {
         }
     }
 
+    // not really useful anymore since we're storing everything in the day range
     public enum Timespan {
         MINUTE("minute"),
         HOUR("hour"),
@@ -79,7 +80,6 @@ public class HistoricalService {
 
         requested.timespan = Timespan.DAY;
 
-        // is this good?
         reqTo = prevTradingDay(reqTo.minusDays(1));
 
         if (reqTo.isBefore(reqFrom)) return null;
@@ -96,8 +96,8 @@ public class HistoricalService {
         LocalDate haveLatest = Instant.ofEpochMilli(latestMs).atZone(ZoneOffset.UTC).toLocalDate();
         LocalDate haveEarliest = Instant.ofEpochMilli(earliestMs).atZone(ZoneOffset.UTC).toLocalDate();
 
-        // forward fill
-        LocalDate forwardFrom = haveLatest.plusDays(1);
+        // forward fill (newer data missing)
+        LocalDate forwardFrom = nextTradingDay(haveLatest.plusDays(1));
         if (!forwardFrom.isAfter(reqTo)) {
             LocalDate from = (reqFrom.isAfter(forwardFrom)) ? reqFrom : forwardFrom;
             if (!reqTo.isBefore(from)) {
@@ -107,8 +107,8 @@ public class HistoricalService {
             }
         }
 
-        // backfill (if there's older data missing)
-        LocalDate backfillTo = haveEarliest.minusDays(1);
+        // backfill (older data missing)
+        LocalDate backfillTo = prevTradingDay(haveEarliest.minusDays(1));
         if (!reqFrom.isAfter(backfillTo)) {
             LocalDate to = (reqTo.isBefore(backfillTo)) ? reqTo : backfillTo;
             if (!to.isBefore(reqFrom)) {
@@ -167,15 +167,14 @@ public class HistoricalService {
             }
 
             if (range == null) {
-                System.out.printf("[HS.doBackfillRange] ensureRange returned NULL for %s %d/%s (req=%s..%s)%n",
+                System.out.printf("[HS.backfillRange] ensureRange returned NULL for %s %d/%s (req=%s - %s)%n",
                         symbol, requested.multiplier, requested.timespan, requested.from, requested.to);
             } else {
-                System.out.printf("[HS.doBackfillRange] ensureRange returned %s..%s (timespan=%s,%d)%n",
-                        range.from, range.to, range.timespan, range.multiplier);
+                System.out.printf("[HS.backfillRange] ensureRange returned %s - %s%n", range.from, range.to);
             }
 
             if (range == null || range.to.isBefore(range.from)) {
-                System.out.printf("[HistoricalService] Covered %s %d/%s after %d pass%s, totalInserted=%d%n",
+                System.out.printf("[HS.backfillRange] Covered %s %d/%s after %d pass%s, totalInserted=%d%n",
                         symbol, requested.multiplier, requested.timespan, (pass - 1), (pass - 1) == 1 ? "" : "es", totalInsertedAll);
                 break;
             }
@@ -184,7 +183,7 @@ public class HistoricalService {
             if (prevRange != null
                     && prevRange.from.equals(range.from)
                     && prevRange.to.equals(range.to)) {
-                System.out.printf("[HistoricalService] Same range returned twice; stopping. %s %d/%s %s - %s%n",
+                System.out.printf("[HS.backfillRange] Same range returned twice; stopping. %s %d/%s %s - %s%n",
                         symbol, range.multiplier, range.timespan, range.from, range.to);
                 break;
             }
@@ -196,7 +195,7 @@ public class HistoricalService {
                 case MINUTE -> 7;
             };
 
-            System.out.printf("[HistoricalService] Pass %d: fetching %s %d/%s %s - %s%n",
+            System.out.printf("[HS.backfillRange] Pass %d: fetching %s %d/%s %s - %s%n",
                     pass, symbol, range.multiplier, range.timespan, range.from, range.to);
 
             int totalInsertedThisPass = 0;
@@ -230,25 +229,24 @@ public class HistoricalService {
                     if (sc == 429) {
                         long base = parseLong(resp.headers().firstValue("Retry-After").orElse("5"), 5) * 1000L;
                         long sleepMs = (long)(base * Math.pow(1.8, attempts-1) + (Math.random()*250));
-                        System.out.printf("[HistoricalService] 429 rate limit for %s %s - %s; sleeping %dms (attempt %d)%n",
+                        System.out.printf("[HS.chunk] 429 rate limit for %s %s - %s; sleeping %dms (attempt %d)%n",
                                 symbol, reqStart, reqEnd, sleepMs, attempts);
                         Thread.sleep(sleepMs);
                         if (attempts < 3) continue; // retry a couple of times <3
                         Thread.sleep(sleepMs); // cool-off before next chunk
-                        System.out.println("[HistoricalService] giving up on this chunk due to 429");
+                        System.out.println("[HS.chunk] giving up on this chunk due to 429");
                         break;
                     }
                     if (sc != 200) {
-                        throw new RuntimeException("[HistoricalService] " + sc + " " + resp.body());
+                        throw new RuntimeException("[HS.chunk] " + sc + " " + resp.body());
                     }
 
                     var root = JsonParser.parseString(resp.body()).getAsJsonObject();
                     String status = root.has("status") ? root.get("status").getAsString() : "(missing)";
                     if (!"OK".equals(status)) {
                         String err = root.has("error") ? root.get("error").getAsString() : "(none)";
-                        System.out.printf("[HistoricalService] status=%s error=%s for %s %s - %s%n",
+                        System.out.printf("[HS.chunk] status=%s error=%s for %s %s - %s%n",
                                 status, err, symbol, cursor, chunkEnd);
-                        // just skip this chunk and continue; we still parse any results if present
                     }
 
                     var rows = new java.util.ArrayList<DatabaseManager.CandleData>();
@@ -269,10 +267,10 @@ public class HistoricalService {
                         db.insertCandlesBatch(symbol, range.multiplier, range.timespan.token, rows);
                         totalInsertedThisPass += rows.size();
                         totalInsertedAll += rows.size();
-                        System.out.printf("[HistoricalService] Inserted %d rows for %s %s - %s (passTotal=%d, all=%d)%n",
+                        System.out.printf("[HS.chunk] Inserted %d rows for %s %s - %s (passTotal=%d, all=%d)%n",
                                 rows.size(), symbol, cursor, chunkEnd, totalInsertedThisPass, totalInsertedAll);
                     } else {
-                        System.out.printf("[HistoricalService] No rows for %s %s - %s%n", symbol, cursor, chunkEnd);
+                        System.out.printf("[HS.chunk] No rows for %s %s - %s%n", symbol, cursor, chunkEnd);
                     }
                     break; // success, exit retry loop
                 }
@@ -283,9 +281,9 @@ public class HistoricalService {
                 cursor = reqEnd.plusDays(1);
             }
 
-            // if this pass did nothing, there's probably nothing left or we’re rate-limited
+            // if this pass did nothing, there's probably nothing left (or we’re rate-limited)
             if (totalInsertedThisPass == 0) {
-                System.out.printf("[HistoricalService] Pass %d inserted 0 rows; stopping early%n", pass);
+                System.out.printf("[HS.backfillRange] Pass %d inserted 0 rows; stopping early%n", pass);
                 break;
             }
         }
@@ -294,7 +292,7 @@ public class HistoricalService {
     }
 
     private static void acquireToken() throws InterruptedException {
-        // Refill 1 token every 12s
+        // refill token every 12s (polygon free tier is 5 calls/minute)
         while (true) {
             long now = System.nanoTime();
             long elapsedMs = java.util.concurrent.TimeUnit.NANOSECONDS.toMillis(now - last);
@@ -318,7 +316,7 @@ public class HistoricalService {
             return new Range(req.timespan, req.multiplier, req.from, req.to);
         }
 
-        LocalDate prevDate = Instant.ofEpochMilli(ts.get(0)).atZone(ZoneOffset.UTC).toLocalDate();
+        LocalDate prevDate = Instant.ofEpochMilli(ts.getFirst()).atZone(ZoneOffset.UTC).toLocalDate();
 
         for (int i = 1; i < ts.size(); i++) {
             LocalDate currDate = Instant.ofEpochMilli(ts.get(i)).atZone(ZoneOffset.UTC).toLocalDate();
@@ -332,7 +330,7 @@ public class HistoricalService {
                 if (holeEnd.isAfter(req.to)) holeEnd = req.to;
 
                 if (!holeEnd.isBefore(holeStart)) {
-                    System.out.printf("[HS.findInteriorHole] holeFrom = %s, holeTo = %s%n", holeStart, holeEnd);
+                    // System.out.printf("[HS.findInteriorHole] holeFrom = %s, holeTo = %s%n", holeStart, holeEnd);
                     return new Range(req.timespan, req.multiplier, holeStart, holeEnd);
                 }
             }
