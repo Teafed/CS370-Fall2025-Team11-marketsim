@@ -17,6 +17,7 @@ public class SymbolListPanel extends ContentPanel implements MarketListener {
     private final DatabaseManager db;
     private Account account;
     private AccountSelectionListener accountListener;
+    private String lastNotifiedSymbol = null;
     private AccountBar accountBar;
 
     @Override
@@ -36,7 +37,6 @@ public class SymbolListPanel extends ContentPanel implements MarketListener {
         this.db = db;
         this.symbolListener = new ArrayList<>();
         initializeComponents();
-        //loadSymbolsFromDb();
 
         setupListeners();
     }
@@ -70,28 +70,13 @@ public class SymbolListPanel extends ContentPanel implements MarketListener {
         add(scrollPane, BorderLayout.CENTER);
     }
 
-    /**
-     * load symbols from database
-     */
-    private void loadSymbolsFromDb() {
-        symbolModel.clear();
-        try {
-            for (String sym : db.listSymbols()) {
-                double[] lp = db.latestAndPrevClose(sym); // [last, prev]
-                double last = lp[0], prev = lp[1];
-                double pct = (Double.isNaN(last) || Double.isNaN(prev) || prev == 0.0)
-                        ? 0.0
-                        : (last - prev) / prev * 100.0;
-
-                symbolModel.addElement(new Stock(sym, sym, last, pct));
-            }
-        } catch (Exception ex) {
-            ex.printStackTrace();
-        }
-    }
-
+    @Override
     public void loadSymbols(List<TradeItem> symbols) {
-        symbols.forEach(s -> symbolModel.addElement(s));
+        symbolModel.clear();
+        symbols.forEach(symbolModel::addElement);
+        lastNotifiedSymbol = null;
+        symbolList.revalidate();
+        symbolList.repaint();
     }
 
     public void setAccount(Account account, AccountSelectionListener listener) {
@@ -112,9 +97,13 @@ public class SymbolListPanel extends ContentPanel implements MarketListener {
     private void setupListeners() {
         symbolList.addListSelectionListener(e -> {
             if (!e.getValueIsAdjusting()) { // only fire when selection is final
-                TradeItem selectedSymbol = symbolList.getSelectedValue();
-                if (selectedSymbol != null) {
-                    notifyListeners(selectedSymbol);
+                TradeItem selected = symbolList.getSelectedValue();
+                if (selected != null) {
+                    String sym = selected.getSymbol();
+                    if (!sym.equals(lastNotifiedSymbol)) { // guard against reloading same
+                        lastNotifiedSymbol = sym;
+                        notifyListeners(selected);
+                    }
                 }
             }
         });
@@ -135,12 +124,6 @@ public class SymbolListPanel extends ContentPanel implements MarketListener {
         }
     }
 
-    // utility methods
-    public void refreshSymbols() {
-        //loadSymbolsFromDb();
-        repaint();
-    }
-
     public String getSelectedSymbol() {
         TradeItem selected = symbolList.getSelectedValue();
         return selected != null ? selected.getSymbol() : null;
@@ -148,5 +131,6 @@ public class SymbolListPanel extends ContentPanel implements MarketListener {
 
     public void clearSelection() {
         symbolList.clearSelection();
+        lastNotifiedSymbol = null;
     }
 }

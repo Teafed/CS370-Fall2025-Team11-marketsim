@@ -2,8 +2,7 @@
 
 package com.gui;
 
-import com.market.TradeItem;
-import com.market.DatabaseManager;
+import com.market.*;
 import com.accountmanager.Account;
 
 import javax.swing.*;
@@ -12,10 +11,12 @@ import java.awt.*;
 public class MainWindow extends JFrame
         implements SymbolListPanel.SymbolSelectionListener,
                    SymbolListPanel.AccountSelectionListener {
+    private final DatabaseManager db;
+    private final Account account;
+    private final Market market;
+
     private SymbolListPanel symbolPanel;
     private ChartPanel chartPanel;
-    private AccountPanel accountPanel;
-    private DatabaseManager db;
     private JPanel rightCards;
     private CardLayout cards;
 
@@ -23,42 +24,29 @@ public class MainWindow extends JFrame
     private static final String CARD_CHART = "chart";
     private static final String CARD_ACCOUNT = "account";
     private static final int LEFT_PANEL_WIDTH = 250;
-    private static final int MIN_LEFT_WIDTH = 150;
     private static final int MIN_RIGHT_WIDTH = 300;
-    private static String defaultDbPath() { return "data/marketsim-sample.db"; }
 
-    public MainWindow() {
-        this(defaultDbPath());
+    public MainWindow(DatabaseManager db, Account account, Market market) {
+        this.db = db;
+        this.account = account;
+        this.market = market;
+        System.out.println("Launching Marketsim");
+        createWindow();
     }
 
-    public MainWindow(String dbFile) {
-        System.out.println("Launching Marketsim (" + dbFile + ")");
-        initializeWindow();
-        initDatabase(dbFile);
-        createPanels();
-        setupSplitPane();
-        setupCloseHook();
-
-        setVisible(true);
-    }
-
-    private void initializeWindow() {
+    private void createWindow() {
         setTitle(WINDOW_TITLE);
         fitToScreen(1200, 800); // make sure it doesn't go offscreen
         setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
         setLocationRelativeTo(null); // center on screen
         getContentPane().setBackground(GUIComponents.BG_DARK);
         setLayout(new BorderLayout());
-    }
 
-    private void initDatabase(String dbFile) {
-        try {
-            db = new DatabaseManager(dbFile);
-        } catch (Exception e) {
-            JOptionPane.showMessageDialog(this, "Failed to open database: " + e.getMessage(),
-                    "Database Error", JOptionPane.ERROR_MESSAGE);
-            throw new RuntimeException(e);
-        }
+        createPanels();
+        setupSplitPane();
+        setupCloseHook();
+
+        setVisible(true);
     }
 
     private void fitToScreen(int prefW, int prefH) {
@@ -97,17 +85,15 @@ public class MainWindow extends JFrame
         rightCards.setBackground(GUIComponents.BG_DARK);
         rightCards.add(chartPanel, CARD_CHART);
 
-        Account demo = com.tools.BuildDemoAccount.buildDemoAccount();
-        accountPanel = new AccountPanel(demo);
+        AccountPanel accountPanel = new AccountPanel(account);
         rightCards.add(accountPanel, CARD_ACCOUNT);
 
         symbolPanel = new SymbolListPanel(db);
         symbolPanel.addSymbolSelectionListener(this);
-        symbolPanel.setAccount(demo, this);
+        symbolPanel.setAccount(account, this);
 
         cards.show(rightCards, CARD_CHART);
         rightCards.setMinimumSize(new Dimension(MIN_RIGHT_WIDTH, 0));
-
     }
 
     private void setupCloseHook() {

@@ -1,11 +1,13 @@
 package com.market;
 
-public abstract class TradeItem {
-    private String name;
-    private String symbol;
+public class TradeItem {
+    private final String name;
+    private final String symbol;
     private double price;
     private double changePercent;
     private double change;
+
+    private double prevClose = Double.NaN; // for calculating % change
 
     public TradeItem(String name, String symbol) {
         this.name = name;
@@ -46,11 +48,40 @@ public abstract class TradeItem {
             return false;
         }
         this.price = price;
+        if (prevClose > 0.0) {
+            this.change = price - prevClose;
+            this.changePercent = (change / prevClose) * 100.0;
+        } else {
+            // No baseline yet → leave change values indeterminate
+            this.change = Double.NaN;
+            this.changePercent = Double.NaN;
+        }
         return true;
+    }
+
+    public void setPrevClose(double prevClose) {
+        this.prevClose = prevClose;
+        if (!Double.isNaN(price) && prevClose > 0.0) {
+            this.change = price - prevClose;
+            this.changePercent = (change / prevClose) * 100.0;
+        }
+    }
+
+    public void setChange(double change, double changePercent) {
+        this.change = change;
+        this.changePercent = changePercent;
     }
 
     @Override
     public String toString() {
         return this.getClass().getSimpleName() + "{" + "name=" + name + ", symbol=" + symbol + ", price=" + price + '}';
     }
+
+    @Override public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof TradeItem ti)) return false;
+        return symbol != null && symbol.equalsIgnoreCase(ti.getSymbol());
+    }
+    @Override public int hashCode() { return symbol == null ? 0 : symbol.toUpperCase().hashCode(); }
+
 }

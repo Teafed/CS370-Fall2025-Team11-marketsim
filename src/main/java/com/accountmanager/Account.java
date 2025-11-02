@@ -1,5 +1,7 @@
 package com.accountmanager;
 
+import com.market.TradeItem;
+
 // One account
 public class Account {
 
@@ -7,7 +9,7 @@ public class Account {
     private double availableBalance; // the amount the user can currently trade
     private String name; // User defined name of account
     private Portfolio portfolio = new Portfolio();
-    private Watchlist watchList = new Watchlist();
+    private Watchlist watchlist = new Watchlist();
 
     // constructors
     public Account() {
@@ -46,11 +48,21 @@ public class Account {
     }
 
     /**
+     * set the watchlist of the account
+     * @param symbols TradeItem array of symbols
+     */
+    public void setWatchlist(TradeItem[] symbols) {
+        for (TradeItem s : symbols) {
+            this.watchlist.addWatchlistItem(s);
+        }
+    }
+
+    /**
      * Returns the watchlist of the account.
      * @return The watchlist of the account.
      */
     public Watchlist getWatchList() {
-        return watchList;
+        return watchlist;
     }
 
     // DEPOSIT WITHDRAW UPDATE
