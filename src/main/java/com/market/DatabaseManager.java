@@ -246,7 +246,7 @@ public class DatabaseManager implements AutoCloseable {
     }
 
     public void insertCandlesBatch(String symbol, int multiplier, String timespan,
-                                   java.util.List<CandleData> rows) throws SQLException {
+                                   List<CandleData> rows) throws SQLException {
         boolean prev = conn.getAutoCommit();
         conn.setAutoCommit(false);
         String sql = """
@@ -317,7 +317,7 @@ public class DatabaseManager implements AutoCloseable {
         throw new SQLException("Failed to create account: " + accountName);
     }
 
-    public java.util.List<String> loadWatchlistSymbols(long accountId) throws SQLException {
+    public List<String> loadWatchlistSymbols(long accountId) throws SQLException {
         Long watchlistId = null;
         try (PreparedStatement sel = conn.prepareStatement(
                 "SELECT id FROM watchlists WHERE account_id=?")) {
@@ -339,7 +339,7 @@ public class DatabaseManager implements AutoCloseable {
         }
     }
 
-    public void saveWatchlistSymbols(long accountId, String watchlistName, java.util.List<String> symbols) throws SQLException {
+    public void saveWatchlistSymbols(long accountId, String watchlistName, List<String> symbols) throws SQLException {
         boolean prev = conn.getAutoCommit();
         conn.setAutoCommit(false);
         try {
@@ -397,4 +397,3 @@ public class DatabaseManager implements AutoCloseable {
         }
     }
 }
-

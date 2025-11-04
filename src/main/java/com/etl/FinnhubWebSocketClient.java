@@ -120,7 +120,7 @@ public class FinnhubWebSocketClient implements TradeSource {
         if (!obj.has("data")) return;
 
         for (JsonElement el : obj.getAsJsonArray("data")) {
-            System.out.println("JSON: ");
+//            System.out.println("JSON: ");
             JsonObject trade = el.getAsJsonObject();
             double price = trade.get("p").getAsDouble();
             String symbol = trade.get("s").getAsString();

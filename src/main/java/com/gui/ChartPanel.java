@@ -13,6 +13,7 @@ import java.awt.*;
 import java.text.*;
 import java.time.*;
 import java.util.Map;
+import java.util.TimeZone;
 import java.util.TreeMap;
 
 public class ChartPanel extends ContentPanel {
@@ -21,7 +22,8 @@ public class ChartPanel extends ContentPanel {
 
     private final ChartCanvas canvas;
     private final TimeframeBar timeframeBar;
-    private final OrderPanel orderPanel;
+
+    private SwingWorker<?,?> currentWorker; // for backfilling
 
     /* called once in MainWindow; loads first symbol on watchlist */
     public ChartPanel() {
@@ -42,29 +44,20 @@ public class ChartPanel extends ContentPanel {
 
         this.timeframeBar = new TimeframeBar((startMs, endMs, multiplier, timespanToken) -> {
             if (dbRef != null && symbol != null) {
-                HistoricalService.Timespan ts = switch (timespanToken) {
-                    case "minute" -> HistoricalService.Timespan.MINUTE;
-                    case "hour"   -> HistoricalService.Timespan.HOUR;
-                    default       -> HistoricalService.Timespan.DAY;
-                };
+                HistoricalService.Timespan ts = HistoricalService.Timespan.DAY;
                 openChart(dbRef, symbol, multiplier, ts, startMs, endMs, 400);
             }
         });
         south.add(timeframeBar);
 
-        this.orderPanel = new OrderPanel();
+        OrderPanel orderPanel = new OrderPanel();
         south.add(orderPanel);
         add(south, BorderLayout.SOUTH);
 
         setMinimumSize(new Dimension(600, 300));
     }
 
-    /**
-     * load data for a symbol from database
-     * timeframe default to 90 days
-     * @param db
-     * @param symbol
-     */
+    /* load data for a symbol from database; timeframe default to 90 days */
     public void openChart(DatabaseManager db, String symbol) {
         this.dbRef = db;
         this.symbol = symbol;
@@ -110,33 +103,43 @@ public class ChartPanel extends ContentPanel {
         final long endMsClamped = Math.min(endMs, now);
         final long startMsClamped = Math.min(startMs, endMsClamped);
 
-        // request backfill for the requested timeframe, then load from DB and paint
-        new javax.swing.SwingWorker<Integer, Void>() {
-            @Override protected Integer doInBackground() throws Exception {
-                try {
-                    HistoricalService svc = new HistoricalService(dbRef);
+        // build requested range once
+        HistoricalService svc = new HistoricalService(dbRef);
+        LocalDate from = Instant.ofEpochMilli(startMsClamped).atZone(ZoneOffset.UTC).toLocalDate();
+        LocalDate to = Instant.ofEpochMilli(endMsClamped).atZone(ZoneOffset.UTC).toLocalDate();
+        HistoricalService.Range requested = new HistoricalService.Range(timespan, multiplier, from, to);
+        System.out.printf("[ChartPanel] Requested %s %d/%s %s - %s%n", symbol, multiplier, timespan, from, to);
 
-                    java.time.LocalDate from = java.time.Instant.ofEpochMilli(startMsClamped)
-                            .atZone(java.time.ZoneOffset.UTC).toLocalDate();
-                    java.time.LocalDate to = java.time.Instant.ofEpochMilli(endMsClamped)
-                            .atZone(java.time.ZoneOffset.UTC).toLocalDate();
+        // check if it's already covered
+        HistoricalService.Range missing = null;
+        try {
+            missing = svc.ensureRange(symbol, requested);
+        } catch (Exception ignore) {}
 
-                    HistoricalService.Range range = new HistoricalService.Range(timespan, multiplier, from, to);
-                    return svc.backfillRange(symbol, range);
-                } catch (Exception e) {
-                    System.err.println("[ChartPanel] Backfill failed: " + e.getMessage());
-                    return 0;
-                }
-            }
+        if (missing == null) {
+            try { canvas.loadFromDb(dbRef, symbol, startMsClamped, endMsClamped, maxPoints); }
+            finally { canvas.setLoading(false); }
+            return;
+        }
 
-            @Override protected void done() {
-                try {
-                    canvas.loadFromDb(dbRef, symbol, startMsClamped, endMsClamped, maxPoints);
-                } finally {
-                    canvas.setLoading(false);
-                }
-            }
-        }.execute();
+        HistoricalService.Range finalMissing = missing;
+        startBackfillWorker(() -> svc.backfillRange(symbol, finalMissing), () -> {
+            try { canvas.loadFromDb(dbRef, symbol, startMsClamped, endMsClamped, maxPoints); }
+            finally { canvas.setLoading(false); }
+        });
+    }
+
+    // only one worker fetches historical data
+    // TODO: if a backfill worker starts for a range and we switch to a new view,
+    //       we still keep backfilling for prev view but new view gets no worker
+    private void startBackfillWorker(java.util.concurrent.Callable<Integer> task,
+                                     Runnable onDone) {
+        if (currentWorker != null && !currentWorker.isDone()) currentWorker.cancel(true);
+        currentWorker = new SwingWorker<Integer, Void>() {
+            @Override protected Integer doInBackground() throws Exception { return task.call(); }
+            @Override protected void done() { onDone.run(); }
+        };
+        currentWorker.execute();
     }
 
     // ===========
@@ -173,6 +176,7 @@ public class ChartPanel extends ContentPanel {
 
         void loadFromDb(DatabaseManager db, String symbol, long startMs, long endMs, int maxPoints) {
             this.symbol = symbol;
+            // use daily getCandles bc smaller timeframes aren't supported on free polygon
             try (ResultSet rs = db.getCandles(symbol, startMs, endMs)) {
                 TreeMap<Long, Double> sorted = new TreeMap<>();
                 while (rs.next()) {
@@ -267,7 +271,8 @@ public class ChartPanel extends ContentPanel {
             g2.drawString(String.format("%.0f", maxPrice), w - in.right + 5, in.top + fm.getAscent());
             g2.drawString(String.format("%.0f", minPrice), w - in.right + 5, h - in.bottom);
 
-            SimpleDateFormat timeFormat = new SimpleDateFormat("MMM d, HH:mm");
+            SimpleDateFormat timeFormat = new SimpleDateFormat("yyyy MMM d, HH:mm");
+            timeFormat.setTimeZone(TimeZone.getTimeZone("UTC"));
             String startLabel = timeFormat.format(new Date(minTime));
             String endLabel = timeFormat.format(new Date(maxTime));
             g2.drawString(startLabel, in.left, h - in.bottom + fm.getAscent() + 5);
