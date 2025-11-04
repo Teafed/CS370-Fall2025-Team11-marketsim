@@ -70,4 +70,8 @@ public class AccountManager {
         this.owner = owner;
     }
 
+    public void addAccountToDb(Account account) {
+
+    }
+
 }
