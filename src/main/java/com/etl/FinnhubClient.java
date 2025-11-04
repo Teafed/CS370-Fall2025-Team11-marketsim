@@ -4,6 +4,7 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.market.DatabaseManager;
 import com.market.TradeListener;
+import io.github.cdimascio.dotenv.Dotenv;
 
 import java.io.IOException;
 import java.net.URI;
@@ -23,10 +24,10 @@ import java.util.function.Consumer;
  * This class handles polling the API at regular intervals and processing the responses.
  */
 public class FinnhubClient implements TradeSource {
-    private static final String BASE_URL = "https://finnhub.io/api/v1";
     private static final String LOG_PREFIX = "[FinnhubClient]";
 
     private final String apiKey;
+    private final String baseUrl;
     private final HttpClient httpClient;
     private final Set<String> subscribed = new ConcurrentSkipListSet<>();
 
@@ -36,19 +37,20 @@ public class FinnhubClient implements TradeSource {
     private Consumer<Double> priceUpdateCallback;
     private volatile boolean running = false;
 
-    public FinnhubClient() {
-        this.apiKey = getApiKey();
-        this.httpClient = HttpClient.newBuilder()
-                .connectTimeout(Duration.ofSeconds(5))
-                .build();
+    FinnhubClient() {
+        this(HttpClient.newHttpClient(), System.getenv("FINNHUB_API_KEY"), "https://finnhub.io/api/v1");
     }
 
-    private String getApiKey() {
-        String key = System.getenv("FINNHUB_API_KEY");
-        if (key == null || key.isBlank()) {
+    public FinnhubClient(HttpClient httpClient, String apiKey, String baseUrl) {
+        this.httpClient = httpClient;
+        this.baseUrl = baseUrl;
+
+        Dotenv dotenv = Dotenv.configure().ignoreIfMissing().load();
+        String k = (apiKey == null || apiKey.isBlank()) ? dotenv.get("FINNHUB_API_KEY") : apiKey;
+        if (k == null || k.isBlank()) {
             throw new IllegalStateException("The environment variable 'FINNHUB_API_KEY' is not set.");
         }
-        return key;
+        this.apiKey = k;
     }
 
     @Override
@@ -118,7 +120,7 @@ public class FinnhubClient implements TradeSource {
     private void fetchQuote(String symbol) {
         if (!running) return;
 
-        String url = BASE_URL + "/quote?symbol=" + symbol + "&token=" + apiKey;
+        String url = this.baseUrl + "/quote?symbol=" + symbol + "&token=" + apiKey;
 
         HttpRequest request = HttpRequest.newBuilder()
                 .uri(URI.create(url))
