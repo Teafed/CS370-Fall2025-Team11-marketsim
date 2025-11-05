@@ -28,6 +28,7 @@ public class DatabaseManager implements AutoCloseable {
     private void createSchema() throws SQLException {
         ensurePricesSchema();
         ensureUserSchema();
+        ensurePortfolioSchema();
     }
 
     private void ensurePricesSchema() throws SQLException {
@@ -396,4 +397,221 @@ public class DatabaseManager implements AutoCloseable {
             conn.setAutoCommit(prev);
         }
     }
+
+    // check these
+    private void ensurePortfolioSchema() throws SQLException {
+        try (Statement st = conn.createStatement()) {
+            // 1) Trades (source of truth)
+            st.execute("""
+                CREATE TABLE IF NOT EXISTS trades (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                account_id INTEGER NOT NULL,
+                symbol TEXT NOT NULL,
+                instrument_type TEXT NOT NULL DEFAULT 'STOCK', -- STOCK, ETF, OPTION, CRYPTO, etc
+                timestamp_ms INTEGER NOT NULL,
+                side TEXT NOT NULL CHECK (side IN ('BUY','SELL')),
+                quantity INTEGER NOT NULL,            -- store in micro-shares or lots of 1e6; signed by side
+                price_cents INTEGER NOT NULL,         -- store money as integer cents
+                fees_cents INTEGER NOT NULL DEFAULT 0,
+                note TEXT,
+                FOREIGN KEY(account_id) REFERENCES accounts(id) ON DELETE CASCADE
+                )
+            """);
+            st.execute("CREATE INDEX IF NOT EXISTS idx_trades_acct_time ON trades(account_id, timestamp_ms)");
+
+            // 2) Cash ledger
+            st.execute("""
+        CREATE TABLE IF NOT EXISTS cash_ledger (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            account_id INTEGER NOT NULL,
+            timestamp_ms INTEGER NOT NULL,
+            delta_cents INTEGER NOT NULL,     -- +deposit, -withdraw, -fees, +dividends, etc
+            reason TEXT NOT NULL,             -- DEPOSIT, WITHDRAWAL, FEE, DIVIDEND, INTEREST, TRADE_SETTLEMENT, ADJUSTMENT
+            ref_trade_id INTEGER,             -- nullable, links to trades when reason is TRADE_SETTLEMENT or FEE
+            note TEXT,
+            FOREIGN KEY(account_id) REFERENCES accounts(id) ON DELETE CASCADE,
+            FOREIGN KEY(ref_trade_id) REFERENCES trades(id) ON DELETE SET NULL
+        )
+        """);
+            st.execute("CREATE INDEX IF NOT EXISTS idx_cash_acct_time ON cash_ledger(account_id, timestamp_ms)");
+
+            // 3) Positions (derived, for fast reads)
+            st.execute("""
+        CREATE TABLE IF NOT EXISTS positions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            account_id INTEGER NOT NULL,
+            symbol TEXT NOT NULL,
+            instrument_type TEXT NOT NULL DEFAULT 'STOCK',
+            quantity INTEGER NOT NULL,            -- same unit as trades.quantity
+            cost_basis_cents INTEGER NOT NULL,    -- total cost basis (not per-share)
+            last_updated_ms INTEGER NOT NULL,
+            UNIQUE(account_id, symbol, instrument_type),
+            FOREIGN KEY(account_id) REFERENCES accounts(id) ON DELETE CASCADE
+        )
+        """);
+            st.execute("""
+        CREATE INDEX IF NOT EXISTS idx_positions_acct ON positions(account_id)
+        """);
+        }
+    }
+
+    public long recordTrade(long accountId, String symbol, String instrumentType,
+                            long timestampMs, String side, long quantityUnits,
+                            long priceCents, long feesCents, String note) throws SQLException {
+        boolean prev = conn.getAutoCommit();
+        conn.setAutoCommit(false);
+        try (PreparedStatement ins = conn.prepareStatement("""
+            INSERT INTO trades(account_id, symbol, instrument_type, timestamp_ms, side, quantity, price_cents, fees_cents, note)
+            VALUES(?,?,?,?,?,?,?,?,?)
+        """, Statement.RETURN_GENERATED_KEYS);
+             PreparedStatement cash = conn.prepareStatement("""
+            INSERT INTO cash_ledger(account_id, timestamp_ms, delta_cents, reason, ref_trade_id, note)
+            VALUES(?,?,?,?,?,?)
+        """)) {
+
+            // Insert trade
+            ins.setLong(1, accountId);
+            ins.setString(2, symbol);
+            ins.setString(3, instrumentType);
+            ins.setLong(4, timestampMs);
+            ins.setString(5, side);
+            ins.setLong(6, quantityUnits);
+            ins.setLong(7, priceCents);
+            ins.setLong(8, feesCents);
+            ins.setString(9, note);
+            ins.executeUpdate();
+
+            long tradeId;
+            try (ResultSet ks = ins.getGeneratedKeys()) {
+                if (!ks.next()) throw new SQLException("No trade id");
+                tradeId = ks.getLong(1);
+            }
+
+            // Cash impact: BUY decreases cash, SELL increases cash, minus fees
+            long gross = Math.multiplyExact(quantityUnits, priceCents); // units * cents
+            // quantities are positive; side determines sign of gross
+            long sign = "BUY".equals(side) ? -1 : 1;
+            long delta = Math.addExact(sign * gross, -feesCents); // SELL: +gross - fees; BUY: -gross - fees
+
+            cash.setLong(1, accountId);
+            cash.setLong(2, timestampMs);
+            cash.setLong(3, delta);
+            cash.setString(4, "TRADE_SETTLEMENT");
+            cash.setLong(5, tradeId);
+            cash.setString(6, note);
+            cash.executeUpdate();
+
+            upsertPositionFromTrade(accountId, symbol, instrumentType, side, quantityUnits, priceCents, feesCents, timestampMs);
+
+            conn.commit();
+            return tradeId;
+        } catch (SQLException ex) {
+            conn.rollback();
+            throw ex;
+        } finally {
+            conn.setAutoCommit(prev);
+        }
+    }
+    private void upsertPositionFromTrade(long accountId, String symbol, String instrumentType,
+                                         String side, long qty, long priceCents, long feesCents,
+                                         long ts) throws SQLException {
+        // Fetch existing
+        long curQty = 0, curBasis = 0;
+        try (PreparedStatement sel = conn.prepareStatement("""
+            SELECT quantity, cost_basis_cents FROM positions
+            WHERE account_id=? AND symbol=? AND instrument_type=?
+        """)) {
+            sel.setLong(1, accountId); sel.setString(2, symbol); sel.setString(3, instrumentType);
+            try (ResultSet rs = sel.executeQuery()) {
+                if (rs.next()) { curQty = rs.getLong(1); curBasis = rs.getLong(2); }
+            }
+        }
+
+        long signedQty = "BUY".equals(side) ? qty : -qty;
+
+        long newQty = curQty + signedQty;
+        long newBasis;
+        if ("BUY".equals(side)) {
+            // add cost including fees (attribute fees to buys by default)
+            long tradeCost = Math.addExact(Math.multiplyExact(qty, priceCents), feesCents);
+            newBasis = curBasis + tradeCost;
+        } else {
+            // On sell, reduce basis proportionally (FIFO would need lots; this uses average cost)
+            // Attribute fees to sell by reducing proceeds; basis goes down by avg cost per unit * qty sold
+            long avgCostPerUnit = (curQty == 0) ? 0 : curBasis / curQty;
+            long basisReduction = avgCostPerUnit * qty;
+            newBasis = Math.max(0, curBasis - basisReduction);
+        }
+
+        if (newQty == 0) {
+            try (PreparedStatement del = conn.prepareStatement("""
+                DELETE FROM positions WHERE account_id=? AND symbol=? AND instrument_type=?
+            """)) {
+                del.setLong(1, accountId); del.setString(2, symbol); del.setString(3, instrumentType);
+                del.executeUpdate();
+            }
+        } else {
+            try (PreparedStatement up = conn.prepareStatement("""
+                INSERT INTO positions(account_id, symbol, instrument_type, quantity, cost_basis_cents, last_updated_ms)
+                VALUES(?,?,?,?,?,?)
+                ON CONFLICT(account_id, symbol, instrument_type)
+                DO UPDATE SET quantity=excluded.quantity,
+                              cost_basis_cents=excluded.cost_basis_cents,
+                              last_updated_ms=excluded.last_updated_ms
+            """)) {
+                up.setLong(1, accountId);
+                up.setString(2, symbol);
+                up.setString(3, instrumentType);
+                up.setLong(4, newQty);
+                up.setLong(5, newBasis);
+                up.setLong(6, ts);
+                up.executeUpdate();
+            }
+        }
+    }
+
+    public long recordCash(long accountId, long timestampMs, long deltaCents, String reason, String note) throws SQLException {
+        try (PreparedStatement ps = conn.prepareStatement("""
+            INSERT INTO cash_ledger(account_id, timestamp_ms, delta_cents, reason, note)
+            VALUES(?,?,?,?,?)
+        """, Statement.RETURN_GENERATED_KEYS)) {
+            ps.setLong(1, accountId); ps.setLong(2, timestampMs); ps.setLong(3, deltaCents);
+            ps.setString(4, reason); ps.setString(5, note);
+            ps.executeUpdate();
+            try (ResultSet ks = ps.getGeneratedKeys()) { return ks.next() ? ks.getLong(1) : 0L; }
+        }
+    }
+
+    public long getCashBalanceCents(long accountId) throws SQLException {
+        try (PreparedStatement ps = conn.prepareStatement("""
+            SELECT COALESCE(SUM(delta_cents),0) FROM cash_ledger WHERE account_id=?
+        """)) {
+            ps.setLong(1, accountId);
+            try (ResultSet rs = ps.executeQuery()) { return rs.next() ? rs.getLong(1) : 0L; }
+        }
+    }
+
+    // ---- Portfolio views ----
+    public List<PositionRow> loadPositions(long accountId) throws SQLException {
+        try (PreparedStatement ps = conn.prepareStatement("""
+            SELECT symbol, instrument_type, quantity, cost_basis_cents
+            FROM positions WHERE account_id=? ORDER BY symbol
+        """)) {
+            ps.setLong(1, accountId);
+            try (ResultSet rs = ps.executeQuery()) {
+                List<PositionRow> out = new ArrayList<>();
+                while (rs.next()) {
+                    out.add(new PositionRow(
+                            rs.getString(1), rs.getString(2),
+                            rs.getLong(3), rs.getLong(4)));
+                }
+                return out;
+            }
+        }
+    }
+
+    // light DTO
+    public record PositionRow(String symbol, String instrumentType, long quantityUnits, long costBasisCents) {}
+
+
 }
