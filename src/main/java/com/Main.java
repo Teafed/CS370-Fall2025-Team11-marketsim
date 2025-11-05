@@ -69,7 +69,18 @@ public class Main {
         }
 
         // Initialize market
-        Market market = new Market(client, db, account);
+        Market market;
+        try {
+            market = new Market(client, db, account);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to start Market", e);
+        }
+        // temporary no-op listener to safely subscribe in addFromWatchlist()
+        // real gui listener attached after MainWindow is initialized
+        market.setMarketListener(new MarketListener() {
+            @Override public void loadSymbols(java.util.List<TradeItem> items) { }
+            @Override public void onMarketUpdate() { }
+        });
         market.addFromWatchlist(account.getWatchList());
         while (!market.isReady()) {
             System.out.println("Waiting for Market status...");
