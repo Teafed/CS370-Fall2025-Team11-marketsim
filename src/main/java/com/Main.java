@@ -9,10 +9,21 @@ import com.tools.MockFinnhubClient;
 
 import javax.swing.*;
 import java.sql.SQLException;
-import java.util.Arrays;
+
 
 public class Main {
+
     public static void main(String[] args) throws Exception {
+        //runMarketSim();
+        runTestCase();
+    }
+
+    public static void runTestCase() {
+        // Add new testing data
+        new StartupPanel();
+    }
+
+    public static void runMarketSim() throws Exception {
         String dbFile = "data/marketsim-sample.db";
 
         // Initialize Database
