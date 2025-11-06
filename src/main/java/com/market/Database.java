@@ -4,7 +4,7 @@ import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
 
-public class DatabaseManager implements AutoCloseable {
+public class Database implements AutoCloseable {
     private final Connection conn;
 
     public enum StartupState {
@@ -19,7 +19,7 @@ public class DatabaseManager implements AutoCloseable {
     // for getting info about a position
     public static record PositionView(String symbol, int quantity, double avgCost) { }
 
-    public DatabaseManager(String dbFile) throws SQLException {
+    public Database(String dbFile) throws SQLException {
         String url = "jdbc:sqlite:" + dbFile + "?busy_timeout=5000"; // 5s
         this.conn = DriverManager.getConnection(url);
         try (Statement st = conn.createStatement()) {

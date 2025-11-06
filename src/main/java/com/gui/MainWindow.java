@@ -9,13 +9,13 @@ import javax.swing.*;
 import java.awt.*;
 
 public class MainWindow extends JFrame
-        implements SymbolListPanel.SymbolSelectionListener,
-                   SymbolListPanel.AccountSelectionListener {
-    private final DatabaseManager db;
+        implements SymbolPanel.SymbolSelectionListener,
+                   SymbolPanel.AccountSelectionListener {
+    private final Database db;
     private final Account account;
     private final Market market;
 
-    private SymbolListPanel symbolPanel;
+    private SymbolPanel symbolPanel;
     private ChartPanel chartPanel;
     private JPanel rightCards;
     private CardLayout cards;
@@ -26,7 +26,7 @@ public class MainWindow extends JFrame
     private static final int LEFT_PANEL_WIDTH = 250;
     private static final int MIN_RIGHT_WIDTH = 300;
 
-    public MainWindow(DatabaseManager db, Account account, Market market) {
+    public MainWindow(Database db, Account account, Market market) {
         this.db = db;
         this.account = account;
         this.market = market;
@@ -88,7 +88,7 @@ public class MainWindow extends JFrame
         AccountPanel accountPanel = new AccountPanel(account);
         rightCards.add(accountPanel, CARD_ACCOUNT);
 
-        symbolPanel = new SymbolListPanel(db);
+        symbolPanel = new SymbolPanel(db);
         symbolPanel.addSymbolSelectionListener(this);
         symbolPanel.setAccount(account, this);
 
@@ -104,7 +104,7 @@ public class MainWindow extends JFrame
         });
     }
 
-    public SymbolListPanel getSymbolListPanel() {
+    public SymbolPanel getSymbolListPanel() {
         return symbolPanel;
     }
 

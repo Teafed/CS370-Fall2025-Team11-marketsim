@@ -10,11 +10,11 @@ import java.awt.*;
 import java.util.ArrayList;
 import java.util.List;
 
-public class SymbolListPanel extends ContentPanel implements MarketListener {
+public class SymbolPanel extends ContentPanel implements MarketListener {
     private final DefaultListModel<TradeItem> symbolModel = new DefaultListModel<>();
     private final JList<TradeItem> symbolList = new JList<>(symbolModel);
     private final List<SymbolSelectionListener> symbolListener;
-    private final DatabaseManager db;
+    private final Database db;
     private Account account;
     private AccountSelectionListener accountListener;
     private String lastNotifiedSymbol = null;
@@ -33,7 +33,7 @@ public class SymbolListPanel extends ContentPanel implements MarketListener {
         void onAccountSelected(Account account);
     }
 
-    public SymbolListPanel(DatabaseManager db) {
+    public SymbolPanel(Database db) {
         this.db = db;
         this.symbolListener = new ArrayList<>();
         initializeComponents();

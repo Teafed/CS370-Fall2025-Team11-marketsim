@@ -11,14 +11,14 @@ import java.util.*;
 public class Market implements TradeListener {
 
     private Map<String, TradeItem> stocks;
-    private DatabaseManager dbManager;
+    private Database dbManager;
     private TradeSource client;
     private Account account;
     private MarketListener marketListener;
     private boolean ready = false;
-    public Market(Map<String, TradeItem> stocks, DatabaseManager dbManager) {}
+    public Market(Map<String, TradeItem> stocks, Database dbManager) {}
 
-    public Market(TradeSource client, DatabaseManager db, Account account) throws Exception {
+    public Market(TradeSource client, Database db, Account account) throws Exception {
         setClient(client);
         stocks = new LinkedHashMap<>();
         setDatabase(db);
@@ -34,7 +34,7 @@ public class Market implements TradeListener {
         this.ready = true;
     }
 
-    public void setDatabase(DatabaseManager dbManager) {
+    public void setDatabase(Database dbManager) {
         this.dbManager = dbManager;
     }
 

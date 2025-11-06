@@ -2,7 +2,7 @@ package com.etl;
 
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
-import com.market.DatabaseManager;
+import com.market.Database;
 import com.market.TradeListener;
 import io.github.cdimascio.dotenv.Dotenv;
 
@@ -31,7 +31,7 @@ public class FinnhubClient implements TradeSource {
     private final HttpClient httpClient;
     private final Set<String> subscribed = new ConcurrentSkipListSet<>();
 
-    private volatile DatabaseManager dbManager;
+    private volatile Database dbManager;
     private volatile TradeListener listener;
     private ScheduledExecutorService scheduler;
     private Consumer<Double> priceUpdateCallback;
@@ -191,7 +191,7 @@ public class FinnhubClient implements TradeSource {
             System.err.println(LOG_PREFIX + " Error parsing quote: " + e.getMessage());
         }
     }
-    private static void insertPriceSafely(DatabaseManager db, String symbol, long timestamp,
+    private static void insertPriceSafely(Database db, String symbol, long timestamp,
                                           double open, double high, double low, double close, long volume) {
 //        try {
 //            db.insertCandle(symbol, timestamp, open, high, low, close, volume);

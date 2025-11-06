@@ -3,6 +3,7 @@ package com.gui;
 import javax.swing.*;
 import java.awt.*;
 
+// maybe remove this? we already have TradePanel
 public class TradeWindow extends JFrame {
 
     public  TradeWindow() {

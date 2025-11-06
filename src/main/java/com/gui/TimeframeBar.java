@@ -1,7 +1,5 @@
 package com.gui;
 
-import com.market.DatabaseManager;
-
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionListener;

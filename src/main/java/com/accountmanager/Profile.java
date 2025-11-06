@@ -3,7 +3,7 @@ package com.accountmanager;
 import java.util.ArrayList;
 
 // This class holds all accounts for the user and provides methods for adding, deleting, and returning each account.
-public class AccountManager {
+public class Profile {
 
     private ArrayList<Account> accounts;    // list of accounts
     private int numberOfAccounts;       // number of active accounts
@@ -11,12 +11,12 @@ public class AccountManager {
     private String owner;
 
     // Constructor
-    public AccountManager() {
+    public Profile() {
         accounts = new ArrayList<Account>();
         numberOfAccounts = 0;
     }
 
-    public AccountManager(ArrayList<Account> accounts) {
+    public Profile(ArrayList<Account> accounts) {
         this.accounts = accounts;
         this.numberOfAccounts = accounts.size();
     }

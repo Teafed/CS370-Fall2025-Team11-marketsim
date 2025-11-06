@@ -1,6 +1,6 @@
 package com.tools;
 
-import com.market.DatabaseManager;
+import com.market.Database;
 import java.time.*;
 import java.util.*;
 
@@ -10,7 +10,7 @@ public class BuildSampleDb {
         String dbFile = "data/marketsim-sample.db";
         boolean force = Arrays.asList(args).contains("--force");
 
-        try (DatabaseManager db = new DatabaseManager(dbFile)) {
+        try (Database db = new Database(dbFile)) {
             if (!force && isSeeded(db)) {
                 System.out.println("[seed] Already seeded. Use --force to overwrite. DB: " + dbFile);
                 System.out.println(db.listSymbols());
@@ -21,11 +21,11 @@ public class BuildSampleDb {
         System.out.println("[seed] Done: " + dbFile);
     }
 
-    private static boolean isSeeded(DatabaseManager db) throws Exception {
+    private static boolean isSeeded(Database db) throws Exception {
         return !db.listSymbols().isEmpty() && db.getLatestTimestamp("AAPL", 1, "day") > 0;
     }
 
-    private static void seedAll(DatabaseManager db) throws Exception {
+    private static void seedAll(Database db) throws Exception {
         List<String> symbols = List.of("AAPL", "MSFT", "SPY");
         int days = 120;
 
@@ -37,7 +37,7 @@ public class BuildSampleDb {
     }
 
     /** Make a simple, repeatable OHLCV series (daily close around 16:00 UTC). */
-    private static java.util.List<DatabaseManager.CandleData> makeDailySeries(String symbol, int days) {
+    private static java.util.List<Database.CandleData> makeDailySeries(String symbol, int days) {
         // deterministic RNG per symbol
         long seed = symbol.chars().asLongStream().reduce(0, (a, b) -> a * 131L + b);
         Random rng = new Random(seed);
@@ -53,7 +53,7 @@ public class BuildSampleDb {
         double vol   = 0.01;
         double close = base;
 
-        var out = new ArrayList<DatabaseManager.CandleData>(days);
+        var out = new ArrayList<Database.CandleData>(days);
         LocalDate end = LocalDate.now(ZoneOffset.UTC);
         LocalDate start = end.minusDays(days - 1);
 
@@ -68,7 +68,7 @@ public class BuildSampleDb {
             double volume = (5_000_000 + Math.abs(rng.nextGaussian()) * 2_000_000);
 
             long ts = d.atTime(16, 0).toInstant(ZoneOffset.UTC).toEpochMilli(); // 16:00 UTC
-            out.add(new DatabaseManager.CandleData(symbol, ts, open, high, low, newClose, volume));
+            out.add(new Database.CandleData(symbol, ts, open, high, low, newClose, volume));
             close = newClose;
         }
         return out;

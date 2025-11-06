@@ -3,7 +3,7 @@ package com.etl;
 import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
-import com.market.DatabaseManager;
+import com.market.Database;
 
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -108,7 +108,7 @@ public class FinnhubRESTClient {
         }
     }
 
-    public static FinnhubRESTClient start(DatabaseManager db, String symbol) {
+    public static FinnhubRESTClient start(Database db, String symbol) {
         FinnhubRESTClient client = new FinnhubRESTClient(symbol);
 
         client.startPolling(candle -> {
@@ -120,7 +120,7 @@ public class FinnhubRESTClient {
         return client;
     }
 
-    private static void processCandle(CandleResponse candle, String symbol, DatabaseManager db) {
+    private static void processCandle(CandleResponse candle, String symbol, Database db) {
         long[] times = candle.getT();
         if (times == null) return;
 
@@ -142,8 +142,8 @@ public class FinnhubRESTClient {
         }
     }
 
-    private static void insertPriceSafely(DatabaseManager db, String symbol, long timestamp, 
-                                         double open, double high, double low, double close, long volume) {
+    private static void insertPriceSafely(Database db, String symbol, long timestamp,
+                                          double open, double high, double low, double close, long volume) {
 //        try {
 //            db.insertCandle(symbol, timestamp, open, high, low, close, volume);
 //        } catch (Exception e) {
@@ -151,7 +151,7 @@ public class FinnhubRESTClient {
 //        }
     }
 
-    static void parseAndStore(String msg, DatabaseManager db) {
+    static void parseAndStore(String msg, Database db) {
         try {
             JsonObject obj = new com.google.gson.JsonParser().parse(msg).getAsJsonObject();
             if (!obj.has("data")) return;

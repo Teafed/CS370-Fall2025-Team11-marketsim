@@ -9,7 +9,7 @@ import java.util.concurrent.CountDownLatch;
 
 import com.google.gson.*;
 import io.github.cdimascio.dotenv.Dotenv;
-import com.market.DatabaseManager;
+import com.market.Database;
 
 @ClientEndpoint
 public class FinnhubWebSocketClient implements TradeSource {
@@ -79,7 +79,7 @@ public class FinnhubWebSocketClient implements TradeSource {
      * @param msg
      * @param db
      */
-    static void parseAndStore(String msg, DatabaseManager db) {
+    static void parseAndStore(String msg, Database db) {
         JsonObject obj = JsonParser.parseString(msg).getAsJsonObject();
         if (!obj.has("data")) return;
 

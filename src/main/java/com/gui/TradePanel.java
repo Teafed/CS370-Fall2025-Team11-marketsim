@@ -3,12 +3,12 @@ package com.gui;
 import javax.swing.*;
 import java.awt.*;
 
-public class TradingPanel extends JPanel {
+public class TradePanel extends JPanel {
     private JButton buyButton;
     private JButton sellButton;
     private JButton portfolioButton;
 
-    public TradingPanel() {
+    public TradePanel() {
         setLayout(new GridBagLayout());
         setBackground(GUIComponents.BG_MEDIUM);
         setBorder(BorderFactory.createCompoundBorder(

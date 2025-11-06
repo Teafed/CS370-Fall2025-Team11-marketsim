@@ -4,7 +4,7 @@ import com.accountmanager.Account;
 import com.etl.FinnhubClient;
 import com.etl.FinnhubMarketStatus;
 import com.etl.TradeSource;
-import com.market.DatabaseManager;
+import com.market.Database;
 import com.market.Market;
 import com.tools.MockFinnhubClient;
 
@@ -12,17 +12,17 @@ import javax.swing.*;
 import java.awt.*;
 import java.sql.SQLException;
 
-public class StartupPanel extends ContentPanel {
+public class StartupWindow extends ContentPanel {
     private JTextField profileNameField;
     private JTextField balanceField;
 
     // constructor for creating profile
-    public StartupPanel(StartupListener startupListener) {
+    public StartupWindow(StartupListener startupListener) {
         createProfileUI(startupListener);
     }
 
     // constructor used for "Start with existing profile" mode
-    public StartupPanel(Runnable onStartExisting) {
+    public StartupWindow(Runnable onStartExisting) {
         createAccountSelectUI(onStartExisting);
     }
 
@@ -86,13 +86,13 @@ public class StartupPanel extends ContentPanel {
         startButton.addActionListener(e -> onStartExisting.run());
     }
 
-    public static void getStartWindow(DatabaseManager db, StartupListener startupListener) throws SQLException {
-        com.market.DatabaseManager.StartupState state = db.determineStartupState();
+    public static void getStartWindow(Database db, StartupListener startupListener) throws SQLException {
+        Database.StartupState state = db.determineStartupState();
 
         final boolean firstRun;
         final long profileId;
 
-        if (state == com.market.DatabaseManager.StartupState.FIRST_RUN) {
+        if (state == Database.StartupState.FIRST_RUN) {
             System.out.println("No profile detected");
             firstRun = true;
             profileId = -1;
@@ -109,7 +109,7 @@ public class StartupPanel extends ContentPanel {
             frame.setLocationRelativeTo(null);
 
             if (firstRun) {
-                frame.add(new StartupPanel((profileName, balance) -> {
+                frame.add(new StartupWindow((profileName, balance) -> {
                     try {
                         long id = db.ensureSingletonProfile(profileName);
                         long accountId = db.getOrCreateAccount(profileName, "USD");
@@ -123,7 +123,7 @@ public class StartupPanel extends ContentPanel {
                     }
                 }));
             } else {
-                    frame.add(new StartupPanel(() -> {
+                    frame.add(new StartupWindow(() -> {
                         try {
                             // call db.listAccounts(profileIdIfAny)
                             String placeholderName = "Placeholder";
@@ -140,7 +140,7 @@ public class StartupPanel extends ContentPanel {
         });
     }
 
-    public static void runMarketSim(DatabaseManager db, String profileName, double balance) {
+    public static void runMarketSim(Database db, String profileName, double balance) {
         try {
             // Initialize account
             Account account = new Account(profileName,balance);

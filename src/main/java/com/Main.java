@@ -10,16 +10,16 @@ public class Main {
         String dbFile = "data/marketsim-sample.db";
 
         // Initialize Database
-        DatabaseManager db;
+        Database db;
         try {
-            db = new DatabaseManager(dbFile);
+            db = new Database(dbFile);
         } catch (Exception e) {
             throw new SQLException("Failed to open database: " + dbFile, e);
         }
 
-        StartupPanel.getStartWindow(db, (profileName, balance)-> {
+        StartupWindow.getStartWindow(db, (profileName, balance)-> {
             System.out.println("Profile: " + profileName + " Balance: " + balance);
-            StartupPanel.runMarketSim(db, profileName, balance);
+            StartupWindow.runMarketSim(db, profileName, balance);
         });
 
         // runTestCase();
