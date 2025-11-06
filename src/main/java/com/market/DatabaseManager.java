@@ -28,12 +28,13 @@ public class DatabaseManager implements AutoCloseable {
     private void createSchema() throws SQLException {
         ensurePricesSchema();
         ensureUserSchema();
+        ensurePortfolioSchema();
     }
 
     private void ensurePricesSchema() throws SQLException {
         try (Statement st = conn.createStatement()) {
             st.execute("""
-            CREATE TABLE IF NOT EXISTS prices (
+                CREATE TABLE IF NOT EXISTS prices (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 symbol TEXT NOT NULL,
                 timespan TEXT NOT NULL,
@@ -394,6 +395,224 @@ public class DatabaseManager implements AutoCloseable {
             throw ex;
         } finally {
             conn.setAutoCommit(prev);
+        }
+    }
+
+    private void ensurePortfolioSchema() throws SQLException {
+        try (Statement st = conn.createStatement()) {
+            // trades
+            st.execute("""
+                CREATE TABLE IF NOT EXISTS trades (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                account_id INTEGER NOT NULL,
+                symbol TEXT NOT NULL,
+                timestamp_ms INTEGER NOT NULL,
+                side TEXT NOT NULL CHECK (side IN ('BUY','SELL')),
+                quantity INTEGER NOT NULL,          -- whole shares; use REAL if you support fractional shares
+                price REAL NOT NULL,                -- trade price per share
+                FOREIGN KEY(account_id) REFERENCES accounts(id) ON DELETE CASCADE
+                )
+            """);
+            st.execute("CREATE INDEX IF NOT EXISTS idx_trades_acct_time ON trades(account_id, timestamp_ms)");
+            st.execute("CREATE INDEX IF NOT EXISTS idx_trades_acct_symbol ON trades(account_id, symbol)");
+
+            // 2) cash_ledger
+            st.execute("""
+                CREATE TABLE IF NOT EXISTS cash_ledger (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                account_id INTEGER NOT NULL,
+                timestamp_ms INTEGER NOT NULL,
+                delta REAL NOT NULL,            -- +deposit, -withdrawal, +sell proceeds, -buy cost
+                reason TEXT NOT NULL CHECK (reason IN ('DEPOSIT','WITHDRAWAL','TRADE')),
+                ref_trade_id INTEGER,           -- nullable; points to trades row when reason=TRADE
+                note TEXT,
+                FOREIGN KEY(account_id) REFERENCES accounts(id) ON DELETE CASCADE,
+                FOREIGN KEY(ref_trade_id) REFERENCES trades(id) ON DELETE SET NULL
+                )
+            """);
+            st.execute("CREATE INDEX IF NOT EXISTS idx_cash_acct_time ON cash_ledger(account_id, timestamp_ms)");
+
+            // positions (quantity + average cost)
+            st.execute("""
+                CREATE TABLE IF NOT EXISTS positions (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                account_id INTEGER NOT NULL,
+                symbol TEXT NOT NULL,
+                quantity INTEGER NOT NULL,       -- whole shares; match trades.quantity type
+                avg_cost REAL NOT NULL,          -- average cost per share for remaining shares
+                last_updated_ms INTEGER NOT NULL,
+                UNIQUE(account_id, symbol),
+                FOREIGN KEY(account_id) REFERENCES accounts(id) ON DELETE CASCADE
+                )
+            """);
+            st.execute("CREATE INDEX IF NOT EXISTS idx_positions_acct ON positions(account_id)");
+        }
+    }
+
+    private void upsertPositionFromTrade(long accountId, String symbol, String side,
+                                         int qty, double price, long ts) throws SQLException {
+        int curQty = 0;
+        double curAvg = 0.0;
+
+        try (PreparedStatement sel = conn.prepareStatement("""
+            SELECT quantity, avg_cost FROM positions
+            WHERE account_id=? AND symbol=?
+        """)) {
+            sel.setLong(1, accountId);
+            sel.setString(2, symbol);
+            try (ResultSet rs = sel.executeQuery()) {
+                if (rs.next()) {
+                    curQty = rs.getInt(1);
+                    curAvg = rs.getDouble(2);
+                }
+            }
+        }
+
+        int newQty;
+        double newAvg;
+
+        if ("BUY".equals(side)) {
+            newQty = curQty + qty;
+            if (newQty == 0) { // shouldn’t happen with buy, but guard anyway
+                newAvg = 0.0;
+            } else {
+                // weighted average cost
+                newAvg = ((curQty * curAvg) + (qty * price)) / newQty;
+            }
+        } else { // SELL
+            newQty = curQty - qty;
+            if (newQty < 0) throw new SQLException("Sell exceeds position for " + symbol);
+            newAvg = (newQty == 0) ? 0.0 : curAvg; // avg cost unchanged for remaining shares
+        }
+
+        if (newQty == 0) {
+            try (PreparedStatement del = conn.prepareStatement("""
+                DELETE FROM positions WHERE account_id=? AND symbol=?
+            """)) {
+                del.setLong(1, accountId);
+                del.setString(2, symbol);
+                del.executeUpdate();
+            }
+        } else {
+            try (PreparedStatement up = conn.prepareStatement("""
+            INSERT INTO positions(account_id, symbol, quantity, avg_cost, last_updated_ms)
+            VALUES(?,?,?,?,?)
+            ON CONFLICT(account_id, symbol)
+            DO UPDATE SET quantity=excluded.quantity,
+                          avg_cost=excluded.avg_cost,
+                          last_updated_ms=excluded.last_updated_ms
+        """)) {
+                up.setLong(1, accountId);
+                up.setString(2, symbol);
+                up.setInt(3, newQty);
+                up.setDouble(4, newAvg);
+                up.setLong(5, ts);
+                up.executeUpdate();
+            }
+        }
+    }
+
+    // cash helpers
+    public long depositCash(long accountId, double amount, long ts, String note) throws SQLException {
+        return recordCash(accountId, ts, +Math.abs(amount), "DEPOSIT", note);
+    }
+    public long withdrawCash(long accountId, double amount, long ts, String note) throws SQLException {
+        return recordCash(accountId, ts, -Math.abs(amount), "WITHDRAWAL", note);
+    }
+    public double getCashBalance(long accountId) throws SQLException {
+        try (PreparedStatement ps = conn.prepareStatement("""
+            SELECT COALESCE(SUM(delta), 0.0) FROM cash_ledger WHERE account_id=?
+        """)) {
+            ps.setLong(1, accountId);
+            try (ResultSet rs = ps.executeQuery()) { return rs.next() ? rs.getDouble(1) : 0.0; }
+        }
+    }
+    private long recordCash(long accountId, long ts, double delta, String reason, String note) throws SQLException {
+        try (PreparedStatement ps = conn.prepareStatement("""
+            INSERT INTO cash_ledger(account_id, timestamp_ms, delta, reason, note)
+            VALUES(?,?,?,?,?)
+        """, Statement.RETURN_GENERATED_KEYS)) {
+            ps.setLong(1, accountId);
+            ps.setLong(2, ts);
+            ps.setDouble(3, delta);
+            ps.setString(4, reason);
+            ps.setString(5, note);
+            ps.executeUpdate();
+            try (ResultSet ks = ps.getGeneratedKeys()) { return ks.next() ? ks.getLong(1) : 0L; }
+        }
+    }
+
+    // record a stock trade
+    public long recordTrade(long accountId, String symbol, long ts, String side,
+                            int quantity, double price) throws SQLException {
+        if (!"BUY".equals(side) && !"SELL".equals(side)) {
+            throw new IllegalArgumentException("side must be BUY or SELL");
+        }
+        if (quantity <= 0) throw new IllegalArgumentException("quantity must be > 0");
+
+        boolean prev = conn.getAutoCommit();
+        conn.setAutoCommit(false);
+        try (PreparedStatement insTrade = conn.prepareStatement("""
+                INSERT INTO trades(account_id, symbol, timestamp_ms, side, quantity, price)
+                VALUES(?,?,?,?,?,?)
+            """, Statement.RETURN_GENERATED_KEYS);
+             PreparedStatement insCash = conn.prepareStatement("""
+                INSERT INTO cash_ledger(account_id, timestamp_ms, delta, reason, ref_trade_id, note)
+                VALUES(?,?,?,?,?,?)
+            """)) {
+
+            // 1) insert trade
+            insTrade.setLong(1, accountId);
+            insTrade.setString(2, symbol);
+            insTrade.setLong(3, ts);
+            insTrade.setString(4, side);
+            insTrade.setInt(5, quantity);
+            insTrade.setDouble(6, price);
+            insTrade.executeUpdate();
+
+            long tradeId;
+            try (ResultSet ks = insTrade.getGeneratedKeys()) {
+                if (!ks.next()) throw new SQLException("No trade id");
+                tradeId = ks.getLong(1);
+            }
+
+            // 2) cash impact: BUY = -qty*price; SELL = +qty*price
+            double delta = ("BUY".equals(side) ? -1.0 : 1.0) * (quantity * price);
+            insCash.setLong(1, accountId);
+            insCash.setLong(2, ts);
+            insCash.setDouble(3, delta);
+            insCash.setString(4, "TRADE");
+            insCash.setLong(5, tradeId);
+            insCash.setString(6, symbol + " " + side);
+            insCash.executeUpdate();
+
+            // 3) update positions (avg cost method)
+            upsertPositionFromTrade(accountId, symbol, side, quantity, price, ts);
+
+            conn.commit();
+            return tradeId;
+        } catch (SQLException ex) {
+            conn.rollback();
+            throw ex;
+        } finally {
+            conn.setAutoCommit(prev);
+        }
+    }
+    
+    public static record PositionView(String symbol, int quantity, double avgCost) {}
+
+    public List<PositionView> loadPositions(long accountId) throws SQLException {
+        try (PreparedStatement ps = conn.prepareStatement("""
+            SELECT symbol, quantity, avg_cost FROM positions
+            WHERE account_id=? ORDER BY symbol
+        """)) {
+            ps.setLong(1, accountId);
+            try (ResultSet rs = ps.executeQuery()) {
+                List<PositionView> out = new ArrayList<>();
+                while (rs.next()) out.add(new PositionView(
+                        rs.getString(1), rs.getInt(2), rs.getDouble(3)));
+                return out;
+            }
         }
     }
 }

@@ -52,8 +52,8 @@ public class Portfolio {
         @param n The amount of the item to be removed. If -1 removes all that item.
      */
     boolean removeTradeItem(TradeItem tradeItem, int n) {
-        if (tradeItem == null | n < 1 | !portfolioItems.containsKey(tradeItem)) {
-            //TODO Handle error
+        if (tradeItem == null || n < 1 || !portfolioItems.containsKey(tradeItem)) {
+            // TODO Handle error
             return false;
         }
         if (portfolioItems.get(tradeItem) == n) {
