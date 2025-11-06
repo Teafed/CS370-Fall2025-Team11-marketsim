@@ -76,7 +76,7 @@ public class Main {
             if (marketHours) {
                 try {
                     System.out.println("Market open, starting Finnhub...");
-                    client = FinnhubClient.start();
+                    client = FinnhubWebSocketClient.start();
                     System.out.println("Finnhub started...");
                 } catch (Exception e) {
                     e.printStackTrace();
