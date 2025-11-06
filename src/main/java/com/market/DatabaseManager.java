@@ -7,9 +7,17 @@ import java.util.List;
 public class DatabaseManager implements AutoCloseable {
     private final Connection conn;
 
+    public enum StartupState {
+        FIRST_RUN,           // no profile exists
+        PROFILE_NO_ACCOUNTS, // profile exists, but no accounts yet
+        READY                // profile + >=1 account
+    }
+
     // used to insert a candle entry into database
     public record CandleData(String symbol, long timestamp,
                              double open, double high, double low, double close, double volume) { }
+    // for getting info about a position
+    public static record PositionView(String symbol, int quantity, double avgCost) { }
 
     public DatabaseManager(String dbFile) throws SQLException {
         String url = "jdbc:sqlite:" + dbFile + "?busy_timeout=5000"; // 5s
@@ -30,7 +38,6 @@ public class DatabaseManager implements AutoCloseable {
         ensureUserSchema();
         ensurePortfolioSchema();
     }
-
     private void ensurePricesSchema() throws SQLException {
         try (Statement st = conn.createStatement()) {
             st.execute("""
@@ -51,7 +58,6 @@ public class DatabaseManager implements AutoCloseable {
             """);
         }
     }
-
     private void ensureUserSchema() throws SQLException {
         try (Statement st = conn.createStatement()) {
             st.execute("""
@@ -93,6 +99,56 @@ public class DatabaseManager implements AutoCloseable {
                 FOREIGN KEY(watchlist_id) REFERENCES watchlists(id) ON DELETE CASCADE
                 )
             """);
+        }
+    }
+    private void ensurePortfolioSchema() throws SQLException {
+        try (Statement st = conn.createStatement()) {
+            // trades
+            st.execute("""
+                CREATE TABLE IF NOT EXISTS trades (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                account_id INTEGER NOT NULL,
+                symbol TEXT NOT NULL,
+                timestamp_ms INTEGER NOT NULL,
+                side TEXT NOT NULL CHECK (side IN ('BUY','SELL')),
+                quantity INTEGER NOT NULL,          -- whole shares; use REAL if you support fractional shares
+                price REAL NOT NULL,                -- trade price per share
+                FOREIGN KEY(account_id) REFERENCES accounts(id) ON DELETE CASCADE
+                )
+            """);
+            st.execute("CREATE INDEX IF NOT EXISTS idx_trades_acct_time ON trades(account_id, timestamp_ms)");
+            st.execute("CREATE INDEX IF NOT EXISTS idx_trades_acct_symbol ON trades(account_id, symbol)");
+
+            // 2) cash_ledger
+            st.execute("""
+                CREATE TABLE IF NOT EXISTS cash_ledger (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                account_id INTEGER NOT NULL,
+                timestamp_ms INTEGER NOT NULL,
+                delta REAL NOT NULL,            -- +deposit, -withdrawal, +sell proceeds, -buy cost
+                reason TEXT NOT NULL CHECK (reason IN ('DEPOSIT','WITHDRAWAL','TRADE')),
+                ref_trade_id INTEGER,           -- nullable; points to trades row when reason=TRADE
+                note TEXT,
+                FOREIGN KEY(account_id) REFERENCES accounts(id) ON DELETE CASCADE,
+                FOREIGN KEY(ref_trade_id) REFERENCES trades(id) ON DELETE SET NULL
+                )
+            """);
+            st.execute("CREATE INDEX IF NOT EXISTS idx_cash_acct_time ON cash_ledger(account_id, timestamp_ms)");
+
+            // positions (quantity + average cost)
+            st.execute("""
+                CREATE TABLE IF NOT EXISTS positions (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                account_id INTEGER NOT NULL,
+                symbol TEXT NOT NULL,
+                quantity INTEGER NOT NULL,       -- whole shares; match trades.quantity type
+                avg_cost REAL NOT NULL,          -- average cost per share for remaining shares
+                last_updated_ms INTEGER NOT NULL,
+                UNIQUE(account_id, symbol),
+                FOREIGN KEY(account_id) REFERENCES accounts(id) ON DELETE CASCADE
+                )
+            """);
+            st.execute("CREATE INDEX IF NOT EXISTS idx_positions_acct ON positions(account_id)");
         }
     }
 
@@ -174,7 +230,7 @@ public class DatabaseManager implements AutoCloseable {
         }
     }
 
-    public java.util.List<Long> listTimestamps(String symbol, int multiplier, String timespan,
+    public List<Long> listTimestamps(String symbol, int multiplier, String timespan,
                                                long startMs, long endMs) throws SQLException {
         String sql = """
             SELECT timestamp FROM prices
@@ -274,8 +330,7 @@ public class DatabaseManager implements AutoCloseable {
         }
     }
 
-    // profile
-
+    // profile/account
     public long getOrCreateProfile(String name) throws SQLException {
         try (PreparedStatement sel = conn.prepareStatement("SELECT id FROM profiles WHERE name=?")) {
             sel.setString(1, name);
@@ -294,8 +349,8 @@ public class DatabaseManager implements AutoCloseable {
         }
         throw new SQLException("Failed to create profile: " + name);
     }
-
-    public long getOrCreateAccount(long profileId, String accountName, String baseCurrency) throws SQLException {
+    public long getOrCreateAccount(String accountName, String baseCurrency) throws SQLException {
+        long profileId = getSingletonProfileId();
         try (PreparedStatement sel = conn.prepareStatement(
                 "SELECT id FROM accounts WHERE profile_id=? AND name=?")) {
             sel.setLong(1, profileId);
@@ -317,7 +372,6 @@ public class DatabaseManager implements AutoCloseable {
         }
         throw new SQLException("Failed to create account: " + accountName);
     }
-
     public List<String> loadWatchlistSymbols(long accountId) throws SQLException {
         Long watchlistId = null;
         try (PreparedStatement sel = conn.prepareStatement(
@@ -339,7 +393,6 @@ public class DatabaseManager implements AutoCloseable {
             }
         }
     }
-
     public void saveWatchlistSymbols(long accountId, String watchlistName, List<String> symbols) throws SQLException {
         boolean prev = conn.getAutoCommit();
         conn.setAutoCommit(false);
@@ -398,57 +451,37 @@ public class DatabaseManager implements AutoCloseable {
         }
     }
 
-    private void ensurePortfolioSchema() throws SQLException {
-        try (Statement st = conn.createStatement()) {
-            // trades
-            st.execute("""
-                CREATE TABLE IF NOT EXISTS trades (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                account_id INTEGER NOT NULL,
-                symbol TEXT NOT NULL,
-                timestamp_ms INTEGER NOT NULL,
-                side TEXT NOT NULL CHECK (side IN ('BUY','SELL')),
-                quantity INTEGER NOT NULL,          -- whole shares; use REAL if you support fractional shares
-                price REAL NOT NULL,                -- trade price per share
-                FOREIGN KEY(account_id) REFERENCES accounts(id) ON DELETE CASCADE
-                )
-            """);
-            st.execute("CREATE INDEX IF NOT EXISTS idx_trades_acct_time ON trades(account_id, timestamp_ms)");
-            st.execute("CREATE INDEX IF NOT EXISTS idx_trades_acct_symbol ON trades(account_id, symbol)");
-
-            // 2) cash_ledger
-            st.execute("""
-                CREATE TABLE IF NOT EXISTS cash_ledger (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                account_id INTEGER NOT NULL,
-                timestamp_ms INTEGER NOT NULL,
-                delta REAL NOT NULL,            -- +deposit, -withdrawal, +sell proceeds, -buy cost
-                reason TEXT NOT NULL CHECK (reason IN ('DEPOSIT','WITHDRAWAL','TRADE')),
-                ref_trade_id INTEGER,           -- nullable; points to trades row when reason=TRADE
-                note TEXT,
-                FOREIGN KEY(account_id) REFERENCES accounts(id) ON DELETE CASCADE,
-                FOREIGN KEY(ref_trade_id) REFERENCES trades(id) ON DELETE SET NULL
-                )
-            """);
-            st.execute("CREATE INDEX IF NOT EXISTS idx_cash_acct_time ON cash_ledger(account_id, timestamp_ms)");
-
-            // positions (quantity + average cost)
-            st.execute("""
-                CREATE TABLE IF NOT EXISTS positions (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                account_id INTEGER NOT NULL,
-                symbol TEXT NOT NULL,
-                quantity INTEGER NOT NULL,       -- whole shares; match trades.quantity type
-                avg_cost REAL NOT NULL,          -- average cost per share for remaining shares
-                last_updated_ms INTEGER NOT NULL,
-                UNIQUE(account_id, symbol),
-                FOREIGN KEY(account_id) REFERENCES accounts(id) ON DELETE CASCADE
-                )
-            """);
-            st.execute("CREATE INDEX IF NOT EXISTS idx_positions_acct ON positions(account_id)");
+    // cash helpers
+    public long depositCash(long accountId, double amount, long ts, String note) throws SQLException {
+        return recordCash(accountId, ts, +Math.abs(amount), "DEPOSIT", note);
+    }
+    public long withdrawCash(long accountId, double amount, long ts, String note) throws SQLException {
+        return recordCash(accountId, ts, -Math.abs(amount), "WITHDRAWAL", note);
+    }
+    public double getCashBalance(long accountId) throws SQLException {
+        try (PreparedStatement ps = conn.prepareStatement("""
+            SELECT COALESCE(SUM(delta), 0.0) FROM cash_ledger WHERE account_id=?
+        """)) {
+            ps.setLong(1, accountId);
+            try (ResultSet rs = ps.executeQuery()) { return rs.next() ? rs.getDouble(1) : 0.0; }
+        }
+    }
+    private long recordCash(long accountId, long ts, double delta, String reason, String note) throws SQLException {
+        try (PreparedStatement ps = conn.prepareStatement("""
+            INSERT INTO cash_ledger(account_id, timestamp_ms, delta, reason, note)
+            VALUES(?,?,?,?,?)
+        """, Statement.RETURN_GENERATED_KEYS)) {
+            ps.setLong(1, accountId);
+            ps.setLong(2, ts);
+            ps.setDouble(3, delta);
+            ps.setString(4, reason);
+            ps.setString(5, note);
+            ps.executeUpdate();
+            try (ResultSet ks = ps.getGeneratedKeys()) { return ks.next() ? ks.getLong(1) : 0L; }
         }
     }
 
+    // trades
     private void upsertPositionFromTrade(long accountId, String symbol, String side,
                                          int qty, double price, long ts) throws SQLException {
         int curQty = 0;
@@ -512,37 +545,6 @@ public class DatabaseManager implements AutoCloseable {
         }
     }
 
-    // cash helpers
-    public long depositCash(long accountId, double amount, long ts, String note) throws SQLException {
-        return recordCash(accountId, ts, +Math.abs(amount), "DEPOSIT", note);
-    }
-    public long withdrawCash(long accountId, double amount, long ts, String note) throws SQLException {
-        return recordCash(accountId, ts, -Math.abs(amount), "WITHDRAWAL", note);
-    }
-    public double getCashBalance(long accountId) throws SQLException {
-        try (PreparedStatement ps = conn.prepareStatement("""
-            SELECT COALESCE(SUM(delta), 0.0) FROM cash_ledger WHERE account_id=?
-        """)) {
-            ps.setLong(1, accountId);
-            try (ResultSet rs = ps.executeQuery()) { return rs.next() ? rs.getDouble(1) : 0.0; }
-        }
-    }
-    private long recordCash(long accountId, long ts, double delta, String reason, String note) throws SQLException {
-        try (PreparedStatement ps = conn.prepareStatement("""
-            INSERT INTO cash_ledger(account_id, timestamp_ms, delta, reason, note)
-            VALUES(?,?,?,?,?)
-        """, Statement.RETURN_GENERATED_KEYS)) {
-            ps.setLong(1, accountId);
-            ps.setLong(2, ts);
-            ps.setDouble(3, delta);
-            ps.setString(4, reason);
-            ps.setString(5, note);
-            ps.executeUpdate();
-            try (ResultSet ks = ps.getGeneratedKeys()) { return ks.next() ? ks.getLong(1) : 0L; }
-        }
-    }
-
-    // record a stock trade
     public long recordTrade(long accountId, String symbol, long ts, String side,
                             int quantity, double price) throws SQLException {
         if (!"BUY".equals(side) && !"SELL".equals(side)) {
@@ -598,8 +600,6 @@ public class DatabaseManager implements AutoCloseable {
             conn.setAutoCommit(prev);
         }
     }
-    
-    public static record PositionView(String symbol, int quantity, double avgCost) {}
 
     public List<PositionView> loadPositions(long accountId) throws SQLException {
         try (PreparedStatement ps = conn.prepareStatement("""
@@ -614,5 +614,65 @@ public class DatabaseManager implements AutoCloseable {
                 return out;
             }
         }
+    }
+
+    // startup helpers
+    public long getExistingProfileIdOrZero() throws SQLException {
+        try (PreparedStatement ps = conn.prepareStatement(
+                "SELECT id FROM profiles ORDER BY id LIMIT 1");
+             ResultSet rs = ps.executeQuery()) {
+            return rs.next() ? rs.getLong(1) : 0L;
+        }
+    }
+    public long ensureSingletonProfile(String name) throws SQLException {
+        long existing = getExistingProfileIdOrZero();
+        if (existing != 0L) return existing;
+
+        try (PreparedStatement ins = conn.prepareStatement(
+                "INSERT INTO profiles(name) VALUES(?)",
+                Statement.RETURN_GENERATED_KEYS)) {
+            ins.setString(1, name);
+            ins.executeUpdate();
+            try (ResultSet ks = ins.getGeneratedKeys()) {
+                if (ks.next()) return ks.getLong(1);
+                throw new SQLException("Failed to create singleton profile");
+            }
+        }
+    }
+    public long getSingletonProfileId() throws SQLException {
+        long id = getExistingProfileIdOrZero();
+        if (id == 0L) throw new SQLException("No profile found");
+        return id;
+    }
+    public boolean profileHasAccounts(long profileId) throws SQLException {
+        try (PreparedStatement ps = conn.prepareStatement(
+                "SELECT EXISTS(SELECT 1 FROM accounts WHERE profile_id=?)")) {
+            ps.setLong(1, profileId);
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next() && rs.getInt(1) == 1;
+            }
+        }
+    }
+    public ArrayList<com.accountmanager.Account> listAccounts(long profileId) throws SQLException {
+        try (PreparedStatement ps = conn.prepareStatement("""
+                SELECT id, name
+                FROM accounts
+                WHERE profile_id=?
+                ORDER BY name
+            """)) {
+            ps.setLong(1, profileId);
+            try (ResultSet rs = ps.executeQuery()) {
+                ArrayList<com.accountmanager.Account> out = new ArrayList<>();
+                while (rs.next()) {
+                    out.add(new com.accountmanager.Account(rs.getLong(1), rs.getString(2)));
+                }
+                return out;
+            }
+        }
+    }
+    public StartupState determineStartupState() throws SQLException {
+        long profileId = getExistingProfileIdOrZero();
+        if (profileId == 0L) return StartupState.FIRST_RUN;
+        return profileHasAccounts(profileId) ? StartupState.READY : StartupState.PROFILE_NO_ACCOUNTS;
     }
 }

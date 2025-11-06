@@ -4,7 +4,7 @@ import com.market.TradeItem;
 
 // One account
 public class Account {
-
+    private long id; // identifier used in database
     private double totalValue = 0.0f; // Current total account value
     private double availableBalance; // the amount the user can currently trade
     private String name; // User defined name of account
@@ -20,12 +20,25 @@ public class Account {
         setName(name);
     }
 
+    public Account(long id, String name) {
+        setId(id);
+        setName(name);
+    }
+
     // Set name
     public void setName(String name) { this.name = name; }
 
     // Get name
     public String getName() {
         return name;
+    }
+
+    // Set id
+    public void setId(long id) { this.name = name; }
+
+    // Get id
+    public long getId() {
+        return id;
     }
 
     // Get account value

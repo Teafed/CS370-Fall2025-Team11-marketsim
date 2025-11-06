@@ -16,6 +16,11 @@ public class AccountManager {
         numberOfAccounts = 0;
     }
 
+    public AccountManager(ArrayList<Account> accounts) {
+        this.accounts = accounts;
+        this.numberOfAccounts = accounts.size();
+    }
+
     // Purpose: To add an account to the manager. Returns true if successful, returns false if not.
     public boolean addAccount(Account account) {
         if (numberOfAccounts < maxNumberOfAccounts) {

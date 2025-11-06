@@ -22,12 +22,31 @@ public class Main {
         } catch (Exception e) {
             throw new SQLException("Failed to open database: " + dbFile, e);
         }
-
+        switch (db.determineStartupState()) {
+            case FIRST_RUN -> {
+                System.out.println("No profile detected");
+                String name = "My Kool Profile";
+                // show profile create screen
+                long profileId = db.ensureSingletonProfile(name);
+                // then make first account screen
+            }
+            case PROFILE_NO_ACCOUNTS -> {
+                System.out.println("Profile with no accounts :(");
+                long profileId = db.getSingletonProfileId();
+                // no account exists, make an account
+            }
+            case READY -> {
+                long profileId = db.getSingletonProfileId();
+                System.out.println("Profile " + profileId + " loaded from db");
+                java.util.ArrayList<Account> accounts = db.listAccounts(profileId);
+                // pick last-used account then open main window
+            }
+        }
         // Initialize account (demo for now)
         Account account = com.tools.BuildDemoAccount.buildDemoAccount();
 
         long profileId = db.getOrCreateProfile("Test Profile");
-        long accountId = db.getOrCreateAccount(profileId, account.getName(), "USD");
+        long accountId = db.getOrCreateAccount(account.getName(), "USD");
         java.util.List<String> dbSymbols = db.loadWatchlistSymbols(accountId);
 
         if (dbSymbols.isEmpty()) {
