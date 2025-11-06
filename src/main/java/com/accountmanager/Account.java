@@ -20,6 +20,25 @@ public class Account {
         setName(name);
     }
 
+    public Account(String name, double balance) {
+        setName(name);
+        availableBalance = balance;
+
+        TradeItem[] initialSymbols = {
+                new TradeItem("Apple", "AAPL"),
+                new TradeItem("Microsoft", "MSFT"),
+                new TradeItem("Alphabet", "GOOGL"),
+                new TradeItem("NVIDIA", "NVDA"),
+                new TradeItem("Amazon", "AMZN"),
+                new TradeItem("Meta Platforms", "META"),
+                new TradeItem("Tesla", "TSLA"),
+                new TradeItem("Broadcom", "AVGO"),
+                new TradeItem("Taiwan Semiconductor Manufacturing Company", "TSM"),
+                new TradeItem("Berkshire Hathaway", "BRK.B")
+        };
+        setWatchlist(initialSymbols);
+    }
+
     // Set name
     public void setName(String name) { this.name = name; }
 
