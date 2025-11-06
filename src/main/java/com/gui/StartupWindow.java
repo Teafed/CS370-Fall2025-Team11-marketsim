@@ -6,11 +6,14 @@ import com.etl.FinnhubMarketStatus;
 import com.etl.TradeSource;
 import com.market.Database;
 import com.market.Market;
+import com.market.MarketListener;
+import com.market.TradeItem;
 import com.tools.MockFinnhubClient;
 
 import javax.swing.*;
 import java.awt.*;
 import java.sql.SQLException;
+import java.util.List;
 
 public class StartupWindow extends ContentPanel {
     private JTextField profileNameField;
@@ -188,7 +191,20 @@ public class StartupWindow extends ContentPanel {
             }
 
             // Initialize market
-            Market market = new Market(client, db, account);
+            Market market;
+            try {
+                market = new Market(client, db, account);
+            } catch (Exception e) {
+                throw new RuntimeException("Failed to start Market", e);
+            }
+            // temporary no-op listener to safely subscribe in addFromWatchlist()
+            // real gui listener attached after MainWindow is initialized
+            market.setMarketListener(new MarketListener() {
+                @Override public void onMarketUpdate() { }
+
+                @Override
+                public void loadSymbols(List<TradeItem> items) { }
+            });
             market.addFromWatchlist(account.getWatchList());
             while (!market.isReady()) {
                 System.out.println("Waiting for Market status...");
