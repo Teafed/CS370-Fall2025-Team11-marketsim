@@ -3,3 +3,9 @@ Group members met to discuss Lab Project 10, identifying and creating objects, c
 
 Order.java was created, identifying key information regarding trades; Including stock, price, execution time, sharesbought, ordercost, and userselect. 
 *Note that Order is different from Trader. Trader is responsible for computational processes while Order is handled and instanstiated by Orderspanel.
+
+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+--November 5/6 2025--
+Group members met to discuss and begin working on the Software Design Spec (SDS), changes have been made including the elimination of redundant files, trade logic, and UI design.
+
+Changes to prior package and class diagrams are in the works to reflect changes and additions to the project.
