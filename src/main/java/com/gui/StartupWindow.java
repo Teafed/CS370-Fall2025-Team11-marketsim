@@ -1,6 +1,6 @@
 package com.gui;
 
-import com.accountmanager.Account;
+import com.accountmanager.*;
 import com.etl.FinnhubClient;
 import com.etl.FinnhubMarketStatus;
 import com.etl.TradeSource;
@@ -11,6 +11,7 @@ import com.market.TradeItem;
 import com.tools.MockFinnhubClient;
 
 import javax.swing.*;
+import javax.xml.crypto.Data;
 import java.awt.*;
 import java.sql.SQLException;
 import java.util.List;
@@ -33,7 +34,6 @@ public class StartupWindow extends ContentPanel {
         setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
         setBorder(BorderFactory.createEmptyBorder(40, 100, 40, 100));
 
-        // Title
         JLabel titleLabel = new JLabel("Marketsim", SwingConstants.CENTER);
         titleLabel.setFont(new Font("SansSerif", Font.BOLD, 24));
         titleLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
@@ -76,8 +76,7 @@ public class StartupWindow extends ContentPanel {
         add(titleLabel);
         add(Box.createVerticalStrut(12));
 
-        JLabel info = new JLabel("<html>An existing profile was found.<br/>" +
-                "Account selection UI is coming later.<br/><br/>Click Start to launch.</html>");
+        JLabel info = new JLabel("sorry guys");
         info.setAlignmentX(Component.CENTER_ALIGNMENT);
         add(info);
         add(Box.createVerticalStrut(16));
@@ -95,12 +94,15 @@ public class StartupWindow extends ContentPanel {
         final boolean firstRun;
         final long profileId;
 
+        Profile profile;
+
         if (state == Database.StartupState.FIRST_RUN) {
             System.out.println("No profile detected");
             firstRun = true;
             profileId = -1;
         } else {
             profileId = db.getSingletonProfileId();
+            profile = Database.buildProfile(profileId);
             System.out.println("Profile " + profileId + " loaded from db");
             firstRun = false;
         }
@@ -143,10 +145,11 @@ public class StartupWindow extends ContentPanel {
         });
     }
 
-    public static void runMarketSim(Database db, String profileName, double balance) {
+    public static void runMarketSim(Database db, Profile profile) {
         try {
             // Initialize account
-            Account account = new Account(profileName,balance);
+
+            Account account = profile.getFirstAccount();
 
             long profileId = db.getOrCreateProfile(profileName);
             long accountId = db.getOrCreateAccount(account.getName(), "USD");
@@ -213,7 +216,7 @@ public class StartupWindow extends ContentPanel {
 
             // Initialize GUI Client
             SwingUtilities.invokeLater(() -> {
-                MainWindow mw = new MainWindow(db, account, market);
+                MainWindow mw = new MainWindow(db, profile, market);
                 market.setMarketListener(mw.getSymbolListPanel());
             });
         }

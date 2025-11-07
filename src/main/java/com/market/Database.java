@@ -1,5 +1,7 @@
 package com.market;
 
+import com.accountmanager.Profile;
+
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
@@ -653,7 +655,7 @@ public class Database implements AutoCloseable {
             }
         }
     }
-    public ArrayList<com.accountmanager.Account> listAccounts(long profileId) throws SQLException {
+    public Profile buildProfile(long profileId) throws SQLException {
         try (PreparedStatement ps = conn.prepareStatement("""
                 SELECT id, name
                 FROM accounts
@@ -666,7 +668,9 @@ public class Database implements AutoCloseable {
                 while (rs.next()) {
                     out.add(new com.accountmanager.Account(rs.getLong(1), rs.getString(2)));
                 }
-                return out;
+                Profile p = new Profile(out);
+                p.setOwner("asdf");
+                return p;
             }
         }
     }

@@ -3,7 +3,7 @@
 package com.gui;
 
 import com.market.*;
-import com.accountmanager.Account;
+import com.accountmanager.*;
 
 import javax.swing.*;
 import java.awt.*;
@@ -13,6 +13,7 @@ public class MainWindow extends JFrame
                    SymbolPanel.AccountSelectionListener {
     private final Database db;
     private final Account account;
+//    private final Profile profile;
     private final Market market;
 
     private SymbolPanel symbolPanel;
@@ -28,6 +29,8 @@ public class MainWindow extends JFrame
 
     public MainWindow(Database db, Account account, Market market) {
         this.db = db;
+//        this.profile = profile;
+//        this.account = profile.getFirstAccount();
         this.account = account;
         this.market = market;
         System.out.println("Launching Marketsim");

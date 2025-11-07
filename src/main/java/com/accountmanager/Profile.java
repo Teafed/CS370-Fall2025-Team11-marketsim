@@ -58,6 +58,10 @@ public class Profile {
         return null;
     }
 
+    public Account getFirstAccount() {
+        return accounts.getFirst();
+    }
+
     // Get all names of accounts
     public String[] getAccountNames() {
         String[] names = new String[accounts.size()];
