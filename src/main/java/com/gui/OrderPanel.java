@@ -1,5 +1,7 @@
 package com.gui;
 
+import com.accountmanager.Account;
+
 import javax.swing.*;
 import java.awt.*;
 
@@ -8,8 +10,9 @@ public class OrderPanel extends ContentPanel {
     private final JLabel indicator;
     private final JTabbedPane tabs;
     private boolean collapsed = false;
+    private final PortfolioPanel portfolioPanel;
 
-    OrderPanel() {
+    public OrderPanel(Account account) {
         setLayout(new BorderLayout());
         setOpaque(true);
         setBackground(GUIComponents.BG_DARK);
@@ -42,7 +45,35 @@ public class OrderPanel extends ContentPanel {
         };
         tabs.updateUI();
         tabs.addTab("Trade", new TradingPanel());
-        tabs.addTab("Portfolio", new PortfolioPanel());
+
+        // Create a single PortfolioPanel instance for this OrderPanel
+        portfolioPanel = new PortfolioPanel(account);
+        tabs.addTab("Portfolio", portfolioPanel);
+
+        // Replace the default tab component with a header that includes a close button
+        int portfolioIndex = tabs.indexOfComponent(portfolioPanel);
+        if (portfolioIndex >= 0) {
+            JPanel tabHeader = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 0));
+            tabHeader.setOpaque(false);
+            JLabel title = new JLabel("Portfolio");
+            title.setForeground(GUIComponents.TEXT_PRIMARY);
+            title.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+            JButton closeBtn = new JButton("✕");
+            closeBtn.setBorder(null);
+            closeBtn.setOpaque(false);
+            closeBtn.setContentAreaFilled(false);
+            closeBtn.setForeground(GUIComponents.TEXT_SECONDARY);
+            closeBtn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+            closeBtn.setToolTipText("Close Portfolio");
+            closeBtn.addActionListener(e -> {
+                // When closing the portfolio tab, revert to the Trade tab
+                tabs.setSelectedIndex(0);
+                setCollapsed(true);
+            });
+            tabHeader.add(title);
+            tabHeader.add(closeBtn);
+            tabs.setTabComponentAt(portfolioIndex, tabHeader);
+        }
 
         add(header, BorderLayout.NORTH);
         add(tabs, BorderLayout.CENTER);

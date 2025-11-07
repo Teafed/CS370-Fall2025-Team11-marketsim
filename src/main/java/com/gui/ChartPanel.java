@@ -4,12 +4,13 @@ package com.gui;
 
 import com.etl.HistoricalService;
 import com.market.DatabaseManager;
+import com.accountmanager.Account;
 
+import javax.swing.*;
+import java.awt.*;
 import java.awt.geom.Path2D;
 import java.sql.Date;
 import java.sql.ResultSet;
-import javax.swing.*;
-import java.awt.*;
 import java.text.*;
 import java.time.*;
 import java.util.Map;
@@ -26,7 +27,7 @@ public class ChartPanel extends ContentPanel {
     private SwingWorker<?,?> currentWorker; // for backfilling
 
     /* called once in MainWindow; loads first symbol on watchlist */
-    public ChartPanel() {
+    public ChartPanel(Account account) {
         super();
         this.symbol = null;
         setLayout(new BorderLayout(0, 10));
@@ -50,7 +51,7 @@ public class ChartPanel extends ContentPanel {
         });
         south.add(timeframeBar);
 
-        OrderPanel orderPanel = new OrderPanel();
+        OrderPanel orderPanel = new OrderPanel(account);
         south.add(orderPanel);
         add(south, BorderLayout.SOUTH);
 
@@ -145,20 +146,18 @@ public class ChartPanel extends ContentPanel {
     // ===========
     // ChartCanvas
     // ===========
-    private static final class ChartCanvas extends ContentPanel {
-        private long[] times;
-        private double[] prices;
-        private String symbol;
+    private static class ChartCanvas extends ContentPanel {
+        private String symbol = null;
         private boolean loading = false;
-
-        private double minPrice = Double.MAX_VALUE;
-        private double maxPrice = Double.MIN_VALUE;
-        private long minTime = Long.MAX_VALUE;
-        private long maxTime = Long.MIN_VALUE;
+        private TreeMap<Long, Double> prices = new TreeMap<>();
+        private long minMs = 0;
+        private long maxMs = 0;
+        private double minPrice = 0;
+        private double maxPrice = 0;
 
         ChartCanvas() {
             setPreferredSize(new Dimension(800, 400));
-            setBackground(GUIComponents.BG_LIGHTER);
+            setBackground(GUIComponents.BG_DARK);
             setBorder(BorderFactory.createCompoundBorder(
                     BorderFactory.createLineBorder(GUIComponents.BORDER_COLOR, 1),
                     BorderFactory.createEmptyBorder(20, 20, 20, 60)
@@ -167,61 +166,42 @@ public class ChartPanel extends ContentPanel {
 
         void clear(String symbol) {
             this.symbol = symbol;
-            this.times = null;
-            this.prices = null;
+            loading = false;
+            prices.clear();
             repaint();
         }
 
-        void setLoading(boolean v) { loading = v; repaint(); }
+        void setLoading(boolean loading) {
+            this.loading = loading;
+            repaint();
+        }
 
-        void loadFromDb(DatabaseManager db, String symbol, long startMs, long endMs, int maxPoints) {
+        void setData(String symbol, TreeMap<Long, Double> prices) {
             this.symbol = symbol;
-            // use daily getCandles bc smaller timeframes aren't supported on free polygon
-            try (ResultSet rs = db.getCandles(symbol, startMs, endMs)) {
-                TreeMap<Long, Double> sorted = new TreeMap<>();
-                while (rs.next()) {
-                    long t = rs.getLong("timestamp");
-                    double c = rs.getDouble("close");
-                    sorted.put(t, c);
-                }
+            this.prices = prices;
+            loading = false;
 
-                if (sorted.isEmpty()) { times = null; prices = null; repaint(); return; }
-
-                int dataSize = sorted.size();
-                int step = Math.max(1, dataSize / Math.max(1, maxPoints));
-                int finalSize = (dataSize + step - 1) / step;
-
-                times = new long[finalSize];
-                prices = new double[finalSize];
-
-                minTime = Long.MAX_VALUE; maxTime = Long.MIN_VALUE;
-                minPrice = Double.MAX_VALUE; maxPrice = Double.MIN_VALUE;
-
-                int i = 0, k = 0;
-                for (Map.Entry<Long, Double> e : sorted.entrySet()) {
-                    if (k++ % step != 0) continue;
-                    if (i >= finalSize) break;
-                    long t = e.getKey();
-                    double p = e.getValue();
-                    times[i] = t; prices[i] = p;
-                    if (t < minTime) minTime = t; if (t > maxTime) maxTime = t;
-                    if (p < minPrice) minPrice = p; if (p > maxPrice) maxPrice = p;
-                    i++;
-                }
-            } catch (Exception ex) {
-                times = null; prices = null;
+            if (prices.isEmpty()) {
+                minMs = maxMs = 0;
+                minPrice = maxPrice = 0;
+            } else {
+                minMs = prices.firstKey();
+                maxMs = prices.lastKey();
+                minPrice = prices.values().stream().mapToDouble(Double::doubleValue).min().orElse(0.0);
+                maxPrice = prices.values().stream().mapToDouble(Double::doubleValue).max().orElse(0.0);
             }
             repaint();
         }
 
-        @Override protected void paintComponent(Graphics g) {
+        @Override
+        protected void paintComponent(Graphics g) {
             super.paintComponent(g);
 
-            if (times == null || times.length < 2) {
+            if (symbol == null) {
                 g.setColor(new Color(150, 150, 150));
                 g.setFont(new Font("Segoe UI", Font.PLAIN, 14));
                 FontMetrics fm = g.getFontMetrics();
-                String msg = (symbol == null) ? "Select a stock to view chart" : ("No data available for " + symbol);
+                String msg = "Select a symbol";
                 g.drawString(msg, (getWidth() - fm.stringWidth(msg)) / 2, getHeight() / 2);
                 return;
             }
@@ -229,65 +209,118 @@ public class ChartPanel extends ContentPanel {
             Graphics2D g2 = (Graphics2D) g;
             g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 
-            boolean isPositive = prices[prices.length - 1] >= prices[0];
-            Color lineColor = isPositive ? GUIComponents.ACCENT_GREEN : GUIComponents.ACCENT_RED;
-            Color gradientStart = new Color(lineColor.getRed(), lineColor.getGreen(), lineColor.getBlue(), 100);
-            Color gradientEnd   = new Color(lineColor.getRed(), lineColor.getGreen(), lineColor.getBlue(), 0);
-            Color labelColor = new Color(120, 120, 120);
-            Font labelFont = new Font("Segoe UI", Font.PLAIN, 10);
+            int plotWidth = getWidth() - 80; // 20 left, 60 right
+            int plotHeight = getHeight() - 40; // 20 top, 20 bottom
+            int plotX = 20;
+            int plotY = 20;
 
-            int w = getWidth();
-            int h = getHeight();
-            Insets in = getInsets();
-            int drawWidth = w - in.left - in.right;
-            int drawHeight = h - in.top - in.bottom;
-            if (maxTime == minTime || maxPrice == minPrice) return;
-
-            int n = times.length;
-            int[] xPoints = new int[n];
-            int[] yPoints = new int[n];
-            for (int i = 0; i < n; i++) {
-                xPoints[i] = in.left + (int) ((times[i] - minTime) * drawWidth / (double) (maxTime - minTime));
-                yPoints[i] = h - in.bottom - (int) ((prices[i] - minPrice) * drawHeight / (maxPrice - minPrice));
-            }
-
-            Path2D.Double path = new Path2D.Double();
-            path.moveTo(xPoints[0], h - in.bottom);
-            for (int i = 0; i < n; i++) path.lineTo(xPoints[i], yPoints[i]);
-            path.lineTo(xPoints[n - 1], h - in.bottom);
-            path.closePath();
-
-            GradientPaint gp = new GradientPaint(0, in.top, gradientStart, 0, h - in.bottom, gradientEnd);
-            g2.setPaint(gp);
-            g2.fill(path);
-
-            g2.setColor(lineColor);
-            g2.setStroke(new BasicStroke(2f));
-            g2.drawPolyline(xPoints, yPoints, n);
-
-            g2.setColor(labelColor);
-            g2.setFont(labelFont);
-            FontMetrics fm = g2.getFontMetrics();
-            g2.drawString(String.format("%.0f", maxPrice), w - in.right + 5, in.top + fm.getAscent());
-            g2.drawString(String.format("%.0f", minPrice), w - in.right + 5, h - in.bottom);
-
-            SimpleDateFormat timeFormat = new SimpleDateFormat("yyyy MMM d, HH:mm");
-            timeFormat.setTimeZone(TimeZone.getTimeZone("UTC"));
-            String startLabel = timeFormat.format(new Date(minTime));
-            String endLabel = timeFormat.format(new Date(maxTime));
-            g2.drawString(startLabel, in.left, h - in.bottom + fm.getAscent() + 5);
-            g2.drawString(endLabel, w - in.right - fm.stringWidth(endLabel), h - in.bottom + fm.getAscent() + 5);
+            // Draw border
+            g2.setColor(GUIComponents.BORDER_COLOR);
+            g2.drawRect(plotX, plotY, plotWidth, plotHeight);
 
             if (loading) {
-                g2 = (Graphics2D) g.create();
-                g2.setColor(new Color(0,0,0,120));
-                g2.fillRect(0, 0, getWidth(), getHeight());
-                g2.setFont(new Font("Segoe UI", Font.BOLD, 16));
-                g2.setColor(Color.WHITE);
-                String msg = "Loading…";
-                fm = g2.getFontMetrics();
-                g2.drawString(msg, (getWidth()-fm.stringWidth(msg))/2, (getHeight()+fm.getAscent())/2);
-                g2.dispose();
+                g.setColor(new Color(150, 150, 150));
+                g.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+                FontMetrics fm = g.getFontMetrics();
+                String msg = "Loading data for " + symbol + "...";
+                g.drawString(msg, (getWidth() - fm.stringWidth(msg)) / 2, getHeight() / 2);
+                return;
+            }
+
+            if (prices.isEmpty()) {
+                g.setColor(new Color(150, 150, 150));
+                g.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+                FontMetrics fm = g.getFontMetrics();
+                String msg = "No data for " + symbol;
+                g.drawString(msg, (getWidth() - fm.stringWidth(msg)) / 2, getHeight() / 2);
+                return;
+            }
+
+            // Draw price axis (right side)
+            g2.setColor(GUIComponents.TEXT_SECONDARY);
+            g2.setFont(new Font("Segoe UI", Font.PLAIN, 10));
+            DecimalFormat priceFormat = new DecimalFormat("#,##0.00");
+
+            for (int i = 0; i <= 5; i++) {
+                double price = minPrice + (maxPrice - minPrice) * i / 5;
+                int y = plotY + plotHeight - (int) (plotHeight * (price - minPrice) / (maxPrice - minPrice));
+                g2.drawLine(plotX + plotWidth, y, plotX + plotWidth + 5, y); // Tick mark
+                String priceStr = priceFormat.format(price);
+                g2.drawString(priceStr, plotX + plotWidth + 10, y + 4);
+            }
+
+            // Draw time axis (bottom side)
+            g2.setColor(GUIComponents.TEXT_SECONDARY);
+            SimpleDateFormat dateFormat = new SimpleDateFormat("MMM dd");
+            dateFormat.setTimeZone(TimeZone.getTimeZone("UTC"));
+
+            long timeRange = maxMs - minMs;
+            for (int i = 0; i <= 5; i++) {
+                long time = minMs + timeRange * i / 5;
+                int x = plotX + (int) (plotWidth * (time - minMs) / timeRange);
+                g2.drawLine(x, plotY + plotHeight, x, plotY + plotHeight + 5); // Tick mark
+                String dateStr = dateFormat.format(new Date(time));
+                g2.drawString(dateStr, x - g2.getFontMetrics().stringWidth(dateStr) / 2, plotY + plotHeight + 20);
+            }
+
+            // Draw price line
+            g2.setColor(GUIComponents.ACCENT_COLOR);
+            Path2D path = new Path2D.Double();
+            boolean firstPoint = true;
+
+            for (Map.Entry<Long, Double> entry : prices.entrySet()) {
+                long time = entry.getKey();
+                double price = entry.getValue();
+
+                int x = plotX + (int) (plotWidth * (time - minMs) / timeRange);
+                int y = plotY + plotHeight - (int) (plotHeight * (price - minPrice) / (maxPrice - minPrice));
+
+                if (firstPoint) {
+                    path.moveTo(x, y);
+                    firstPoint = false;
+                } else {
+                    path.lineTo(x, y);
+                }
+            }
+            g2.draw(path);
+        }
+
+        /**
+         * Load candle data for a symbol from the database and downsample to at most maxPoints
+         * before calling setData.
+         */
+        void loadFromDb(DatabaseManager db, String symbol, long startMs, long endMs, int maxPoints) {
+            if (db == null || symbol == null) { clear(symbol); return; }
+            try (java.sql.ResultSet rs = db.getCandles(symbol, startMs, endMs)) {
+                java.util.List<java.util.Map.Entry<Long, Double>> rows = new java.util.ArrayList<>();
+                while (rs.next()) {
+                    long ts = rs.getLong(1);
+                    double close = rs.getDouble(5); // SELECT timestamp, open, high, low, close, volume
+                    rows.add(new java.util.AbstractMap.SimpleEntry<>(ts, close));
+                }
+
+                if (rows.isEmpty()) {
+                    setData(symbol, new TreeMap<>());
+                    return;
+                }
+
+                // If points exceed maxPoints, downsample by picking roughly evenly spaced indices
+                int total = rows.size();
+                TreeMap<Long, Double> out = new TreeMap<>();
+                if (total <= maxPoints || maxPoints <= 0) {
+                    for (var e : rows) out.put(e.getKey(), e.getValue());
+                } else {
+                    double step = (double) total / (double) maxPoints;
+                    for (int i = 0; i < maxPoints; i++) {
+                        int idx = Math.min(total - 1, (int) Math.round(i * step));
+                        var e = rows.get(idx);
+                        out.put(e.getKey(), e.getValue());
+                    }
+                }
+                setData(symbol, out);
+            } catch (Exception ex) {
+                // on error clear canvas for symbol
+                clear(symbol);
             }
         }
     }

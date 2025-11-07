@@ -22,6 +22,9 @@ public class GUIComponents {
    public static final Color ACCENT_RED = new Color(244, 67, 54);
    public static final Color ACCENT_ORANGE = new Color(255, 152, 0);
    
+   // Default accent color used across the UI (kept for backward compatibility)
+   public static final Color ACCENT_COLOR = ACCENT_BLUE;
+   
    public static final Color BORDER_COLOR = new Color(70, 70, 70);
    public static final Color BORDER_FOCUS = new Color(100, 150, 255);
    

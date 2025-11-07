@@ -79,7 +79,10 @@ public class MainWindow extends JFrame
 
     // create
     private void createPanels() {
-        chartPanel = new ChartPanel();
+        // initialize left symbol list panel
+        symbolPanel = new SymbolListPanel(db);
+
+        chartPanel = new ChartPanel(account);
         cards = new CardLayout();
         rightCards = new JPanel(cards);
         rightCards.setBackground(GUIComponents.BG_DARK);
@@ -88,12 +91,16 @@ public class MainWindow extends JFrame
         AccountPanel accountPanel = new AccountPanel(account);
         rightCards.add(accountPanel, CARD_ACCOUNT);
 
-        symbolPanel = new SymbolListPanel(db);
+        OrderPanel orderPanel = new OrderPanel(account);
+        // ...existing code...
         symbolPanel.addSymbolSelectionListener(this);
         symbolPanel.setAccount(account, this);
 
         cards.show(rightCards, CARD_CHART);
         rightCards.setMinimumSize(new Dimension(MIN_RIGHT_WIDTH, 0));
+
+        // Add the orderPanel to the main window, likely in the south or east
+        add(orderPanel, BorderLayout.SOUTH);
     }
 
     private void setupCloseHook() {
