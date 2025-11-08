@@ -1,4 +1,4 @@
-package com.etl;
+package com.etl.finnhub;
 
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
@@ -11,7 +11,7 @@ import java.net.http.HttpResponse;
 
 import static java.net.http.HttpClient.newHttpClient;
 
-public class FinnhubMarketStatus {
+public class MarketStatusClient {
 
     public static boolean checkStatus() {
         Dotenv dotenv = Dotenv.configure().ignoreIfMissing().load();

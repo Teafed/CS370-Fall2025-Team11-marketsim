@@ -1,5 +1,6 @@
 package com.etl;
 
+import com.etl.finnhub.WebSocketClient;
 import com.market.DatabaseManager;
 import org.junit.jupiter.api.Test;
 import java.sql.ResultSet;
@@ -41,7 +42,7 @@ class FinnhubClientParserTest {
     @Test
     void liveFinnhubSmokeTest() throws Exception {
         DatabaseManager db = new DatabaseManager("data/market.db"); // or ":memory:"
-        TradeSource client = FinnhubWebSocketClient.start();
+        TradeSource client = WebSocketClient.start();
 
         // give it ~5–10 seconds to receive something
         Thread.sleep(10_000);

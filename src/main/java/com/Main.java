@@ -2,6 +2,8 @@ package com;
 
 
 import com.etl.*;
+import com.etl.finnhub.MarketStatusClient;
+import com.etl.finnhub.WebSocketClient;
 import com.gui.startup.*;
 import com.market.*;
 import com.gui.*;
@@ -9,7 +11,6 @@ import com.accountmanager.*;
 import com.tools.MockFinnhubClient;
 
 import javax.swing.*;
-import java.sql.SQLException;
 
 
 public class Main {
@@ -71,12 +72,12 @@ public class Main {
 
             // Check if market is open or closed
             System.out.println("Checking market status...");
-            boolean marketHours = FinnhubMarketStatus.checkStatus();
+            boolean marketHours = MarketStatusClient.checkStatus();
             TradeSource client;
             if (marketHours) {
                 try {
                     System.out.println("Market open, starting Finnhub...");
-                    client = FinnhubWebSocketClient.start();
+                    client = WebSocketClient.start();
                     System.out.println("Finnhub started...");
                 } catch (Exception e) {
                     e.printStackTrace();

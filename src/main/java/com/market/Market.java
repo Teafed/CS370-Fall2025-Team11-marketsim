@@ -1,7 +1,7 @@
 package com.market;
 
 import com.accountmanager.Account;
-import com.etl.FinnhubQuoteClient;
+import com.etl.finnhub.QuoteClient;
 import com.etl.TradeSource;
 
 import java.util.*;
@@ -14,7 +14,7 @@ public class Market implements TradeListener {
     private Map<String, TradeItem> stocks;
     private DatabaseManager dbManager;
     private TradeSource tradeClient;
-    private FinnhubQuoteClient quoteClient;
+    private QuoteClient quoteClient;
     private Account account;
     private MarketListener marketListener;
     private boolean ready = false;
@@ -22,7 +22,7 @@ public class Market implements TradeListener {
 
     public Market(TradeSource tradeClient, DatabaseManager db, Account account) throws Exception {
         setTradeClient(tradeClient);
-        quoteClient = FinnhubQuoteClient.start();
+        quoteClient = QuoteClient.start();
         stocks = new LinkedHashMap<>();
         setDatabase(db);
         setAccount(account);

@@ -1,5 +1,6 @@
-package com.etl;
+package com.etl.finnhub;
 
+import com.etl.TradeSource;
 import com.market.TradeListener;
 import jakarta.websocket.*;
 
@@ -12,12 +13,12 @@ import io.github.cdimascio.dotenv.Dotenv;
 import com.market.DatabaseManager;
 
 @ClientEndpoint
-public class FinnhubWebSocketClient implements TradeSource {
+public class WebSocketClient implements TradeSource {
     private Session session;
     private final CountDownLatch received = new CountDownLatch(1); // or N
     private TradeListener tradeListener;
 
-    public FinnhubWebSocketClient() {
+    public WebSocketClient() {
     }
 
     @OnOpen
@@ -49,7 +50,7 @@ public class FinnhubWebSocketClient implements TradeSource {
         String k = System.getenv("FINNHUB_API_KEY");
         if (k == null || k.isBlank()) k = dotenv.get("FINNHUB_API_KEY");
 
-        FinnhubWebSocketClient client = new FinnhubWebSocketClient();
+        WebSocketClient client = new WebSocketClient();
         WebSocketContainer c = ContainerProvider.getWebSocketContainer();
         URI uri = new URI("wss", "ws.finnhub.io", "/", "token=" + k, null);
         c.connectToServer(client, uri);

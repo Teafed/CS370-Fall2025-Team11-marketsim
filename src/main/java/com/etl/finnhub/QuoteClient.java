@@ -1,4 +1,4 @@
-package com.etl;
+package com.etl.finnhub;
 
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
@@ -14,12 +14,10 @@ import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.util.Set;
 import java.util.concurrent.ConcurrentSkipListSet;
-import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
-public class FinnhubQuoteClient {
+public class QuoteClient {
 
     private static final String LOG_PREFIX = "[FinnhubQuoteClient]";
     private String apiKey;
@@ -34,7 +32,7 @@ public class FinnhubQuoteClient {
     private volatile boolean running = false;
 
 
-    public FinnhubQuoteClient() {
+    public QuoteClient() {
         this.httpClient = HttpClient.newHttpClient();
         setAPIKey();
     }
@@ -119,7 +117,7 @@ public class FinnhubQuoteClient {
     }
 
 
-    public static FinnhubQuoteClient start() {
-        return new com.etl.FinnhubQuoteClient();
+    public static QuoteClient start() {
+        return new QuoteClient();
     }
 }
