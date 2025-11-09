@@ -1,8 +1,7 @@
 package com.market;
 
 import com.accountmanager.Account;
-import com.etl.finnhub.QuoteClient;
-import com.etl.TradeSource;
+import com.etl.finnhub.ClientFacade;
 
 import java.util.*;
 
@@ -13,29 +12,21 @@ public class Market implements TradeListener {
 
     private Map<String, TradeItem> stocks;
     private DatabaseManager dbManager;
-    private TradeSource tradeClient;
-    private QuoteClient quoteClient;
+    private ClientFacade clientFacade;
     private Account account;
     private MarketListener marketListener;
     private boolean ready = false;
     public Market(Map<String, TradeItem> stocks, DatabaseManager dbManager) {}
 
-    public Market(TradeSource tradeClient, DatabaseManager db, Account account) throws Exception {
-        setTradeClient(tradeClient);
-        quoteClient = QuoteClient.start();
+    public Market(ClientFacade clientFacade, DatabaseManager db, Account account) throws Exception {
+        this.clientFacade = clientFacade;
+        clientFacade.setTradeListener(this);
         stocks = new LinkedHashMap<>();
         setDatabase(db);
         setAccount(account);
-    }
-
-    /**
-     * This method opens a socket through the etl clients and pulls data for each stock.
-     */
-    public void setTradeClient(TradeSource tradeClient) throws Exception {
-        this.tradeClient = tradeClient;
-        tradeClient.setTradeListener(this);
         this.ready = true;
     }
+
 
     public void setDatabase(DatabaseManager dbManager) {
         this.dbManager = dbManager;
@@ -51,8 +42,8 @@ public class Market implements TradeListener {
 
     public void add(String symbol) throws Exception {
         // start client for symbol
-        tradeClient.subscribe(symbol);
-        double open = quoteClient.fetchQuote(symbol);
+        clientFacade.subscribe(symbol);
+        double open = clientFacade.fetchQuote(symbol);
         Stock stock = new Stock("name", symbol);
         stock.setOpen(open);
         stocks.put(symbol, stock);
@@ -72,8 +63,8 @@ public class Market implements TradeListener {
         for (TradeItem stock : watchlist.getWatchlist()) {
             String sym = stock.getSymbol();
             if (!stocks.containsKey(sym)) {
-                tradeClient.subscribe(sym);
-                double open = quoteClient.fetchQuote(sym);
+                clientFacade.subscribe(sym);
+                double open = clientFacade.fetchQuote(sym);
                 stock.setOpen(open);
                 System.out.println("Open: " + open);
                 stocks.put(sym, stock);

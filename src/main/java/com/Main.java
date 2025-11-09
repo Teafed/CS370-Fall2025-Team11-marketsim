@@ -2,6 +2,7 @@ package com;
 
 
 import com.etl.*;
+import com.etl.finnhub.ClientFacade;
 import com.etl.finnhub.MarketStatusClient;
 import com.etl.finnhub.WebSocketClient;
 import com.gui.startup.*;
@@ -70,24 +71,7 @@ public class Main {
             }
 
 
-            // Check if market is open or closed
-            System.out.println("Checking market status...");
-            boolean marketHours = MarketStatusClient.checkStatus();
-            TradeSource client;
-            if (marketHours) {
-                try {
-                    System.out.println("Market open, starting Finnhub...");
-                    client = WebSocketClient.start();
-                    System.out.println("Finnhub started...");
-                } catch (Exception e) {
-                    e.printStackTrace();
-                    throw new RuntimeException(e);
-                }
-            } else {
-                System.out.println("Market closed, starting Mock Client...");
-                client = MockFinnhubClient.start();
-                System.out.println("Mock client started...");
-            }
+            ClientFacade client = new ClientFacade();
 
             // Initialize market
             Market market = new Market(client, db, account);
