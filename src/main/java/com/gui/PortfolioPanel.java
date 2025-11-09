@@ -1,8 +1,8 @@
 package com.gui;
 
 import javax.swing.*;
-import java.awt.*;
 import javax.swing.table.DefaultTableModel;
+import java.awt.*;
 import java.util.List;
 import com.accountmanager.Portfolio;
 import com.market.TradeItem;
@@ -10,8 +10,21 @@ import com.market.TradeItem;
 public class PortfolioPanel extends ContentPanel {
     private JTable holdingsTable;
     private DefaultTableModel tableModel;
+    private final com.market.Market market;
+    private final com.accountmanager.Account account;
 
+    /**
+     * No-arg constructor to allow UI components to instantiate a placeholder panel
+     * when the Market/Account are not yet available (e.g. during initial layout).
+     * Delegates to the main constructor with nulls.
+     */
     public PortfolioPanel() {
+        this(null, null);
+    }
+
+    public PortfolioPanel(com.market.Market market, com.accountmanager.Account account) {
+        this.market = market;
+        this.account = account;
         setLayout(new BorderLayout());
         setBackground(GUIComponents.BG_LIGHTER);
         setBorder(BorderFactory.createCompoundBorder(
@@ -62,7 +75,6 @@ public class PortfolioPanel extends ContentPanel {
     add(scrollPane, BorderLayout.CENTER);
     }
 
-    // TODO: Add methods to display portfolio holdings
     /**
      * Update the portfolio table with data from a Portfolio object.
      * This will clear existing rows and repopulate the table.
@@ -71,14 +83,19 @@ public class PortfolioPanel extends ContentPanel {
         // clear existing rows
         tableModel.setRowCount(0);
         if (portfolio == null) return;
-
-        List<TradeItem> items = portfolio.listTradeItems();
+        java.util.List<TradeItem> items = portfolio.listTradeItems();
         for (TradeItem item : items) {
             int shares = portfolio.getNumberOfShares(item);
-            double price = item.getCurrentPrice();
-            double total = price * shares;
             String symbol = item.getSymbol();
             String name = item.getName();
+            double price = Double.NaN;
+            // Prefer market's live price if available
+            if (market != null) {
+                double p = market.getPrice(symbol);
+                if (!Double.isNaN(p)) price = p;
+            }
+            if (Double.isNaN(price)) price = 0.0; // fallback
+            double total = price * shares;
 
             Object[] row = {symbol, name, shares, String.format("$%.2f", price), String.format("$%.2f", total)};
             tableModel.addRow(row);

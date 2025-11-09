@@ -89,11 +89,12 @@ public class FinnhubWebSocketClient implements TradeSource {
             long timestamp = trade.get("t").getAsLong();
             long volume = trade.get("v").getAsLong();
             String s = trade.get("s").getAsString();
-//            try {
-//                db.insertCandle(s, timestamp, price, price, price, price, volume);
-//            } catch (Exception e) {
-//                throw new RuntimeException(e);
-//            }
+            try {
+                // Insert as a daily candle (compatibility overload) so tests can query by timestamp
+                db.insertCandle(s, timestamp, price, price, price, price, volume);
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
         }
     }
 

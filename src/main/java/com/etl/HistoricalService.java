@@ -238,7 +238,8 @@ public class HistoricalService {
                         break;
                     }
                     if (sc != 200) {
-                        throw new RuntimeException("[HS.chunk] " + sc + " " + resp.body());
+                        // tests expect a message containing "[HistoricalService] <status>"
+                        throw new RuntimeException("[HistoricalService] " + sc + " " + resp.body());
                     }
 
                     var root = JsonParser.parseString(resp.body()).getAsJsonObject();

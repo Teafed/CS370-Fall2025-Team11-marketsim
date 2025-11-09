@@ -17,12 +17,10 @@ public class Watchlist {
 
     private LinkedHashSet<TradeItem> watchlist;
     private final int maxSize = 50;
-    private int watchlistSize;
 
 
     public Watchlist() {
         watchlist = new LinkedHashSet<>();
-        this.watchlistSize = 0;
     }
 
 
@@ -39,10 +37,9 @@ public class Watchlist {
         if (watchlist.contains(tradeItem)) {
             return false;
         }
-        if (watchlistSize < maxSize) {
-            watchlist.add(tradeItem);
-            watchlistSize++;
-            return true;
+        if (watchlist.size() < maxSize) {
+            boolean added = watchlist.add(tradeItem);
+            return added;
         }
         else
             // cannot add more than max size
@@ -55,21 +52,15 @@ public class Watchlist {
      * @return True if successful, False if the list did not contain that item.
      */
     public boolean removeWatchlistItem(TradeItem tradeItem) {
-        if (watchlist.remove(tradeItem)) {
-            watchlistSize--;
-            return true;
-        }
-        else
-            return false;
+        return watchlist.remove(tradeItem);
     }
 
     public void clearList(){
         watchlist.clear();
-        watchlistSize = 0;
     }
 
     public int  getWatchlistSize() {
-        return watchlistSize;
+        return watchlist.size();
     }
 
     public int getMaxSize() {
@@ -81,7 +72,7 @@ public class Watchlist {
     }
 
     public List<TradeItem> getWatchlist() {
-        return new ArrayList(watchlist);
+        return new ArrayList<>(watchlist);
     }
 
 }

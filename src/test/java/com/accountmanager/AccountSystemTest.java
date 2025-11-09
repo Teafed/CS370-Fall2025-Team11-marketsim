@@ -72,7 +72,7 @@ public class AccountSystemTest {
     void testAccountValueUpdatesWithWithdrawal(){
         // setup account, stock, and portfolio objects
         Account account1 = new Account("account1");
-        Stock stock1 = new Stock("stock1", "s1");
+    Stock stock1 = new Stock("stock1", "s_init");
         Portfolio portfolio = account1.getPortfolio();
 
         // Deposit funds, assign price to stock
@@ -157,7 +157,7 @@ public class AccountSystemTest {
         // A portfolio is created
         Portfolio portfolio = new Portfolio();
 
-        Stock stock1 = new Stock("stock1", "s1");
+    Stock stock1 = new Stock("stock1", "s_init2");
         portfolio.addTradeItem(stock1, 1);
 
         // A portfolio can return true if it holds a stock
