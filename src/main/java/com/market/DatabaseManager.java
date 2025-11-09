@@ -245,6 +245,15 @@ public class DatabaseManager implements AutoCloseable {
         }
     }
 
+    /**
+     * Compatibility overload used by older tests and callers: inserts a daily candle with multiplier=1.
+     */
+    public void insertCandle(String symbol, long timestamp,
+                             double open, double high, double low,
+                             double close, double volume) throws SQLException {
+        insertCandle(symbol, 1, "day", timestamp, open, high, low, close, volume);
+    }
+
     public void insertCandlesBatch(String symbol, int multiplier, String timespan,
                                    List<CandleData> rows) throws SQLException {
         boolean prev = conn.getAutoCommit();
