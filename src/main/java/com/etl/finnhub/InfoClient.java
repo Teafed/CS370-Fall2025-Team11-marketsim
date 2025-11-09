@@ -1,7 +1,7 @@
 package com.etl.finnhub;
 
-import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
+import com.etl.CompanyProfile;
+import org.json.JSONObject;
 import com.market.DatabaseManager;
 import com.market.TradeListener;
 import io.github.cdimascio.dotenv.Dotenv;
@@ -17,11 +17,11 @@ import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.function.Consumer;
 
-public class QuoteClient {
+public class InfoClient {
 
-    private static final String LOG_PREFIX = "[FinnhubQuoteClient]";
+    private static final String LOG_PREFIX = "[InfoClient]";
     private String apiKey;
-    private final String baseUrl = "https://finnhub.io/api/v1/quote?symbol=";
+    private final String baseUrl = "https://finnhub.io/api/v1/stock/profile2?symbol=";
     private final HttpClient httpClient;
     private final Set<String> subscribed = new ConcurrentSkipListSet<>();
 
@@ -32,7 +32,7 @@ public class QuoteClient {
     private volatile boolean running = false;
 
 
-    public QuoteClient(String apiKey) {
+    public InfoClient(String apiKey) {
         this.apiKey = apiKey;
         this.httpClient = HttpClient.newHttpClient();
     }
@@ -40,7 +40,7 @@ public class QuoteClient {
     /**
      * Fetch quote from Finnhub REST API
      */
-    public double fetchQuote(String symbol) {
+    public CompanyProfile fetchInfo(String symbol) {
 
         String url = this.baseUrl + symbol + "&token=" + apiKey;
 
@@ -55,54 +55,55 @@ public class QuoteClient {
                     httpClient.send(request, HttpResponse.BodyHandlers.ofString());
 
             int sc = response.statusCode();
+
             if (sc < 200 || sc >= 300) {
                 System.err.println(LOG_PREFIX + " API request failed: " + sc);
-                return 0;
+                return null;
             }
 
             String body = response.body();
+
             if (body == null || body.isBlank()) {
                 System.err.println(LOG_PREFIX + " Empty response body received");
-                return 0;
+                return null;
             }
 
-            return parseAndStoreQuote(symbol, body);
+            return parseAndBuildProfile(body);
+
         } catch (IOException | InterruptedException e) {
             System.err.println(LOG_PREFIX + " Error fetching quote: " + e.getMessage());
             Thread.currentThread().interrupt();
+            return null;
         }
-    return 0;
     }
 
     /**
      * Parse and store quote data
      */
-    private double parseAndStoreQuote(String symbol, String responseBody) {
-        try {
-            JsonObject jsonObject = JsonParser.parseString(responseBody).getAsJsonObject();
+    private CompanyProfile parseAndBuildProfile(String responseBody) {
+        JSONObject jsonObject = new JSONObject(responseBody);
 
-            // Check if all required fields exist
-            if (!jsonObject.has("c") || !jsonObject.has("o") || !jsonObject.has("h") ||
-                    !jsonObject.has("l") || !jsonObject.has("t")) {
-                System.err.println(LOG_PREFIX + " Missing required fields in response: " + responseBody);
-                return 0;
-            }
+        String country = jsonObject.optString("country","unknown");
+        String currency = jsonObject.optString("currency","unknown");
+        String exchange = jsonObject.optString("exchange","unknown");
+        String ipo = jsonObject.optString("ipo","unknown");
+        String logo = jsonObject.optString("logo","unknown");
+        String marketCapitalization = jsonObject.optString("marketCapitalization","unknown");
+        String name = jsonObject.optString("name","unknown");
+        String sharesOutstanding = jsonObject.optString("sharesOutstanding","unknown");
+        String weburl = jsonObject.optString("weburl","unknown");
 
-            double currentPrice = jsonObject.get("c").getAsDouble(); // current price
-            double openPrice = jsonObject.get("o").getAsDouble();    // open price
-            double highPrice = jsonObject.get("h").getAsDouble();    // high price
-            double lowPrice = jsonObject.get("l").getAsDouble();     // low price
-            long timestamp = jsonObject.get("t").getAsLong();        // timestamp
+        CompanyProfile companyProfile = new CompanyProfile();
+        companyProfile.setCountry(country);
+        companyProfile.setCurrency(currency);
+        companyProfile.setExchange(exchange);
+        companyProfile.setIpo(ipo);
+        companyProfile.setLogo(logo);
+        companyProfile.setMarketCapitalization(marketCapitalization);
+        companyProfile.setName(name);
+        companyProfile.setSharesOutstanding(sharesOutstanding);
+        companyProfile.setWeburl(weburl);
 
-            System.out.println(openPrice);
-            return openPrice;
-
-
-
-
-        } catch (Exception e) {
-            System.err.println(LOG_PREFIX + " Error parsing quote: " + e.getMessage());
-        }
-    return 0;
+        return companyProfile;
     }
 }

@@ -17,8 +17,10 @@ public class WebSocketClient implements TradeSource {
     private Session session;
     private final CountDownLatch received = new CountDownLatch(1); // or N
     private TradeListener tradeListener;
+    private String apiKey;
 
-    public WebSocketClient() {
+    public WebSocketClient(String apiKey) {
+        this.apiKey = apiKey;
     }
 
     @OnOpen
@@ -29,8 +31,6 @@ public class WebSocketClient implements TradeSource {
     @OnMessage
     public void onMessage(String msg) {
         parseAndNotify(msg);
-        //parseAndStore(msg, db);
-        //System.out.println("Message received: " + msg);
         received.countDown(); // signals “we got something”
     }
 
@@ -45,14 +45,10 @@ public class WebSocketClient implements TradeSource {
         t.printStackTrace();
     }
 
-    public static TradeSource start() throws Exception {
-        Dotenv dotenv = Dotenv.configure().ignoreIfMissing().load();
-        String k = System.getenv("FINNHUB_API_KEY");
-        if (k == null || k.isBlank()) k = dotenv.get("FINNHUB_API_KEY");
-
-        WebSocketClient client = new WebSocketClient();
+    public static TradeSource start(String apiKey) throws Exception {
+        WebSocketClient client = new WebSocketClient(apiKey);
         WebSocketContainer c = ContainerProvider.getWebSocketContainer();
-        URI uri = new URI("wss", "ws.finnhub.io", "/", "token=" + k, null);
+        URI uri = new URI("wss", "ws.finnhub.io", "/", "token=" + apiKey, null);
         c.connectToServer(client, uri);
         return client;
     }

@@ -42,7 +42,7 @@ class FinnhubClientParserTest {
     @Test
     void liveFinnhubSmokeTest() throws Exception {
         DatabaseManager db = new DatabaseManager("data/market.db"); // or ":memory:"
-        TradeSource client = WebSocketClient.start();
+        //TradeSource client = WebSocketClient.start();
 
         // give it ~5–10 seconds to receive something
         Thread.sleep(10_000);
