@@ -73,6 +73,23 @@ public class Portfolio {
         return new ArrayList<TradeItem>(portfolioItems.keySet());
     }
 
+<<<<<<< Updated upstream
+=======
+    /** Compatibility: accept a generic TradeItem (from tests) */
+    public boolean hasTradeItem(com.market.TradeItem item) {
+        if (item == null) return false;
+        return holdings.containsKey(item.getSymbol());
+    }
+
+    /** Return a list of TradeItem representing current holdings (used by tests) */
+    public java.util.List<com.market.TradeItem> listTradeItems() {
+        java.util.List<com.market.TradeItem> list = new java.util.ArrayList<>();
+        for (PortfolioItem p : holdings.values()) {
+            list.add(p.getStock());
+        }
+        return list;
+    }
+>>>>>>> Stashed changes
 
     /**
      * Gets the number of shares held for a particular TradeItem
