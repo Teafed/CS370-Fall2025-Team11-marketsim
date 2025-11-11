@@ -31,6 +31,7 @@ public class DatabaseManager implements AutoCloseable {
     }
 
     private void ensurePricesSchema() throws SQLException {
+        // Create table if missing. If an older DB exists without the newer columns, add them.
         try (Statement st = conn.createStatement()) {
             st.execute("""
             CREATE TABLE IF NOT EXISTS prices (
@@ -44,6 +45,28 @@ public class DatabaseManager implements AutoCloseable {
                 UNIQUE(symbol, timespan, multiplier, timestamp)
                 )
             """);
+            // If a legacy database existed with a prices table missing timespan or multiplier,
+            // add those columns with sensible defaults before creating indexes that reference them.
+            if (tableExists("prices")) {
+                // check columns
+                try (ResultSet cols = st.executeQuery("PRAGMA table_info('prices')")) {
+                    boolean hasTimespan = false;
+                    boolean hasMultiplier = false;
+                    while (cols.next()) {
+                        String colName = cols.getString("name");
+                        if ("timespan".equalsIgnoreCase(colName)) hasTimespan = true;
+                        if ("multiplier".equalsIgnoreCase(colName)) hasMultiplier = true;
+                    }
+                    if (!hasTimespan) {
+                        st.execute("ALTER TABLE prices ADD COLUMN timespan TEXT NOT NULL DEFAULT 'day'");
+                    }
+                    if (!hasMultiplier) {
+                        st.execute("ALTER TABLE prices ADD COLUMN multiplier INTEGER NOT NULL DEFAULT 1");
+                    }
+                }
+            }
+
+            // Index creation should happen after any migration to avoid referencing missing columns
             st.execute("""
                 CREATE INDEX IF NOT EXISTS idx_prices_symbol_tf_ts
                 ON prices(symbol, timespan, multiplier, timestamp)
@@ -243,6 +266,15 @@ public class DatabaseManager implements AutoCloseable {
             ps.setDouble(9, volume);
             ps.executeUpdate();
         }
+    }
+
+    /**
+     * Compatibility overload used by older tests and callers: inserts a daily candle with multiplier=1.
+     */
+    public void insertCandle(String symbol, long timestamp,
+                             double open, double high, double low,
+                             double close, double volume) throws SQLException {
+        insertCandle(symbol, 1, "day", timestamp, open, high, low, close, volume);
     }
 
     public void insertCandlesBatch(String symbol, int multiplier, String timespan,

@@ -93,7 +93,8 @@
             <version>3.2.5</version>
             <configuration>
                 <useModulePath>true</useModulePath>
-                <argLine>--enable-native-access=ALL-UNNAMED</argLine>
+                <!-- Enable native access and allow Byte Buddy experimental mode on very new JDKs -->
+                <argLine>--enable-native-access=ALL-UNNAMED -Dnet.bytebuddy.experimental=true</argLine>
             </configuration>
         </plugin>
 

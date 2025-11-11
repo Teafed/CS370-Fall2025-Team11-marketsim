@@ -90,6 +90,7 @@ public class Main {
         // Initialize GUI Client
         SwingUtilities.invokeLater(() -> {
             MainWindow mw = new MainWindow(db, account, market);
+            mw.setMarketOpen(marketHours);
             market.setMarketListener(mw.getSymbolListPanel());
         });
     }

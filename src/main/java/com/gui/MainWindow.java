@@ -19,6 +19,8 @@ public class MainWindow extends JFrame
     private ChartPanel chartPanel;
     private JPanel rightCards;
     private CardLayout cards;
+    private JPanel rightContainer; // wrapper to hold top bar + cards
+    private JLabel marketStatusLabel;
 
     private static final String WINDOW_TITLE = "Marketsim";
     private static final String CARD_CHART = "chart";
@@ -64,9 +66,9 @@ public class MainWindow extends JFrame
     }
 
     private void setupSplitPane() {
-        JSplitPane splitPane = GUIComponents.createSplitPane(
-                "horizontal", symbolPanel, rightCards
-        );
+    JSplitPane splitPane = GUIComponents.createSplitPane(
+        "horizontal", symbolPanel, rightContainer
+    );
 
         splitPane.setDividerLocation(LEFT_PANEL_WIDTH);
         splitPane.setOneTouchExpandable(false);
@@ -92,8 +94,35 @@ public class MainWindow extends JFrame
         symbolPanel.addSymbolSelectionListener(this);
         symbolPanel.setAccount(account, this);
 
-        cards.show(rightCards, CARD_CHART);
-        rightCards.setMinimumSize(new Dimension(MIN_RIGHT_WIDTH, 0));
+    cards.show(rightCards, CARD_CHART);
+    rightCards.setMinimumSize(new Dimension(MIN_RIGHT_WIDTH, 0));
+
+    // Create a wrapper panel to hold a top bar (market status) and the card area.
+    rightContainer = new JPanel(new BorderLayout());
+    rightContainer.setBackground(GUIComponents.BG_DARK);
+
+    // Top bar (align right) for small status widgets
+    JPanel topBar = new JPanel(new FlowLayout(FlowLayout.RIGHT, 12, 8));
+    topBar.setBackground(GUIComponents.BG_DARK);
+
+    JLabel statusPrefix = new JLabel("Market Status:");
+    statusPrefix.setForeground(GUIComponents.TEXT_SECONDARY);
+    statusPrefix.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+
+    marketStatusLabel = new JLabel("CLOSED");
+    marketStatusLabel.setOpaque(true);
+    marketStatusLabel.setBackground(new Color(180, 0, 0));
+    marketStatusLabel.setForeground(Color.WHITE);
+    marketStatusLabel.setBorder(BorderFactory.createCompoundBorder(
+        BorderFactory.createLineBorder(GUIComponents.BORDER_COLOR, 1),
+        BorderFactory.createEmptyBorder(6, 10, 6, 10)));
+    marketStatusLabel.setFont(new Font("Segoe UI", Font.BOLD, 12));
+
+    topBar.add(statusPrefix);
+    topBar.add(marketStatusLabel);
+
+    rightContainer.add(topBar, BorderLayout.NORTH);
+    rightContainer.add(rightCards, BorderLayout.CENTER);
     }
 
     private void setupCloseHook() {
@@ -106,6 +135,20 @@ public class MainWindow extends JFrame
 
     public SymbolListPanel getSymbolListPanel() {
         return symbolPanel;
+    }
+
+    /**
+     * Set the market open/closed indicator. true => OPEN (green), false => CLOSED (red).
+     */
+    public void setMarketOpen(boolean open) {
+        if (marketStatusLabel == null) return;
+        if (open) {
+            marketStatusLabel.setText("OPEN");
+            marketStatusLabel.setBackground(GUIComponents.ACCENT_GREEN.darker());
+        } else {
+            marketStatusLabel.setText("CLOSED");
+            marketStatusLabel.setBackground(new Color(180, 0, 0));
+        }
     }
 
     @Override

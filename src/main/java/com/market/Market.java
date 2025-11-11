@@ -117,4 +117,13 @@ public class Market implements TradeListener {
         System.out.println("Adding symbols");
         marketListener.loadSymbols(new ArrayList<>(stocks.values()));
     }
+
+    /**
+     * Convenience accessor for current market price of a symbol.
+     * Returns Double.NaN if symbol unknown.
+     */
+    public double getPrice(String symbol) {
+        TradeItem ti = stocks.get(symbol);
+        return ti == null ? Double.NaN : ti.getCurrentPrice();
+    }
 }
