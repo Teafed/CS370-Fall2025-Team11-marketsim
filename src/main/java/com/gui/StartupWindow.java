@@ -1,9 +1,8 @@
 package com.gui;
 
 import com.accountmanager.*;
-import com.etl.FinnhubClient;
-import com.etl.FinnhubMarketStatus;
 import com.etl.TradeSource;
+import com.etl.finnhub.ClientFacade;
 import com.market.Database;
 import com.market.Market;
 import com.market.MarketListener;
@@ -190,8 +189,7 @@ public class StartupWindow extends ContentPanel {
             }
             for (TradeItem ti : dbSymbols) { account.getWatchlist().addWatchlistItem(ti); }
 
-            // Check if market is open or closed
-            System.out.println("Checking market status...");
+            /*
             boolean marketHours = FinnhubMarketStatus.checkStatus();
             TradeSource client;
             if (marketHours) {
@@ -208,7 +206,8 @@ public class StartupWindow extends ContentPanel {
                 client = MockFinnhubClient.start();
                 System.out.println("Mock client started...");
             }
-
+            */
+            ClientFacade client = new ClientFacade();
             // Initialize market
             Market market;
             try {

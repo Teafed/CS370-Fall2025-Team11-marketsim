@@ -2,7 +2,7 @@ package com.etl.finnhub;
 
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
-import com.market.DatabaseManager;
+import com.market.Database;
 import com.market.TradeListener;
 import io.github.cdimascio.dotenv.Dotenv;
 
@@ -25,7 +25,7 @@ public class QuoteClient {
     private final HttpClient httpClient;
     private final Set<String> subscribed = new ConcurrentSkipListSet<>();
 
-    private volatile DatabaseManager dbManager;
+    private volatile Database dbManager;
     private volatile TradeListener listener;
     private ScheduledExecutorService scheduler;
     private Consumer<Double> priceUpdateCallback;
