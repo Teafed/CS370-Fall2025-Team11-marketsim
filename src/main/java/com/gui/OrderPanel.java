@@ -41,8 +41,8 @@ public class OrderPanel extends ContentPanel {
             }
         };
         tabs.updateUI();
-        tabs.addTab("Trade", new TradePanel());
-        tabs.addTab("Portfolio", new PortfolioPanel());
+        tabs.addTab("Order", new TradePanel());
+        tabs.addTab("Order History", new PortfolioPanel());
 
         add(header, BorderLayout.NORTH);
         add(tabs, BorderLayout.CENTER);
@@ -55,4 +55,6 @@ public class OrderPanel extends ContentPanel {
         revalidate();
         repaint();
     }
+
+
 }

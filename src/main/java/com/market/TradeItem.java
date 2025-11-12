@@ -6,7 +6,7 @@ public class TradeItem {
     private double price;
     private double changePercent;
     private double change;
-
+    private double open;
     private double prevClose = Double.NaN; // for calculating % change
 
     public TradeItem(String name, String symbol) {
@@ -50,14 +50,9 @@ public class TradeItem {
             return false;
         }
         this.price = price;
-        if (prevClose > 0.0) {
-            this.change = price - prevClose;
-            this.changePercent = (change / prevClose) * 100.0;
-        } else {
-            // No baseline yet → leave change values indeterminate
-            this.change = Double.NaN;
-            this.changePercent = Double.NaN;
-        }
+        this.change = price-open;
+        this.changePercent = change/open * 100;
+
         return true;
     }
 
@@ -69,10 +64,15 @@ public class TradeItem {
         }
     }
 
+    public void setOpen(double open) {
+        this.open = open;
+    }
+
     public void setChange(double change, double changePercent) {
         this.change = change;
         this.changePercent = changePercent;
     }
+
 
     @Override
     public String toString() {

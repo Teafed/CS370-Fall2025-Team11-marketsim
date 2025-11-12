@@ -6,7 +6,11 @@ import java.awt.*;
 public class TradePanel extends JPanel {
     private JButton buyButton;
     private JButton sellButton;
-    private JButton portfolioButton;
+    //private JButton portfolioButton;
+    private JLabel numberOfSharesLabel;
+    private JTextField numberOfSharesField;
+    private JLabel priceLabel;
+    private JTextField priceField;
 
     public TradePanel() {
         setLayout(new GridBagLayout());
@@ -23,12 +27,21 @@ public class TradePanel extends JPanel {
     private void initializeComponents() {
         buyButton = createActionButton("Buy", GUIComponents.ACCENT_GREEN);
         sellButton = createActionButton("Sell", GUIComponents.ACCENT_RED);
-        portfolioButton = createActionButton("My Portfolio", GUIComponents.ACCENT_BLUE);
+        //portfolioButton = createActionButton("My Portfolio", GUIComponents.ACCENT_BLUE);
+
+        numberOfSharesLabel = new JLabel("Number of Shares: ");
+        numberOfSharesLabel.setForeground(Color.WHITE);
+        numberOfSharesField = new JTextField(20);
+
+        priceLabel = new JLabel("Price: ");
+        priceLabel.setForeground(Color.WHITE);
+        priceField = new JTextField(20);
 
         // placeholder action listeners
         buyButton.addActionListener(e -> handleBuy());
         sellButton.addActionListener(e -> handleSell());
-        portfolioButton.addActionListener(e -> handlePortfolio());
+        //portfolioButton.addActionListener(e -> handlePortfolio());
+
     }
 
     private JButton createActionButton(String text, Color accentColor) {
@@ -72,15 +85,24 @@ public class TradePanel extends JPanel {
 
     private void layoutComponents() {
         GridBagConstraints gbc = new GridBagConstraints();
-        gbc.gridx = 0;
-        gbc.gridy = GridBagConstraints.RELATIVE;
+        gbc.anchor = GridBagConstraints.WEST;
         gbc.fill = GridBagConstraints.HORIZONTAL;
-        gbc.insets = new Insets(8, 0, 8, 0);
+        gbc.insets = new Insets(5, 5, 5, 5);
         gbc.weightx = 1.0;
 
+        gbc.gridx = 0; gbc.gridy = 0;
         add(buyButton, gbc);
+        gbc.gridx = 1; gbc.gridy = 0;
+        add(numberOfSharesLabel, gbc);
+        gbc.gridx = 2; gbc.gridy = 0;
+        add(numberOfSharesField, gbc);
+
+        gbc.gridx = 0; gbc.gridy = 1;
         add(sellButton, gbc);
-        add(portfolioButton, gbc);
+        gbc.gridx = 1; gbc.gridy = 1;
+        add(priceLabel, gbc);
+        gbc.gridx = 2; gbc.gridy = 1;
+        add(priceField, gbc);
 
         // Add glue to push buttons to the top
         gbc.weighty = 1.0;
