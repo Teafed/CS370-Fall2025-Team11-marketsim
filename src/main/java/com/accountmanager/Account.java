@@ -2,6 +2,8 @@ package com.accountmanager;
 
 import com.market.TradeItem;
 
+import java.util.List;
+
 // One account
 public class Account {
     private long id; // identifier used in database
@@ -28,20 +30,9 @@ public class Account {
     public Account(String name, double balance) {
         setName(name);
         availableBalance = balance;
-
-        TradeItem[] initialSymbols = {
-                new TradeItem("Apple", "AAPL"),
-                new TradeItem("Microsoft", "MSFT"),
-                new TradeItem("Alphabet", "GOOGL"),
-                new TradeItem("NVIDIA", "NVDA"),
-                new TradeItem("Amazon", "AMZN"),
-                new TradeItem("Meta Platforms", "META"),
-                new TradeItem("Tesla", "TSLA"),
-                new TradeItem("Broadcom", "AVGO"),
-                new TradeItem("Taiwan Semiconductor Manufacturing Company", "TSM"),
-                new TradeItem("Berkshire Hathaway", "BRK.B")
-        };
-        setWatchlist(initialSymbols);
+        for (TradeItem ti : Watchlist.getDefaultWatchlist()) {
+            this.watchlist.addWatchlistItem(ti);
+        }
     }
 
     // Set name
@@ -53,13 +44,17 @@ public class Account {
     }
 
     // Set id
-    private void setId(long id) { this.name = name; }
+    private void setId(long id) { this.id = id; }
 
     // Get id
     public long getId() {
         return id;
     }
 
+    // set initial balance
+    public void setInitialBalance(double balance) {
+        this.availableBalance = balance;
+    }
     // Get account value
     public double getTotalValue() {
         updateValue();
@@ -79,21 +74,16 @@ public class Account {
         return portfolio;
     }
 
-    /**
-     * set the watchlist of the account
-     * @param symbols TradeItem array of symbols
-     */
-    public void setWatchlist(TradeItem[] symbols) {
-        for (TradeItem s : symbols) {
-            this.watchlist.addWatchlistItem(s);
-        }
+
+    public List<TradeItem> getWatchlistItems() {
+        return this.watchlist.getWatchlist();
     }
 
     /**
      * Returns the watchlist of the account.
      * @return The watchlist of the account.
      */
-    public Watchlist getWatchList() {
+    public Watchlist getWatchlist() {
         return watchlist;
     }
 
@@ -126,7 +116,4 @@ public class Account {
     public void updateValue() {
         totalValue = availableBalance + portfolio.getPortfolioValue();
     }
-
-
-
 }

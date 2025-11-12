@@ -1,7 +1,7 @@
 package com.market;
 
 public class TradeItem {
-    private final String name;
+    private String name;
     private final String symbol;
     private double price;
     private double changePercent;
@@ -25,6 +25,8 @@ public class TradeItem {
     public String getName() {
         return name;
     }
+
+    public void setName(String n) { this.name = n; }
 
     public String getSymbol() {
         return symbol;
@@ -84,4 +86,22 @@ public class TradeItem {
     }
     @Override public int hashCode() { return symbol == null ? 0 : symbol.toUpperCase().hashCode(); }
 
+    // predefined symbol names
+    public TradeItem setNameLookup(TradeItem ti) {
+        if (ti.getSymbol() == null) { ti.setName("Unknown Symbol"); return ti; }
+        switch (ti.getSymbol()) {
+            case "AAPL":  ti.setName("Apple"); break;
+            case "MSFT":  ti.setName("Microsoft"); break;
+            case "GOOGL": ti.setName("Alphabet"); break;
+            case "NVDA":  ti.setName("NVIDIA"); break;
+            case "AMZN":  ti.setName("Amazon"); break;
+            case "META":  ti.setName("Meta Platforms"); break;
+            case "TSLA":  ti.setName("Tesla"); break;
+            case "AVGO":  ti.setName("Broadcom"); break;
+            case "TSM":   ti.setName("Taiwan Semiconductor Manufacturing Company"); break;
+            case "BRK.B": ti.setName("Berkshire Hathaway"); break;
+            default:      ti.setName("Unknown Name");
+        }
+        return ti;
+    }
 }

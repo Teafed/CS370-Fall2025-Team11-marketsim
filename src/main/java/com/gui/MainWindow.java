@@ -13,7 +13,7 @@ public class MainWindow extends JFrame
                    SymbolPanel.AccountSelectionListener {
     private final Database db;
     private final Account account;
-//    private final Profile profile;
+    private final Profile profile;
     private final Market market;
 
     private SymbolPanel symbolPanel;
@@ -27,11 +27,10 @@ public class MainWindow extends JFrame
     private static final int LEFT_PANEL_WIDTH = 250;
     private static final int MIN_RIGHT_WIDTH = 300;
 
-    public MainWindow(Database db, Account account, Market market) {
+    public MainWindow(Database db, Profile profile, Market market) {
         this.db = db;
-//        this.profile = profile;
-//        this.account = profile.getFirstAccount();
-        this.account = account;
+        this.profile = profile;
+        this.account = profile.getFirstAccount();
         this.market = market;
         System.out.println("Launching Marketsim");
         createWindow();

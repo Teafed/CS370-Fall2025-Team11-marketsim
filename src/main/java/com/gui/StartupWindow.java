@@ -11,23 +11,19 @@ import com.market.TradeItem;
 import com.tools.MockFinnhubClient;
 
 import javax.swing.*;
-import javax.xml.crypto.Data;
 import java.awt.*;
 import java.sql.SQLException;
 import java.util.List;
+import java.util.function.Consumer;
 
 public class StartupWindow extends ContentPanel {
     private JTextField profileNameField;
     private JTextField balanceField;
+    public static final boolean USE_ACCOUNT_PICKER = false; // settable from account select?
 
     // constructor for creating profile
     public StartupWindow(StartupListener startupListener) {
         createProfileUI(startupListener);
-    }
-
-    // constructor used for "Start with existing profile" mode
-    public StartupWindow(Runnable onStartExisting) {
-        createAccountSelectUI(onStartExisting);
     }
 
     private void createProfileUI(StartupListener startupListener) {
@@ -66,45 +62,56 @@ public class StartupWindow extends ContentPanel {
         });
     }
 
-    private void createAccountSelectUI(Runnable onStartExisting) {
-        setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
-        setBorder(BorderFactory.createEmptyBorder(40, 100, 40, 100));
+    private static ContentPanel createAccountSelectPanel(List<Account> accounts, Consumer<Account> onPick) {
+        ContentPanel panel = new ContentPanel();
+        panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
+        panel.setBorder(BorderFactory.createEmptyBorder(40, 100, 40, 100));
 
         JLabel titleLabel = new JLabel("Marketsim", SwingConstants.CENTER);
         titleLabel.setFont(new Font("SansSerif", Font.BOLD, 24));
         titleLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
-        add(titleLabel);
-        add(Box.createVerticalStrut(12));
+        panel.add(titleLabel);
+        panel.add(Box.createVerticalStrut(12));
 
-        JLabel info = new JLabel("sorry guys");
+        JLabel info = new JLabel("Select an account to start:");
         info.setAlignmentX(Component.CENTER_ALIGNMENT);
-        add(info);
-        add(Box.createVerticalStrut(16));
+        panel.add(info);
+        panel.add(Box.createVerticalStrut(16));
+
+        JComboBox<Account> combo = new JComboBox<>(accounts.toArray(new Account[0]));
+        combo.setRenderer((list, value, index, isSelected, cellHasFocus) -> {
+            JLabel lbl = new JLabel(value == null ? "" : value.getName());
+            if (isSelected) {
+                lbl.setOpaque(true);
+                lbl.setBackground(list.getSelectionBackground());
+                lbl.setForeground(list.getSelectionForeground());
+            }
+            return lbl;
+        });
+        panel.add(combo);
+        panel.add(Box.createVerticalStrut(16));
 
         JButton startButton = new JButton("Start");
         startButton.setAlignmentX(Component.CENTER_ALIGNMENT);
-        add(startButton);
+        panel.add(startButton);
 
-        startButton.addActionListener(e -> onStartExisting.run());
+        startButton.addActionListener(e -> {
+            Account selected = (Account) combo.getSelectedItem();
+            if (selected != null) onPick.accept(selected);
+        });
+
+        return panel;
     }
 
-    public static void getStartWindow(Database db, StartupListener startupListener) throws SQLException {
+    public static void getStartWindow(Database db) throws SQLException {
         Database.StartupState state = db.determineStartupState();
+        final boolean firstRun = (state == Database.StartupState.FIRST_RUN);
 
-        final boolean firstRun;
-        final long profileId;
-
-        Profile profile;
-
-        if (state == Database.StartupState.FIRST_RUN) {
-            System.out.println("No profile detected");
-            firstRun = true;
-            profileId = -1;
-        } else {
-            profileId = db.getSingletonProfileId();
-            profile = Database.buildProfile(profileId);
-            System.out.println("Profile " + profileId + " loaded from db");
-            firstRun = false;
+        if (!firstRun && !USE_ACCOUNT_PICKER) {
+            long profileId = db.getSingletonProfileId();
+            Profile profile = db.buildProfile(profileId);
+            runMarketSim(db, profile);
+            return;
         }
 
         SwingUtilities.invokeLater(() -> {
@@ -116,9 +123,12 @@ public class StartupWindow extends ContentPanel {
             if (firstRun) {
                 frame.add(new StartupWindow((profileName, balance) -> {
                     try {
-                        long id = db.ensureSingletonProfile(profileName);
+                        long profileId = db.ensureSingletonProfile(profileName);
                         long accountId = db.getOrCreateAccount(profileName, "USD");
-                        runMarketSim(db, profileName, balance);
+                        db.depositCash(accountId, balance, System.currentTimeMillis(), "Initial deposit");
+                        Profile profile = db.buildProfile(profileId);
+
+                        runMarketSim(db, profile);
                         frame.dispose();
                     } catch (Exception ex) {
                         ex.printStackTrace();
@@ -128,51 +138,57 @@ public class StartupWindow extends ContentPanel {
                     }
                 }));
             } else {
-                    frame.add(new StartupWindow(() -> {
-                        try {
-                            // call db.listAccounts(profileIdIfAny)
-                            String placeholderName = "Placeholder";
-                            runMarketSim(db, placeholderName, 10000.0); // balance ignored if account already exists
-                            frame.dispose();
-                        } catch (Exception ex) {
-                            ex.printStackTrace();
-                            JOptionPane.showMessageDialog(frame, "Failed to launch Marketsim:\n" + ex.getMessage(),
-                                    "Error", JOptionPane.ERROR_MESSAGE);
-                        }
-                    }));
-            }
+                 // show accounts and start with the chosen one
+                 try {
+                     long profileId = db.getSingletonProfileId();
+                     Profile profile = db.buildProfile(profileId);
+                     List<Account> accounts = db.listAccounts(profileId);
+
+                     frame.getContentPane().removeAll();
+                     frame.add(createAccountSelectPanel(accounts, selected -> {
+                         try {
+                             runMarketSim(db, profile, selected);
+                             frame.dispose();
+                         } catch (Exception ex) {
+                             ex.printStackTrace();
+                             JOptionPane.showMessageDialog(frame,
+                                     "Failed to launch Marketsim:\n" + ex.getMessage(),
+                                     "Error", JOptionPane.ERROR_MESSAGE);
+                         }
+                     }));
+                     frame.revalidate();
+                     frame.repaint();
+                 } catch (Exception ex) {
+                     ex.printStackTrace();
+                     JOptionPane.showMessageDialog(frame,
+                             "Failed to load accounts:\n" + ex.getMessage(),
+                             "Error", JOptionPane.ERROR_MESSAGE);
+                 }
+             }
+
             frame.setVisible(true);
         });
     }
 
     public static void runMarketSim(Database db, Profile profile) {
+        runMarketSim(db, profile, profile.getFirstAccount());
+    }
+
+    public static void runMarketSim(Database db, Profile profile, Account account) {
         try {
-            // Initialize account
-
-            Account account = profile.getFirstAccount();
-
-            long profileId = db.getOrCreateProfile(profileName);
-            long accountId = db.getOrCreateAccount(account.getName(), "USD");
-            java.util.List<String> dbSymbols = db.loadWatchlistSymbols(accountId);
-
-            if (dbSymbols.isEmpty()) {
-                // add in-memory demo watchlist to database
-                java.util.List<String> current = new java.util.ArrayList<>();
-                for (com.market.TradeItem ti : account.getWatchList().getWatchlist()) {
-                    current.add(ti.getSymbol());
-                }
-                db.saveWatchlistSymbols(accountId, "Default", current);
-                System.out.println("[startup] Seeded DB watchlist from demo account (" + current.size() + " symbols)");
+            long accountId = account.getId();
+            List<TradeItem> dbSymbols = account.getWatchlistItems();
+            if (dbSymbols == null || dbSymbols.isEmpty()) {
+                // add default watchlist to database
+                dbSymbols = Watchlist.getDefaultWatchlist();
+                db.saveWatchlistSymbols(accountId, "Default", dbSymbols);
+                System.out.println("[startup] Loaded default watchlist and saved to DB (" + dbSymbols.size() + " symbols)");
             } else {
                 // use watchlist from database
-                account.getWatchList().clearList();
-                for (String sym : dbSymbols) {
-                    // TODO: get the actual name of the symbol
-                    account.getWatchList().addWatchlistItem(new com.market.TradeItem(sym, sym));
-                }
+                account.getWatchlist().clearList();
                 System.out.println("[startup] Loaded watchlist from DB (" + dbSymbols.size() + " symbols)");
             }
-
+            for (TradeItem ti : dbSymbols) { account.getWatchlist().addWatchlistItem(ti); }
 
             // Check if market is open or closed
             System.out.println("Checking market status...");
@@ -204,11 +220,9 @@ public class StartupWindow extends ContentPanel {
             // real gui listener attached after MainWindow is initialized
             market.setMarketListener(new MarketListener() {
                 @Override public void onMarketUpdate() { }
-
-                @Override
-                public void loadSymbols(List<TradeItem> items) { }
+                @Override public void loadSymbols(List<TradeItem> items) { }
             });
-            market.addFromWatchlist(account.getWatchList());
+            market.addFromWatchlist(account.getWatchlist());
             while (!market.isReady()) {
                 System.out.println("Waiting for Market status...");
             }

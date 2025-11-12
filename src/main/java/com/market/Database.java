@@ -1,5 +1,6 @@
 package com.market;
 
+import com.accountmanager.Account;
 import com.accountmanager.Profile;
 
 import java.sql.*;
@@ -374,7 +375,7 @@ public class Database implements AutoCloseable {
         }
         throw new SQLException("Failed to create account: " + accountName);
     }
-    public List<String> loadWatchlistSymbols(long accountId) throws SQLException {
+    public List<TradeItem> loadWatchlistSymbols(long accountId) throws SQLException {
         Long watchlistId = null;
         try (PreparedStatement sel = conn.prepareStatement(
                 "SELECT id FROM watchlists WHERE account_id=?")) {
@@ -389,13 +390,18 @@ public class Database implements AutoCloseable {
                 "SELECT symbol FROM watchlist_items WHERE watchlist_id=? ORDER BY position ASC")) {
             sel.setLong(1, watchlistId);
             try (ResultSet rs = sel.executeQuery()) {
-                java.util.ArrayList<String> out = new java.util.ArrayList<>();
-                while (rs.next()) out.add(rs.getString(1));
+                ArrayList<TradeItem> out = new ArrayList<>();
+                while (rs.next()) {
+                    String symbol = rs.getString(1);
+                    TradeItem ti = new TradeItem("Unknown Name", symbol);
+                    ti.setNameLookup(ti);
+                    out.add(ti);
+                }
                 return out;
             }
         }
     }
-    public void saveWatchlistSymbols(long accountId, String watchlistName, List<String> symbols) throws SQLException {
+    public void saveWatchlistSymbols(long accountId, String watchlistName, List<TradeItem> symbols) throws SQLException {
         boolean prev = conn.getAutoCommit();
         conn.setAutoCommit(false);
         try {
@@ -435,9 +441,12 @@ public class Database implements AutoCloseable {
                 try (PreparedStatement ins = conn.prepareStatement(
                         "INSERT INTO watchlist_items(watchlist_id, symbol, position) VALUES(?,?,?)")) {
                     int pos = 0;
-                    for (String sym : symbols) {
+                    for (TradeItem sym : symbols) {
+                        if (sym == null) continue;
+                        String s = sym.getSymbol();
+                        if (s == null || s.isBlank()) continue; // skip invalid
                         ins.setLong(1, watchlistId);
-                        ins.setString(2, sym);
+                        ins.setString(2, s);
                         ins.setInt(3, pos++);
                         ins.addBatch();
                     }
@@ -452,8 +461,29 @@ public class Database implements AutoCloseable {
             conn.setAutoCommit(prev);
         }
     }
+    public String getProfileName(long profileId) throws SQLException {
+        try (PreparedStatement ps = conn.prepareStatement(
+                "SELECT name FROM profiles WHERE id=?")) {
+            ps.setLong(1, profileId);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) return rs.getString(1);
+                throw new SQLException("No profile found for id=" + profileId);
+            }
+        }
+    }
+    public List<Account> listAccounts(long profileId) throws SQLException {
+        try (PreparedStatement ps = conn.prepareStatement(
+                "SELECT id, name FROM accounts WHERE profile_id=? ORDER BY name")) {
+            ps.setLong(1, profileId);
+            try (ResultSet rs = ps.executeQuery()) {
+                ArrayList<Account> out = new ArrayList<>();
+                while (rs.next()) out.add(new Account(rs.getLong(1), rs.getString(2)));
+                return out;
+            }
+        }
+    }
 
-    // cash helpers
+    // portfolio helpers
     public long depositCash(long accountId, double amount, long ts, String note) throws SQLException {
         return recordCash(accountId, ts, +Math.abs(amount), "DEPOSIT", note);
     }
@@ -482,8 +512,6 @@ public class Database implements AutoCloseable {
             try (ResultSet ks = ps.getGeneratedKeys()) { return ks.next() ? ks.getLong(1) : 0L; }
         }
     }
-
-    // trades
     private void upsertPositionFromTrade(long accountId, String symbol, String side,
                                          int qty, double price, long ts) throws SQLException {
         int curQty = 0;
@@ -546,7 +574,6 @@ public class Database implements AutoCloseable {
             }
         }
     }
-
     public long recordTrade(long accountId, String symbol, long ts, String side,
                             int quantity, double price) throws SQLException {
         if (!"BUY".equals(side) && !"SELL".equals(side)) {
@@ -602,7 +629,6 @@ public class Database implements AutoCloseable {
             conn.setAutoCommit(prev);
         }
     }
-
     public List<PositionView> loadPositions(long accountId) throws SQLException {
         try (PreparedStatement ps = conn.prepareStatement("""
             SELECT symbol, quantity, avg_cost FROM positions
@@ -656,6 +682,9 @@ public class Database implements AutoCloseable {
         }
     }
     public Profile buildProfile(long profileId) throws SQLException {
+        String profileName = getProfileName(profileId);
+
+        ArrayList<Account> accounts = new ArrayList<>();
         try (PreparedStatement ps = conn.prepareStatement("""
                 SELECT id, name
                 FROM accounts
@@ -664,15 +693,34 @@ public class Database implements AutoCloseable {
             """)) {
             ps.setLong(1, profileId);
             try (ResultSet rs = ps.executeQuery()) {
-                ArrayList<com.accountmanager.Account> out = new ArrayList<>();
                 while (rs.next()) {
-                    out.add(new com.accountmanager.Account(rs.getLong(1), rs.getString(2)));
+                    long accountId = rs.getLong(1);
+                    String accountName = rs.getString(2);
+                    Account a = new Account(accountId, accountName);
+
+                    // balance
+                    double balance = getCashBalance(accountId);
+                    a.setInitialBalance(balance);
+
+                    // watchlist
+                    List<TradeItem> wl = loadWatchlistSymbols(accountId);
+                    if (!wl.isEmpty()) {
+                        a.getWatchlist().clearList();
+                        for (TradeItem ti : wl) {
+                            a.getWatchlist().addWatchlistItem(ti);
+                        }
+                    }
+
+                    // TODO: load up the portfolios for each account
+                    // a.setPortfolio(loadPositions(accountId));
+
+                    accounts.add(a);
                 }
-                Profile p = new Profile(out);
-                p.setOwner("asdf");
-                return p;
             }
         }
+        Profile p = new Profile(accounts);
+        p.setOwner(profileName);
+        return p;
     }
     public StartupState determineStartupState() throws SQLException {
         long profileId = getExistingProfileIdOrZero();

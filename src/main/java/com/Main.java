@@ -17,10 +17,7 @@ public class Main {
             throw new SQLException("Failed to open database: " + dbFile, e);
         }
 
-        StartupWindow.getStartWindow(db, (profileName, balance)-> {
-            System.out.println("Profile: " + profileName + " Balance: " + balance);
-            StartupWindow.runMarketSim(db, profileName, balance);
-        });
+        StartupWindow.getStartWindow(db);
 
         // runTestCase();
     }
