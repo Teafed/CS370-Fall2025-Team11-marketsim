@@ -26,6 +26,7 @@ public class Market implements TradeListener {
         stocks = new LinkedHashMap<>();
         setDatabase(db);
         setAccount(account);
+        this.ready = true;
     }
 
     /**
