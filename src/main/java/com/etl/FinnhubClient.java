@@ -23,10 +23,16 @@ import java.util.function.Consumer;
  * Client for interacting with the Finnhub API to fetch stock price data.
  * This class handles polling the API at regular intervals and processing the responses.
  */
+<<<<<<< Updated upstream
 public class FinnhubClient implements TradeSource {
+=======
+public class FinnhubClient {
+    private static final String BASE_URL = "https://finnhub.io/api/v1";
+>>>>>>> Stashed changes
     private static final String LOG_PREFIX = "[FinnhubClient]";
 
     private final String apiKey;
+<<<<<<< Updated upstream
     private final String baseUrl;
     private final HttpClient httpClient;
     private final Set<String> subscribed = new ConcurrentSkipListSet<>();
@@ -39,6 +45,26 @@ public class FinnhubClient implements TradeSource {
 
     FinnhubClient() {
         this(HttpClient.newHttpClient(), System.getenv("FINNHUB_API_KEY"), "https://finnhub.io/api/v1");
+=======
+    private final String symbol;
+    private final OkHttpClient httpClient;
+    private volatile DatabaseManager dbManager;
+    private ScheduledExecutorService scheduler;
+    private Consumer<Double> priceUpdateCallback;
+    private volatile boolean running = false;
+    
+    /**
+     * Creates a new FinnhubClient for the specified stock symbol.
+     * 
+     * @param symbol The stock symbol to fetch data for
+     * @param priceUpdateCallback Callback function that will be called with updated price data
+     */
+    public FinnhubClient(String symbol, Consumer<Double> priceUpdateCallback) {
+        this.symbol = symbol;
+        this.apiKey = getApiKey();
+        this.priceUpdateCallback = priceUpdateCallback;
+        this.httpClient = new OkHttpClient();
+>>>>>>> Stashed changes
     }
 
     public FinnhubClient(HttpClient httpClient, String apiKey, String baseUrl) {
@@ -52,6 +78,7 @@ public class FinnhubClient implements TradeSource {
         }
         this.apiKey = k;
     }
+<<<<<<< Updated upstream
 
     @Override
     public void setTradeListener(TradeListener listener) {
@@ -67,6 +94,15 @@ public class FinnhubClient implements TradeSource {
     }
 
     private synchronized void ensurePolling() {
+=======
+    
+    /**
+     * Starts polling the Finnhub REST API for price data at regular intervals.
+     * The polling occurs every 5 seconds and continues until stopPolling() is called.
+     * If polling is already in progress, this method does nothing.
+     */
+    public void startPolling() {
+>>>>>>> Stashed changes
         if (running) return;
         running = true;
         scheduler = Executors.newScheduledThreadPool(1);
@@ -137,6 +173,7 @@ public class FinnhubClient implements TradeSource {
                 System.err.println(LOG_PREFIX + " API request failed: " + sc);
                 return;
             }
+<<<<<<< Updated upstream
 
             String body = response.body();
             if (body == null || body.isBlank()) {
@@ -146,6 +183,18 @@ public class FinnhubClient implements TradeSource {
 
             parseAndStoreQuote(symbol, body);
         } catch (IOException | InterruptedException e) {
+=======
+            
+            if (response.body() == null) {
+                System.err.println(LOG_PREFIX + " Empty response body received");
+                return;
+            }
+            
+            String responseBody = response.body().string();
+            parseAndStoreQuote(responseBody);
+            
+        } catch (IOException e) {
+>>>>>>> Stashed changes
             System.err.println(LOG_PREFIX + " Error fetching quote: " + e.getMessage());
             Thread.currentThread().interrupt();
         }
@@ -157,6 +206,7 @@ public class FinnhubClient implements TradeSource {
     private void parseAndStoreQuote(String symbol, String responseBody) {
         try {
             JsonObject jsonObject = JsonParser.parseString(responseBody).getAsJsonObject();
+<<<<<<< Updated upstream
 
             // Check if all required fields exist
             if (!jsonObject.has("c") || !jsonObject.has("o") || !jsonObject.has("h") ||
@@ -165,6 +215,16 @@ public class FinnhubClient implements TradeSource {
                 return;
             }
 
+=======
+            
+            // Check if all required fields exist
+            if (!jsonObject.has("c") || !jsonObject.has("o") || !jsonObject.has("h") || 
+                !jsonObject.has("l") || !jsonObject.has("t")) {
+                System.err.println(LOG_PREFIX + " Missing required fields in response: " + responseBody);
+                return;
+            }
+            
+>>>>>>> Stashed changes
             double currentPrice = jsonObject.get("c").getAsDouble(); // current price
             double openPrice = jsonObject.get("o").getAsDouble();    // open price
             double highPrice = jsonObject.get("h").getAsDouble();    // high price
@@ -191,6 +251,7 @@ public class FinnhubClient implements TradeSource {
             System.err.println(LOG_PREFIX + " Error parsing quote: " + e.getMessage());
         }
     }
+<<<<<<< Updated upstream
     private static void insertPriceSafely(DatabaseManager db, String symbol, long timestamp,
                                           double open, double high, double low, double close, long volume) {
 //        try {
@@ -198,6 +259,21 @@ public class FinnhubClient implements TradeSource {
 //        } catch (Exception e) {
 //            System.err.println(LOG_PREFIX + " Failed to insert price into DB: " + e.getMessage());
 //        }
+=======
+    /**
+     * Factory method to create, configure, and start a FinnhubClient in one step.
+     * 
+     * @param db The database manager for storing price data
+     * @param symbol The stock symbol to fetch data for
+     * @param priceUpdateCallback Callback function that will be called with updated price data
+     * @return A configured and running FinnhubClient instance
+     */
+    public static FinnhubClient start(DatabaseManager db, String symbol, Consumer<Double> priceUpdateCallback) {
+        FinnhubClient client = new FinnhubClient(symbol, priceUpdateCallback);
+        client.dbManager = db;
+        client.startPolling();
+        return client;
+>>>>>>> Stashed changes
     }
 
     public static TradeSource start() {
