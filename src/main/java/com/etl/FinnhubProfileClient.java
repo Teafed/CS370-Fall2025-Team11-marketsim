@@ -94,4 +94,3 @@ public class FinnhubProfileClient {
                 marketCap, name, phone, shareOut, ticker, weburl, logo);
     }
 }
-git
