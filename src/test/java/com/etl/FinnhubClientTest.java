@@ -18,7 +18,8 @@ class FinnhubClientParserTest {
         ]}
         """;
 
-//        FinnhubWebSocketClient.parseAndStore(sample, db);
+    // parse sample and store into the in-memory DB for assertions
+    FinnhubWebSocketClient.parseAndStore(sample, db);
 
         try (ResultSet rs = db.getCandles("AAPL", 0, Long.MAX_VALUE)) {
             assertTrue(rs.next());
@@ -39,6 +40,7 @@ class FinnhubClientParserTest {
 
     // @Disabled("Enable when you have FINNHUB_API_KEY set")
     @Test
+    @org.junit.jupiter.api.Disabled("Live smoke test requires FINNHUB_API_KEY and network access")
     void liveFinnhubSmokeTest() throws Exception {
         DatabaseManager db = new DatabaseManager("data/market.db"); // or ":memory:"
         TradeSource client = FinnhubWebSocketClient.start();
