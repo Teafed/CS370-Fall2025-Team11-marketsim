@@ -65,16 +65,6 @@ public class Portfolio {
         return true;
     }
 
-    public boolean hasTradeItem(TradeItem tradeItem) {
-        return portfolioItems.containsKey(tradeItem);
-    }
-
-    public List<TradeItem> listTradeItems() {
-        return new ArrayList<TradeItem>(portfolioItems.keySet());
-    }
-
-<<<<<<< Updated upstream
-=======
     /** Compatibility: accept a generic TradeItem (from tests) */
     public boolean hasTradeItem(com.market.TradeItem item) {
         if (item == null) return false;
@@ -89,7 +79,6 @@ public class Portfolio {
         }
         return list;
     }
->>>>>>> Stashed changes
 
     /**
      * Gets the number of shares held for a particular TradeItem
