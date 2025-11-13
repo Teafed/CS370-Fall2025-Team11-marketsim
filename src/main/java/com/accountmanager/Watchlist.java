@@ -47,6 +47,49 @@ public class Watchlist {
             return false;
     }
 
+<<<<<<< Updated upstream
+=======
+    /* Compatibility methods for older tests / API */
+    /**
+     * Old name: addWatchlistItem
+     */
+    public boolean addWatchlistItem(Stock stock) {
+        return addStock(stock);
+    }
+
+    /** Old name for size() */
+    public int getWatchlistSize() {
+        return size();
+    }
+
+    /** Old name for containsStock */
+    public boolean hasTradeItem(Stock stock) {
+        if (stock == null) return false;
+        return containsStock(stock.getSymbol());
+    }
+
+    /** Old name for removeStock by Stock object */
+    public boolean removeWatchlistItem(Stock stock) {
+        if (stock == null) return false;
+        return removeStock(stock.getSymbol());
+    }
+
+    /** Old name for clear */
+    public void clearList() {
+        clear();
+    }
+
+    /** Old name to return list */
+    public List<Stock> getWatchlist() {
+        return getStocks();
+    }
+
+    /** Maximum watchlist size used in tests; configurable if needed */
+    public int getMaxSize() {
+        return 100;
+    }
+    
+>>>>>>> Stashed changes
     /**
      * Removes a specified TradeItem from the watchlist.
      * @param tradeItem The TradeItem to remove
