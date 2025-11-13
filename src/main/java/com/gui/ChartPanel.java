@@ -3,7 +3,7 @@
 package com.gui;
 
 import com.etl.HistoricalService;
-import com.market.DatabaseManager;
+import com.market.Database;
 
 import java.awt.geom.Path2D;
 import java.sql.Date;
@@ -17,7 +17,7 @@ import java.util.TimeZone;
 import java.util.TreeMap;
 
 public class ChartPanel extends ContentPanel {
-    private DatabaseManager dbRef; // set on first openChart call
+    private Database dbRef; // set on first openChart call
     private String symbol;
 
     private final ChartCanvas canvas;
@@ -58,7 +58,7 @@ public class ChartPanel extends ContentPanel {
     }
 
     /* load data for a symbol from database; timeframe default to 90 days */
-    public void openChart(DatabaseManager db, String symbol) {
+    public void openChart(Database db, String symbol) {
         this.dbRef = db;
         this.symbol = symbol;
 
@@ -85,12 +85,12 @@ public class ChartPanel extends ContentPanel {
      * @param endMs     inclusive epoch millis
      * @param maxPoints cap plotted points to keep the line smooth (e.g. 200)
      */
-    public void openChart(DatabaseManager db, String symbol, long startMs, long endMs, int maxPoints) {
+    public void openChart(Database db, String symbol, long startMs, long endMs, int maxPoints) {
         HistoricalService.Timespan timespan = HistoricalService.Timespan.DAY;
         openChart(db, symbol, 1, timespan, startMs, endMs, maxPoints);
     }
 
-    public void openChart(DatabaseManager db,
+    public void openChart(Database db,
                           String symbol,
                           int multiplier,
                           HistoricalService.Timespan timespan,
@@ -174,7 +174,7 @@ public class ChartPanel extends ContentPanel {
 
         void setLoading(boolean v) { loading = v; repaint(); }
 
-        void loadFromDb(DatabaseManager db, String symbol, long startMs, long endMs, int maxPoints) {
+        void loadFromDb(Database db, String symbol, long startMs, long endMs, int maxPoints) {
             this.symbol = symbol;
             // use daily getCandles bc smaller timeframes aren't supported on free polygon
             try (ResultSet rs = db.getCandles(symbol, startMs, endMs)) {

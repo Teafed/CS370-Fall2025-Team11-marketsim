@@ -4,6 +4,7 @@ import com.market.*;
 
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.LinkedHashSet;
 import java.util.List;
 
@@ -73,6 +74,24 @@ public class Watchlist {
 
     public List<TradeItem> getWatchlist() {
         return new ArrayList<>(watchlist);
+    }
+
+    public static List<TradeItem> getDefaultWatchlist() {
+        TradeItem[] initialSymbols = {
+                new TradeItem("Apple", "AAPL"),
+                new TradeItem("Microsoft", "MSFT"),
+                new TradeItem("Alphabet", "GOOGL"),
+                new TradeItem("NVIDIA", "NVDA"),
+                new TradeItem("Amazon", "AMZN"),
+                new TradeItem("Meta Platforms", "META"),
+                new TradeItem("Tesla", "TSLA"),
+                new TradeItem("Broadcom", "AVGO"),
+                new TradeItem("Taiwan Semiconductor Manufacturing Company", "TSM"),
+                new TradeItem("Berkshire Hathaway", "BRK.B")
+        };
+        List<TradeItem> wl = new java.util.ArrayList<>();
+        wl.addAll(Arrays.asList(initialSymbols));
+        return wl;
     }
 
 }

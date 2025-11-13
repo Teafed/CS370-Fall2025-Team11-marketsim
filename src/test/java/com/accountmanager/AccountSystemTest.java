@@ -117,35 +117,35 @@ public class AccountSystemTest {
 
     @Test
     void testAccountManager() {
-        AccountManager accountManager = new AccountManager();
+        Profile profile = new Profile();
         // Two test accounts are created
         Account accountOne =  new Account("accountOneName");
         Account accountTwo = new Account("accountTwoName");
         // An account can be added to the account manager
-        assertTrue(accountManager.addAccount(accountOne));
-        assertTrue(accountManager.addAccount(accountTwo));
+        assertTrue(profile.addAccount(accountOne));
+        assertTrue(profile.addAccount(accountTwo));
         // An account manager knows how many accounts it holds
-        assertEquals(2, accountManager.getNumberOfAccounts());
+        assertEquals(2, profile.getNumberOfAccounts());
 
 
         Account accountThree = new Account("accountThreeName");
         Account accountFour = new Account("accountFourName");
         Account accountFive = new Account("accountFiveName");
         Account accountSix = new Account("accountSixName");
-        accountManager.addAccount(accountThree);
-        accountManager.addAccount(accountFour);
-        accountManager.addAccount(accountFive);
+        profile.addAccount(accountThree);
+        profile.addAccount(accountFour);
+        profile.addAccount(accountFive);
 
         // An account manager will only allow 5 accounts
-        assertFalse(accountManager.addAccount(accountSix));
-        assertEquals(5, accountManager.getNumberOfAccounts());
+        assertFalse(profile.addAccount(accountSix));
+        assertEquals(5, profile.getNumberOfAccounts());
 
         // An account manager can remove accounts
-        assertTrue(accountManager.removeAccount(accountOne));
-        assertTrue(accountManager.removeAccount(accountTwo));
+        assertTrue(profile.removeAccount(accountOne));
+        assertTrue(profile.removeAccount(accountTwo));
 
         // An account manager returns false if it does not hold requested account
-        assertFalse(accountManager.removeAccount(accountOne));
+        assertFalse(profile.removeAccount(accountOne));
 
 
     }

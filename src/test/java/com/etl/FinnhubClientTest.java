@@ -1,6 +1,6 @@
 package com.etl;
 
-import com.market.DatabaseManager;
+import com.market.Database;
 import org.junit.jupiter.api.Test;
 import java.sql.ResultSet;
 import static org.junit.jupiter.api.Assertions.*;
@@ -9,7 +9,7 @@ class FinnhubClientParserTest {
 
     @Test
     void parsesTradeMessageIntoDB() throws Exception {
-        DatabaseManager db = new DatabaseManager(":memory:");
+        Database db = new Database(":memory:");
 
         String sample = """
         {"type":"trade","data":[
@@ -42,8 +42,8 @@ class FinnhubClientParserTest {
     @Test
     @org.junit.jupiter.api.Disabled("Live smoke test requires FINNHUB_API_KEY and network access")
     void liveFinnhubSmokeTest() throws Exception {
-        DatabaseManager db = new DatabaseManager("data/market.db"); // or ":memory:"
-        TradeSource client = FinnhubWebSocketClient.start();
+        Database db = new Database("data/market.db"); // or ":memory:"
+        //TradeSource client = WebSocketClient.start();
 
         // give it ~5–10 seconds to receive something
         Thread.sleep(10_000);

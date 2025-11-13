@@ -53,7 +53,7 @@ public class Portfolio {
      */
     boolean removeTradeItem(TradeItem tradeItem, int n) {
         if (tradeItem == null || n < 1 || !portfolioItems.containsKey(tradeItem)) {
-            //TODO Handle error
+            // TODO Handle error
             return false;
         }
         if (portfolioItems.get(tradeItem) == n) {
