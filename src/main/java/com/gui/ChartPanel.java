@@ -35,7 +35,6 @@ public class ChartPanel extends ContentPanel {
 
         // chart canvas
         this.canvas = new ChartCanvas();
-        add(canvas, BorderLayout.CENTER);
 
         // chart options + order panel
         JPanel south = new JPanel();
@@ -52,7 +51,19 @@ public class ChartPanel extends ContentPanel {
 
         OrderPanel orderPanel = new OrderPanel();
         south.add(orderPanel);
-        add(south, BorderLayout.SOUTH);
+
+        JSplitPane split = new JSplitPane(JSplitPane.VERTICAL_SPLIT, canvas, south);
+        split.setBorder(null);
+        split.setOpaque(false);
+        split.setBackground(GUIComponents.BG_DARK);
+
+        split.setDividerSize(0);
+        split.setEnabled(false);
+
+        split.setResizeWeight(0.75);
+        split.setDividerLocation(0.75);
+
+        add(split, BorderLayout.CENTER);
 
         setMinimumSize(new Dimension(600, 300));
     }
