@@ -66,17 +66,15 @@ public class Portfolio {
     }
 
     /** Compatibility: accept a generic TradeItem (from tests) */
-    public boolean hasTradeItem(com.market.TradeItem item) {
+    public boolean hasTradeItem(TradeItem item) {
         if (item == null) return false;
-        return holdings.containsKey(item.getSymbol());
+        return portfolioItems.containsKey(item.getSymbol());
     }
 
     /** Return a list of TradeItem representing current holdings (used by tests) */
-    public java.util.List<com.market.TradeItem> listTradeItems() {
-        java.util.List<com.market.TradeItem> list = new java.util.ArrayList<>();
-        for (PortfolioItem p : holdings.values()) {
-            list.add(p.getStock());
-        }
+    public List<TradeItem> listTradeItems() {
+        List<TradeItem> list = new ArrayList<>();
+        list.addAll(portfolioItems.keySet());
         return list;
     }
 
