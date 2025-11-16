@@ -1,6 +1,6 @@
 package com.etl;
 
-import com.market.Database;
+import com.models.Database;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonArray;
 import org.junit.jupiter.api.Test;

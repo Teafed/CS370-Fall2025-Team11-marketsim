@@ -3,7 +3,7 @@
 package com.gui;
 
 import com.etl.HistoricalService;
-import com.market.Database;
+import com.models.Database;
 
 import java.awt.geom.Path2D;
 import java.sql.Date;

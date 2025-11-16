@@ -1,7 +1,7 @@
 package com.etl.finnhub;
 
 import com.etl.TradeSource;
-import com.market.TradeListener;
+import com.models.market.TradeListener;
 import jakarta.websocket.*;
 
 import java.io.IOException;
@@ -9,8 +9,7 @@ import java.net.URI;
 import java.util.concurrent.CountDownLatch;
 
 import com.google.gson.*;
-import io.github.cdimascio.dotenv.Dotenv;
-import com.market.Database;
+import com.models.Database;
 
 @ClientEndpoint
 public class WebSocketClient implements TradeSource {

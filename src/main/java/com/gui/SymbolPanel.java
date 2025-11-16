@@ -2,8 +2,10 @@
 
 package com.gui;
 
-import com.market.*;
-import com.accountmanager.Account;
+import com.models.*;
+import com.models.market.MarketListener;
+import com.models.market.TradeItem;
+import com.models.profile.Account;
 
 import javax.swing.*;
 import java.awt.*;

@@ -6,7 +6,6 @@ import java.awt.*;
 public class OrderTab extends JPanel {
     private JButton buyButton;
     private JButton sellButton;
-    //private JButton portfolioButton;
     private JLabel numberOfSharesLabel;
     private JTextField numberOfSharesField;
     private JLabel priceLabel;
@@ -27,7 +26,6 @@ public class OrderTab extends JPanel {
     private void initializeComponents() {
         buyButton = createActionButton("Buy", GUIComponents.ACCENT_GREEN);
         sellButton = createActionButton("Sell", GUIComponents.ACCENT_RED);
-        //portfolioButton = createActionButton("My Portfolio", GUIComponents.ACCENT_BLUE);
 
         numberOfSharesLabel = new JLabel("Number of Shares: ");
         numberOfSharesLabel.setForeground(Color.WHITE);
@@ -40,8 +38,6 @@ public class OrderTab extends JPanel {
         // placeholder action listeners
         buyButton.addActionListener(e -> handleBuy());
         sellButton.addActionListener(e -> handleSell());
-        //portfolioButton.addActionListener(e -> handlePortfolio());
-
     }
 
     private JButton createActionButton(String text, Color accentColor) {
@@ -104,7 +100,6 @@ public class OrderTab extends JPanel {
         gbc.gridx = 2; gbc.gridy = 1;
         add(priceField, gbc);
 
-        // Add glue to push buttons to the top
         gbc.weighty = 1.0;
         gbc.fill = GridBagConstraints.BOTH;
         add(Box.createVerticalGlue(), gbc);
@@ -123,14 +118,6 @@ public class OrderTab extends JPanel {
         JOptionPane.showMessageDialog(this,
                 "Sell functionality coming soon!",
                 "Sell Stock",
-                JOptionPane.INFORMATION_MESSAGE);
-    }
-
-    private void handlePortfolio() {
-        // TODO: Implement portfolio view
-        JOptionPane.showMessageDialog(this,
-                "Portfolio view coming soon!",
-                "My Portfolio",
                 JOptionPane.INFORMATION_MESSAGE);
     }
 }

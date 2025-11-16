@@ -1,6 +1,6 @@
 package com.etl;
 
-import com.market.Database;
+import com.models.Database;
 
 import java.sql.SQLException;
 import com.google.gson.JsonParser;

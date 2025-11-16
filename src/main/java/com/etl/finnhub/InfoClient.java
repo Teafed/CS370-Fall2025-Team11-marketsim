@@ -2,9 +2,8 @@ package com.etl.finnhub;
 
 import com.etl.CompanyProfile;
 import org.json.JSONObject;
-import com.market.Database;
-import com.market.TradeListener;
-import io.github.cdimascio.dotenv.Dotenv;
+import com.models.Database;
+import com.models.market.TradeListener;
 
 import java.io.IOException;
 import java.net.URI;

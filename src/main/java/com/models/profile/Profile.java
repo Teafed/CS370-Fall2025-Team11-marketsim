@@ -1,4 +1,4 @@
-package com.accountmanager;
+package com.models.profile;
 
 import java.util.ArrayList;
 

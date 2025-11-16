@@ -1,7 +1,11 @@
 package com.accountmanager;
 
-import com.market.Stock;
-import com.market.TradeItem;
+import com.models.market.Stock;
+import com.models.market.TradeItem;
+import com.models.profile.Account;
+import com.models.profile.Portfolio;
+import com.models.profile.Profile;
+import com.models.profile.Watchlist;
 import org.junit.jupiter.api.*;
 
 import java.util.List;

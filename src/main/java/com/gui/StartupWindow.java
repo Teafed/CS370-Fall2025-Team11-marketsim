@@ -1,13 +1,13 @@
 package com.gui;
 
-import com.accountmanager.*;
-import com.etl.TradeSource;
 import com.etl.finnhub.ClientFacade;
-import com.market.Database;
-import com.market.Market;
-import com.market.MarketListener;
-import com.market.TradeItem;
-import com.tools.MockFinnhubClient;
+import com.models.Database;
+import com.models.market.Market;
+import com.models.market.MarketListener;
+import com.models.market.TradeItem;
+import com.models.profile.Account;
+import com.models.profile.Profile;
+import com.models.profile.Watchlist;
 
 import javax.swing.*;
 import java.awt.*;

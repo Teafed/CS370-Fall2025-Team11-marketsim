@@ -1,6 +1,6 @@
-package com.accountmanager;
+package com.models.profile;
 
-import com.market.TradeItem;
+import com.models.market.TradeItem;
 
 import java.util.List;
 

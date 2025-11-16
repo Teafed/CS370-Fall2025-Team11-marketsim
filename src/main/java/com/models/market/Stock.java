@@ -1,4 +1,4 @@
-package com.market;
+package com.models.market;
 
 public class Stock extends TradeItem {
 

@@ -2,7 +2,7 @@ package com.etl.finnhub;
 
 import com.etl.CompanyProfile;
 import com.etl.TradeSource;
-import com.market.TradeListener;
+import com.models.market.TradeListener;
 import com.tools.MockFinnhubClient;
 import io.github.cdimascio.dotenv.Dotenv;
 

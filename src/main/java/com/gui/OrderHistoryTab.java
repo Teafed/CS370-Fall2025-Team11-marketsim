@@ -6,8 +6,10 @@ import javax.swing.table.*;
 import java.util.List;
 import java.util.ArrayList;
 
-import com.accountmanager.*;
-import com.market.*;
+import com.models.market.Market;
+import com.models.market.TradeItem;
+import com.models.profile.Account;
+import com.models.profile.Portfolio;
 
 public class OrderHistoryTab extends ContentPanel {
     private JTable holdingsTable;

@@ -1,6 +1,6 @@
 package com.gui;
 
-import com.accountmanager.Account;
+import com.models.profile.Account;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;

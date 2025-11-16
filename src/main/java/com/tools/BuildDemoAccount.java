@@ -1,8 +1,6 @@
 package com.tools;
 
-import com.accountmanager.Account;
-import com.accountmanager.Watchlist;
-import com.market.TradeItem;
+import com.models.profile.Account;
 
 public class BuildDemoAccount {
 
