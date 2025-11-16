@@ -4,7 +4,7 @@ import java.util.ArrayList;
 
 // This class holds all accounts for the user and provides methods for adding, deleting, and returning each account.
 public class Profile {
-
+    private int activeAccount;
     private ArrayList<Account> accounts;    // list of accounts
     private int numberOfAccounts;       // number of active accounts
     private int maxNumberOfAccounts = 5;    // maximum number of accounts
@@ -61,6 +61,8 @@ public class Profile {
     public Account getFirstAccount() {
         return accounts.getFirst();
     }
+
+    public Account getActiveAccount() { return accounts.get(activeAccount); }
 
     // Get all names of accounts
     public String[] getAccountNames() {
