@@ -2,14 +2,19 @@ package com.gui;
 
 import javax.swing.*;
 import java.awt.*;
+import java.util.function.Consumer;
 
 public class OrderPanel extends ContentPanel {
     private final JPanel header;
     private final JLabel indicator;
     private final JTabbedPane tabs;
     private boolean collapsed = false;
+    private final Consumer<Boolean> onCollapseChanged;
 
-    OrderPanel() {
+    OrderPanel() { this(null); }
+
+    OrderPanel(Consumer<Boolean> onCollapseChanged) {
+        this.onCollapseChanged = onCollapseChanged != null ? onCollapseChanged : (c) -> { };
         setLayout(new BorderLayout());
         setOpaque(true);
         setBackground(GUIComponents.BG_DARK);
@@ -41,8 +46,8 @@ public class OrderPanel extends ContentPanel {
             }
         };
         tabs.updateUI();
-        tabs.addTab("Order", new TradePanel());
-        tabs.addTab("Order History", new PortfolioPanel());
+        tabs.addTab("Order", new OrderTab());
+        tabs.addTab("Order History", new OrderHistoryTab());
 
         add(header, BorderLayout.NORTH);
         add(tabs, BorderLayout.CENTER);
@@ -54,7 +59,10 @@ public class OrderPanel extends ContentPanel {
         indicator.setText(collapse ? "ˆ" : "ˇ");
         revalidate();
         repaint();
+        onCollapseChanged.accept(this.collapsed);
     }
 
-
+    int getHeaderHeight() {
+        return header.getPreferredSize().height + getInsets().top + getInsets().bottom;
+    }
 }

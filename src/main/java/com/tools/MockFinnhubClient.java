@@ -3,7 +3,7 @@ package com.tools;
 import com.etl.TradeSource;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
-import com.market.TradeListener;
+import com.models.market.TradeListener;
 import jakarta.websocket.OnMessage;
 
 import java.util.ArrayList;

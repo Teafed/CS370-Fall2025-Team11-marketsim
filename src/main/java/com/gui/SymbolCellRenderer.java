@@ -1,6 +1,6 @@
 package com.gui;
 
-import com.market.TradeItem;
+import com.models.market.TradeItem;
 import javax.swing.*;
 import javax.swing.border.Border;
 import java.awt.*;

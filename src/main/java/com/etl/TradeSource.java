@@ -1,6 +1,6 @@
 package com.etl;
 
-import com.market.TradeListener;
+import com.models.market.TradeListener;
 
 public interface TradeSource {
     void setTradeListener(TradeListener listener);

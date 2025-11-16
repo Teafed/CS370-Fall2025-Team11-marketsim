@@ -1,6 +1,6 @@
 package com;
 
-import com.market.*;
+import com.models.*;
 import com.gui.*;
 
 import java.sql.SQLException;

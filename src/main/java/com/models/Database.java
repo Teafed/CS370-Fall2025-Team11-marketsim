@@ -1,7 +1,8 @@
-package com.market;
+package com.models;
 
-import com.accountmanager.Account;
-import com.accountmanager.Profile;
+import com.models.market.TradeItem;
+import com.models.profile.Account;
+import com.models.profile.Profile;
 
 import java.sql.*;
 import java.util.ArrayList;

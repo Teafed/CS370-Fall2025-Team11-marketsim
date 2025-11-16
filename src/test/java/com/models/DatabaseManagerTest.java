@@ -1,4 +1,4 @@
-package com.market;
+package com.models;
 
 
 import org.junit.jupiter.api.Test;

@@ -1,5 +1,7 @@
-package com.market;
+package com.models;
 
+import com.models.market.Stock;
+import com.models.market.TradeItem;
 import org.junit.jupiter.api.*;
 import static org.junit.jupiter.api.Assertions.*;
 

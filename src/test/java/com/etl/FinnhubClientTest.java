@@ -1,6 +1,6 @@
 package com.etl;
 
-import com.market.Database;
+import com.models.Database;
 import org.junit.jupiter.api.Test;
 import java.sql.ResultSet;
 import static org.junit.jupiter.api.Assertions.*;

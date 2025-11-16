@@ -1,4 +1,4 @@
-package com.market;
+package com.models.market;
 
 // has a list of TradeItems (stocks, etc)
 

@@ -1,7 +1,7 @@
-package com.market;
+package com.models.market;
 
 import java.time.LocalDate;
-import com.accountmanager.Account;
+import com.models.profile.Account;
 
 public record Order(Account account, TradeItem tradeItem, Order.side side, int shares, double price, LocalDate time) {
     public enum side {

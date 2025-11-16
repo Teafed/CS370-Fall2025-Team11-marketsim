@@ -1,8 +1,10 @@
-package com.market;
+package com.models.market;
 
-import com.accountmanager.Account;
+import com.models.Database;
+import com.models.profile.Account;
 import com.etl.TradeSource;
 import com.etl.finnhub.ClientFacade;
+import com.models.profile.Watchlist;
 
 import java.util.*;
 
@@ -69,7 +71,7 @@ public class Market implements TradeListener {
 
     }
 
-    public void addFromWatchlist(com.accountmanager.Watchlist watchlist) throws Exception {
+    public void addFromWatchlist(Watchlist watchlist) throws Exception {
         for (TradeItem stock : watchlist.getWatchlist()) {
             String sym = stock.getSymbol();
             if (!stocks.containsKey(sym)) {
