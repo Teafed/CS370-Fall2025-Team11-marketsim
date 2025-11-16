@@ -22,6 +22,7 @@ public class AccountBar extends JPanel {
         setBackground(GUIComponents.BG_MEDIUM);
         setBorder(new EmptyBorder(10, 12, 10, 12));
         setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        setFocusable(true); // make keyboard-focusable for accessibility
 
         name.setForeground(GUIComponents.TEXT_PRIMARY);
         name.setFont(new Font("Segoe UI", Font.PLAIN, 13));
@@ -48,6 +49,21 @@ public class AccountBar extends JPanel {
             @Override public void mouseExited(MouseEvent e) {
                 setBackground(GUIComponents.BG_MEDIUM);
             }
+        });
+
+        // keyboard activation for accessibility: ENTER and SPACE should trigger the same action
+        getInputMap(WHEN_FOCUSED).put(KeyStroke.getKeyStroke("ENTER"), "activate");
+        getInputMap(WHEN_FOCUSED).put(KeyStroke.getKeyStroke("SPACE"), "activate");
+        getActionMap().put("activate", new javax.swing.AbstractAction() {
+            @Override public void actionPerformed(java.awt.event.ActionEvent e) {
+                if (onClick != null) onClick.run();
+            }
+        });
+
+        // focus visuals
+        addFocusListener(new java.awt.event.FocusAdapter() {
+            @Override public void focusGained(java.awt.event.FocusEvent e) { setBackground(GUIComponents.BG_LIGHT); }
+            @Override public void focusLost(java.awt.event.FocusEvent e)   { setBackground(GUIComponents.BG_MEDIUM); }
         });
     }
 

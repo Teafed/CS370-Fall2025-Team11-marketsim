@@ -29,6 +29,8 @@ public class MainWindow extends JFrame
     private static final String WINDOW_TITLE = "Marketsim";
     private static final String CARD_CHART = "chart";
     private static final String CARD_ACCOUNT = "account";
+    // track which card is currently visible so we can toggle when account bar is clicked
+    private String currentCard = CARD_CHART;
     private static final int LEFT_PANEL_WIDTH = 250;
     private static final int MIN_RIGHT_WIDTH = 300;
 
@@ -99,7 +101,7 @@ public class MainWindow extends JFrame
         symbolPanel.addSymbolSelectionListener(this);
         symbolPanel.setAccount(account, this);
 
-    cards.show(rightCards, CARD_CHART);
+    showCard(CARD_CHART);
     rightCards.setMinimumSize(new Dimension(MIN_RIGHT_WIDTH, 0));
 
     // Create a wrapper panel to hold a top bar (market status) and the card area.
@@ -130,6 +132,12 @@ public class MainWindow extends JFrame
     rightContainer.add(rightCards, BorderLayout.CENTER);
     }
 
+    // small helper to show a card and remember which is visible (used for toggling behavior)
+    private void showCard(String card) {
+        cards.show(rightCards, card);
+        this.currentCard = card;
+    }
+
     private void setupCloseHook() {
         addWindowListener(new java.awt.event.WindowAdapter() {
             @Override public void windowClosing(java.awt.event.WindowEvent e) {
@@ -158,12 +166,20 @@ public class MainWindow extends JFrame
 
     @Override
     public void onSymbolSelected(TradeItem item) {
-        cards.show(rightCards, CARD_CHART);
+        showCard(CARD_CHART);
         chartPanel.openChart(db, item.getSymbol());
     }
 
     @Override
     public void onAccountSelected(Account account) {
-        cards.show(rightCards, CARD_ACCOUNT);
+        // Toggle: if account panel is already visible, go back to chart. Otherwise show account.
+        if (CARD_ACCOUNT.equals(this.currentCard)) {
+            showCard(CARD_CHART);
+        } else {
+            showCard(CARD_ACCOUNT);
+        }
     }
+
+    // package-private accessor for tests
+    String getCurrentCard() { return this.currentCard; }
 }
