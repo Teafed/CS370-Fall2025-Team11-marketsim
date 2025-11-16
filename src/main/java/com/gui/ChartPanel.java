@@ -23,6 +23,11 @@ public class ChartPanel extends ContentPanel {
     private final ChartCanvas canvas;
     private final TimeframeBar timeframeBar;
 
+    private JSplitPane split;
+    private ContentPanel south;
+    private OrderPanel orderPanel;
+    private int lastDividerLocation = -1;
+
     private SwingWorker<?,?> currentWorker; // for backfilling
 
     /* called once in MainWindow; loads first symbol on watchlist */
@@ -37,7 +42,7 @@ public class ChartPanel extends ContentPanel {
         this.canvas = new ChartCanvas();
 
         // chart options + order panel
-        JPanel south = new JPanel();
+        south = new ContentPanel();
         south.setOpaque(false);
         south.setLayout(new BoxLayout(south, BoxLayout.Y_AXIS));
 
@@ -49,25 +54,55 @@ public class ChartPanel extends ContentPanel {
         });
         south.add(timeframeBar);
 
-        OrderPanel orderPanel = new OrderPanel();
+        orderPanel = new OrderPanel(collapsed -> SwingUtilities.invokeLater(() -> adjustDivider(collapsed)));
         south.add(orderPanel);
+        south.setMinimumSize(new Dimension(0, timeframeBar.getPreferredSize().height + orderPanel.getHeaderHeight()));
 
-        JSplitPane split = new JSplitPane(JSplitPane.VERTICAL_SPLIT, canvas, south);
+        split = new JSplitPane(JSplitPane.VERTICAL_SPLIT, canvas, south);
         split.setBorder(null);
         split.setOpaque(false);
         split.setBackground(GUIComponents.BG_DARK);
-
         split.setDividerSize(0);
         split.setEnabled(false);
-
         split.setResizeWeight(0.75);
-        split.setDividerLocation(0.75);
+        split.setDividerLocation(0.75); // proportional
+
+        canvas.setMinimumSize(new Dimension(0, 370));
+        south.setPreferredSize(new Dimension(0, 240));
 
         add(split, BorderLayout.CENTER);
-
         setMinimumSize(new Dimension(600, 300));
     }
 
+    private void adjustDivider(boolean collapsed) {
+        if (split == null) return;
+
+        // If expanding, restore previous divider location or reasonable default
+        if (!collapsed) {
+            int h = split.getHeight();
+            if (lastDividerLocation <= 0 || lastDividerLocation >= h) {
+                // default to ~75% chart
+                split.setDividerLocation(0.75);
+            } else {
+                split.setDividerLocation(lastDividerLocation);
+            }
+            return;
+        }
+
+        // Collapsing: remember current location, then shrink south to just timeframe + header
+        lastDividerLocation = split.getDividerLocation();
+
+        // Ensure south minimum reflects the collapsed height
+        int southHeight = timeframeBar.getPreferredSize().height + orderPanel.getHeaderHeight();
+        south.setMinimumSize(new Dimension(0, southHeight));
+
+        // After current layout pass, set divider to leave exactly southHeight visible
+        SwingUtilities.invokeLater(() -> {
+            int h = split.getHeight();
+            int target = Math.max(0, h - southHeight);
+            split.setDividerLocation(target);
+        });
+    }
     /* load data for a symbol from database; timeframe default to 90 days */
     public void openChart(Database db, String symbol) {
         this.dbRef = db;

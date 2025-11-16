@@ -3,7 +3,7 @@ package com.gui;
 import javax.swing.*;
 import java.awt.*;
 
-public class TradePanel extends JPanel {
+public class OrderTab extends JPanel {
     private JButton buyButton;
     private JButton sellButton;
     //private JButton portfolioButton;
@@ -12,7 +12,7 @@ public class TradePanel extends JPanel {
     private JLabel priceLabel;
     private JTextField priceField;
 
-    public TradePanel() {
+    public OrderTab() {
         setLayout(new GridBagLayout());
         setBackground(GUIComponents.BG_MEDIUM);
         setBorder(BorderFactory.createCompoundBorder(
