@@ -53,18 +53,18 @@ public class AccountSystemTest {
         account1.depositFunds(10);
 
         // An account allows a withdrawal
-        assertTrue(account1.withdrawFunds(1));
+        assertTrue(account1.reduceBalance(1));
         assertEquals(9, account1.getTotalValue());
         assertEquals(9, account1.getAvailableBalance());
 
         // An account does not allow withdrawing more than the available balance
-        assertFalse(account1.withdrawFunds(10));
+        assertFalse(account1.reduceBalance(10));
 
         // An account does not allow a $0 withdrawal
-        assertFalse(account1.withdrawFunds(0));
+        assertFalse(account1.reduceBalance(0));
 
         // An account does not allow a negative withdrawal
-        assertFalse(account1.withdrawFunds(-1));
+        assertFalse(account1.reduceBalance(-1));
 
     }
 
@@ -88,12 +88,12 @@ public class AccountSystemTest {
         assertEquals(20, account1.getTotalValue());
 
         // An account allows withdrawals from its available balance
-        assertTrue(account1.withdrawFunds(10));
+        assertTrue(account1.reduceBalance(10));
         assertEquals(0, account1.getAvailableBalance());
         assertEquals(10, account1.getTotalValue());
 
         // An account will not allow withdrawals if its available balance is <1
-        assertFalse(account1.withdrawFunds(10));
+        assertFalse(account1.reduceBalance(10));
         assertEquals(10, account1.getTotalValue());
     }
 
@@ -107,11 +107,11 @@ public class AccountSystemTest {
         // the available balance updates the account total value
         assertEquals(10, accountOne.getTotalValue());
         // An account can have funds withdrawn
-        accountOne.withdrawFunds(2);
+        accountOne.reduceBalance(2);
         assertEquals(8, accountOne.getAvailableBalance());
         assertEquals(8, accountOne.getTotalValue());
         // Withdrawn request cannot exceed available funds
-        assertFalse(accountOne.withdrawFunds(10));
+        assertFalse(accountOne.reduceBalance(10));
         assertEquals(8, accountOne.getAvailableBalance());
     }
 

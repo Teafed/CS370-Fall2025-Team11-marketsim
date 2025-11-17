@@ -1,5 +1,9 @@
 package com.gui;
 
+import com.market.Market;
+import com.market.TradeManager;
+import com.market.TradeRequest;
+
 import javax.swing.*;
 import java.awt.*;
 
@@ -112,6 +116,8 @@ public class TradingPanel extends JPanel {
 
     private void handleBuy() {
         // TODO: Implement buy functionality
+        TradeManager tradeManager = TradeManager.getInstance();
+
         JOptionPane.showMessageDialog(this,
                 "Buy functionality coming soon!",
                 "Buy Stock",

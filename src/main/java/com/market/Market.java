@@ -13,27 +13,18 @@ public class Market implements TradeListener {
     private Map<String, TradeItem> stocks;
     private DatabaseManager dbManager;
     private ClientFacade clientFacade;
-    private Account account;
     private MarketListener marketListener;
     private boolean ready = false;
-    public Market(Map<String, TradeItem> stocks, DatabaseManager dbManager) {}
+    private static Market instance;
 
-    public Market(ClientFacade clientFacade, DatabaseManager db, Account account) throws Exception {
-        this.clientFacade = clientFacade;
-        clientFacade.setTradeListener(this);
+    private Market() {
         stocks = new LinkedHashMap<>();
-        setDatabase(db);
-        setAccount(account);
         this.ready = true;
     }
 
 
     public void setDatabase(DatabaseManager dbManager) {
         this.dbManager = dbManager;
-    }
-
-    private void setAccount(Account account) {
-        this.account = account;
     }
 
     public boolean isReady() {
@@ -109,4 +100,28 @@ public class Market implements TradeListener {
         System.out.println("Adding symbols");
         marketListener.loadSymbols(new ArrayList<>(stocks.values()));
     }
+
+    public void setClientFacade(ClientFacade clientFacade) {
+        this.clientFacade = clientFacade;
+        clientFacade.setTradeListener(this);
+    }
+
+
+    public TradeItem getTradeItem(String symbol) {
+        return stocks.get(symbol);
+    }
+
+    // Static convenience method
+    public static TradeItem fromSymbol(String symbol) {
+        return getInstance().getTradeItem(symbol);
+    }
+
+    public static synchronized Market getInstance() {
+        if (instance == null) {
+            instance = new Market();
+        }
+        return instance;
+    }
+
+
 }

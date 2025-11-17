@@ -69,6 +69,10 @@ public class Portfolio {
         return portfolioItems.containsKey(tradeItem);
     }
 
+    public boolean hasSufficientShares(TradeItem tradeItem, int shares) {
+        return getNumberOfShares(tradeItem) >= shares;
+    }
+
     public List<TradeItem> listTradeItems() {
         return new ArrayList<TradeItem>(portfolioItems.keySet());
     }

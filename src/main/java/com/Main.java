@@ -3,13 +3,10 @@ package com;
 
 import com.etl.*;
 import com.etl.finnhub.ClientFacade;
-import com.etl.finnhub.MarketStatusClient;
-import com.etl.finnhub.WebSocketClient;
 import com.gui.startup.*;
 import com.market.*;
 import com.gui.*;
 import com.accountmanager.*;
-import com.tools.MockFinnhubClient;
 
 import javax.swing.*;
 
@@ -73,8 +70,13 @@ public class Main {
 
             ClientFacade client = new ClientFacade();
 
+            TradeManager tradeManager = TradeManager.getInstance();
+            tradeManager.setAccount(account);
+
             // Initialize market
-            Market market = new Market(client, db, account);
+            Market market = Market.getInstance();
+            market.setClientFacade(client);
+            market.setDatabase(db);
             market.addFromWatchlist(account.getWatchList());
             while (!market.isReady()) {
                 System.out.println("Waiting for Market status...");
