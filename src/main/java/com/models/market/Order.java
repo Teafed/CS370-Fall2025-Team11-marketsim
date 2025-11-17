@@ -11,8 +11,4 @@ public record Order(Account account, TradeItem tradeItem, Order.side side, int s
     public Order {
         if (shares <= 0) throw new IllegalArgumentException("Shares must be 1 or greater");
     }
-
-    public void calculateTotal() {
-
-    }
 }

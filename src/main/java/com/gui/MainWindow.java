@@ -13,11 +13,10 @@ import java.awt.*;
 
 public class MainWindow extends JFrame
         implements SymbolPanel.SymbolSelectionListener,
-                   SymbolPanel.AccountSelectionListener {
-    private final Database db;
-    private final Account account;
-    private final Profile profile;
-    private final Market market;
+                   SymbolPanel.AccountSelectionListener,
+                   ModelListener {
+
+    private final ModelFacade model;
 
     private SymbolPanel symbolPanel;
     private ChartPanel chartPanel;
@@ -32,13 +31,11 @@ public class MainWindow extends JFrame
     private static final int LEFT_PANEL_WIDTH = 250;
     private static final int MIN_RIGHT_WIDTH = 300;
 
-    public MainWindow(Database db, Profile profile, Market market) {
-        this.db = db;
-        this.profile = profile;
-        this.account = profile.getFirstAccount();
-        this.market = market;
-        System.out.println("Launching Marketsim");
+    public MainWindow(ModelFacade model) {
+        this.model = model;
+        model.addListener(this);
         createWindow();
+        setMarketOpen(model.isMarketOpen());
     }
 
     private void createWindow() {
@@ -92,54 +89,51 @@ public class MainWindow extends JFrame
         rightCards.setBackground(GUIComponents.BG_DARK);
         rightCards.add(chartPanel, CARD_CHART);
 
-        AccountPanel accountPanel = new AccountPanel(account);
+        AccountPanel accountPanel = new AccountPanel(model.getActiveAccount());
         rightCards.add(accountPanel, CARD_ACCOUNT);
 
-        symbolPanel = new SymbolPanel(db);
+        symbolPanel = new SymbolPanel(model);
         symbolPanel.addSymbolSelectionListener(this);
-        symbolPanel.setAccount(account, this);
+        symbolPanel.setAccount(model.getActiveAccount(), this);
+        symbolPanel.loadSymbols(model.getWatchlist());
 
-    cards.show(rightCards, CARD_CHART);
-    rightCards.setMinimumSize(new Dimension(MIN_RIGHT_WIDTH, 0));
+        cards.show(rightCards, CARD_CHART);
+        rightCards.setMinimumSize(new Dimension(MIN_RIGHT_WIDTH, 0));
 
-    // Create a wrapper panel to hold a top bar (market status) and the card area.
-    rightContainer = new JPanel(new BorderLayout());
-    rightContainer.setBackground(GUIComponents.BG_DARK);
+        // Create a wrapper panel to hold a top bar (market status) and the card area.
+        rightContainer = new JPanel(new BorderLayout());
+        rightContainer.setBackground(GUIComponents.BG_DARK);
 
-    // Top bar (align right) for small status widgets
-    JPanel topBar = new JPanel(new FlowLayout(FlowLayout.RIGHT, 12, 8));
-    topBar.setBackground(GUIComponents.BG_DARK);
+        // Top bar (align right) for small status widgets
+        JPanel topBar = new JPanel(new FlowLayout(FlowLayout.RIGHT, 12, 8));
+        topBar.setBackground(GUIComponents.BG_DARK);
 
-    JLabel statusPrefix = new JLabel("Market Status:");
-    statusPrefix.setForeground(GUIComponents.TEXT_SECONDARY);
-    statusPrefix.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        JLabel statusPrefix = new JLabel("Market Status:");
+        statusPrefix.setForeground(GUIComponents.TEXT_SECONDARY);
+        statusPrefix.setFont(new Font("Segoe UI", Font.PLAIN, 12));
 
-    marketStatusLabel = new JLabel("CLOSED");
-    marketStatusLabel.setOpaque(true);
-    marketStatusLabel.setBackground(new Color(180, 0, 0));
-    marketStatusLabel.setForeground(Color.WHITE);
-    marketStatusLabel.setBorder(BorderFactory.createCompoundBorder(
-        BorderFactory.createLineBorder(GUIComponents.BORDER_COLOR, 1),
-        BorderFactory.createEmptyBorder(6, 10, 6, 10)));
-    marketStatusLabel.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        marketStatusLabel = new JLabel("CLOSED");
+        marketStatusLabel.setOpaque(true);
+        marketStatusLabel.setBackground(new Color(180, 0, 0));
+        marketStatusLabel.setForeground(Color.WHITE);
+        marketStatusLabel.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createLineBorder(GUIComponents.BORDER_COLOR, 1),
+            BorderFactory.createEmptyBorder(6, 10, 6, 10)));
+        marketStatusLabel.setFont(new Font("Segoe UI", Font.BOLD, 12));
 
-    topBar.add(statusPrefix);
-    topBar.add(marketStatusLabel);
+        topBar.add(statusPrefix);
+        topBar.add(marketStatusLabel);
 
-    rightContainer.add(topBar, BorderLayout.NORTH);
-    rightContainer.add(rightCards, BorderLayout.CENTER);
+        rightContainer.add(topBar, BorderLayout.NORTH);
+        rightContainer.add(rightCards, BorderLayout.CENTER);
     }
 
     private void setupCloseHook() {
         addWindowListener(new java.awt.event.WindowAdapter() {
             @Override public void windowClosing(java.awt.event.WindowEvent e) {
-                try { if (db != null) db.close(); } catch (Exception ignored) {}
+                try { model.close(); } catch (Exception ignored) { }
             }
         });
-    }
-
-    public SymbolPanel getSymbolListPanel() {
-        return symbolPanel;
     }
 
     /**
@@ -156,14 +150,32 @@ public class MainWindow extends JFrame
         }
     }
 
+    // SymbolPanel listeners
     @Override
     public void onSymbolSelected(TradeItem item) {
         cards.show(rightCards, CARD_CHART);
-        chartPanel.openChart(db, item.getSymbol());
+        chartPanel.openChart(model, item.getSymbol());
+    }
+    @Override
+    public void onAccountBarSelected(Account account) {
+        cards.show(rightCards, CARD_ACCOUNT);
     }
 
-    @Override
-    public void onAccountSelected(Account account) {
-        cards.show(rightCards, CARD_ACCOUNT);
+    // ModelListener listeners
+    @Override public void onQuotesUpdated() {
+        // repaint list + chart as needed
+        symbolPanel.repaint();
+        chartPanel.refresh(); // ensure ChartPanel has a refresh method
+    }
+    @Override public void onAccountChanged(AccountDTO snapshot) {
+        // update right-side account panel, balances, etc.
+        // if AccountPanel exposes a method to refresh with latest model:
+        // accountPanel.refresh(snapshot);
+    }
+    @Override public void onWatchlistChanged(java.util.List<TradeItem> items) {
+        symbolPanel.setSymbols(items);
+    }
+    @Override public void onError(String message, Throwable t) {
+        JOptionPane.showMessageDialog(this, message, "Error", JOptionPane.ERROR_MESSAGE);
     }
 }

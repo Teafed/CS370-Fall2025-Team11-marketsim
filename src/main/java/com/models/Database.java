@@ -167,7 +167,6 @@ public class Database implements AutoCloseable {
     public Connection getConnection() {
         return conn;
     }
-
     /**
      * distinct symbols in alphabetical order (for SymbolListPanel)
      * @return String list of symbols
@@ -187,7 +186,6 @@ public class Database implements AutoCloseable {
     public ResultSet getCandles(String symbol, long startMs, long endMs) throws SQLException {
         return getCandles(symbol, 1, "day", startMs, endMs);
     }
-
     public ResultSet getCandles(String symbol, int multiplier, String timespan,
                                 long startMs, long endMs) throws SQLException {
         PreparedStatement ps = conn.prepareStatement("""
@@ -209,7 +207,6 @@ public class Database implements AutoCloseable {
     public long getLatestTimestamp(String symbol) throws SQLException {
         return getLatestTimestamp(symbol, 1, "day");
     }
-
     public long getLatestTimestamp(String symbol, int multiplier, String timespan) throws SQLException {
         String sql = "SELECT MAX(timestamp) FROM prices WHERE symbol=? AND timespan=? AND multiplier=?";
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
@@ -221,7 +218,6 @@ public class Database implements AutoCloseable {
             }
         }
     }
-
     public long getEarliestTimestamp(String symbol, int multiplier, String timespan) throws SQLException {
         String sql = "SELECT MIN(timestamp) FROM prices WHERE symbol=? AND timespan=? AND multiplier=?";
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
@@ -233,7 +229,6 @@ public class Database implements AutoCloseable {
             }
         }
     }
-
     public List<Long> listTimestamps(String symbol, int multiplier, String timespan,
                                                long startMs, long endMs) throws SQLException {
         String sql = """
@@ -260,7 +255,6 @@ public class Database implements AutoCloseable {
     public double[] latestAndPrevClose(String symbol) throws SQLException {
         return latestAndPrevClose(symbol, 1, "day");
     }
-
     public double[] latestAndPrevClose(String symbol, int multiplier, String timespan) throws SQLException {
         String sql = """
             SELECT close FROM prices
@@ -305,7 +299,6 @@ public class Database implements AutoCloseable {
             ps.executeUpdate();
         }
     }
-
     public void insertCandlesBatch(String symbol, int multiplier, String timespan,
                                    List<CandleData> rows) throws SQLException {
         boolean prev = conn.getAutoCommit();
@@ -491,7 +484,7 @@ public class Database implements AutoCloseable {
     public long withdrawCash(long accountId, double amount, long ts, String note) throws SQLException {
         return recordCash(accountId, ts, -Math.abs(amount), "WITHDRAWAL", note);
     }
-    public double getCashBalance(long accountId) throws SQLException {
+    public double getAccountCash(long accountId) throws SQLException {
         try (PreparedStatement ps = conn.prepareStatement("""
             SELECT COALESCE(SUM(delta), 0.0) FROM cash_ledger WHERE account_id=?
         """)) {
@@ -575,6 +568,25 @@ public class Database implements AutoCloseable {
             }
         }
     }
+
+    public long recordOrder(com.models.market.Order order) throws SQLException {
+        // single entry point for an executed order
+        long accountId = order.account().getId();
+        String symbol = order.tradeItem().getSymbol();
+        long ts = order.ts();
+        String side = order.side().name();  // "BUY" or "SELL"
+        int qty = order.shares();
+        double price = order.price();
+        return recordTrade(accountId, symbol, ts, side, qty, price);
+    }
+
+    public void applyFill(long accountId, String symbol, int deltaShares, double price, long ts) throws SQLException {
+        // compatibility wrapper used by ModelFacade.placeOrder(...)
+        if (deltaShares == 0) return;
+        String side = (deltaShares > 0) ? "BUY" : "SELL";
+        int qty = Math.abs(deltaShares);
+        recordTrade(accountId, symbol, ts, side, qty, price);
+    }
     public long recordTrade(long accountId, String symbol, long ts, String side,
                             int quantity, double price) throws SQLException {
         if (!"BUY".equals(side) && !"SELL".equals(side)) {
@@ -630,19 +642,18 @@ public class Database implements AutoCloseable {
             conn.setAutoCommit(prev);
         }
     }
-    public List<PositionView> loadPositions(long accountId) throws SQLException {
-        try (PreparedStatement ps = conn.prepareStatement("""
-            SELECT symbol, quantity, avg_cost FROM positions
-            WHERE account_id=? ORDER BY symbol
-        """)) {
+    public java.util.Map<String, Integer> getPositions(long accountId) throws SQLException {
+        String sql = "SELECT symbol, quantity FROM positions WHERE account_id=? ORDER BY symbol";
+        java.util.LinkedHashMap<String, Integer> out = new java.util.LinkedHashMap<>();
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setLong(1, accountId);
             try (ResultSet rs = ps.executeQuery()) {
-                List<PositionView> out = new ArrayList<>();
-                while (rs.next()) out.add(new PositionView(
-                        rs.getString(1), rs.getInt(2), rs.getDouble(3)));
-                return out;
+                while (rs.next()) {
+                    out.put(rs.getString(1), rs.getInt(2));
+                }
             }
         }
+        return out;
     }
 
     // startup helpers
@@ -700,8 +711,8 @@ public class Database implements AutoCloseable {
                     Account a = new Account(accountId, accountName);
 
                     // balance
-                    double balance = getCashBalance(accountId);
-                    a.setInitialBalance(balance);
+                    double balance = getAccountCash(accountId);
+                    a.setCash(balance);
 
                     // watchlist
                     List<TradeItem> wl = loadWatchlistSymbols(accountId);

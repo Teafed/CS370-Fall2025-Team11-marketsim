@@ -32,7 +32,7 @@ public class SymbolPanel extends ContentPanel implements MarketListener {
         void onSymbolSelected(TradeItem symbol);
     }
     public interface AccountSelectionListener {
-        void onAccountSelected(Account account);
+        void onAccountBarSelected(Account account);
     }
 
     public SymbolPanel(Database db) {
@@ -88,7 +88,7 @@ public class SymbolPanel extends ContentPanel implements MarketListener {
         accountBar.setAccount(account);
         accountBar.setOnClick(() -> {
             if (this.accountListener != null) {
-                this.accountListener.onAccountSelected(this.account);
+                this.accountListener.onAccountBarSelected(this.account);
             }
         });
         accountBar.setVisible(true);

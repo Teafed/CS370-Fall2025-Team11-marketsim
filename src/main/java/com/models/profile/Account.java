@@ -3,117 +3,89 @@ package com.models.profile;
 import com.models.market.TradeItem;
 
 import java.util.List;
+import java.util.Objects;
 
 // One account
 public class Account {
     private long id; // identifier used in database
-    private double totalValue = 0.0f; // Current total account value
-    private double availableBalance; // the amount the user can currently trade
     private String name; // User defined name of account
+
+    private double cash; // the amount the user can currently trade
     private Portfolio portfolio = new Portfolio();
     private Watchlist watchlist = new Watchlist();
 
     // constructors
     public Account() {
-        setName("New Account");
+        this("New Account");
     }
-
     public Account(String name) {
         setName(name);
     }
-
     public Account(long id, String name) {
-        setId(id);
+        this.id = id;
         setName(name);
     }
 
-    public Account(String name, double balance) {
+    public Account(String name, double cash) {
         setName(name);
-        availableBalance = balance;
+        this.cash = cash;
         for (TradeItem ti : Watchlist.getDefaultWatchlist()) {
             this.watchlist.addWatchlistItem(ti);
         }
     }
 
-    // Set name
-    public void setName(String name) { this.name = name; }
-
-    // Get name
+    // name
+    public void setName(String name) { this.name = Objects.requireNonNull(name, "name"); }
     public String getName() {
         return name;
     }
 
-    // Set id
+    // id
     private void setId(long id) { this.id = id; }
-
-    // Get id
     public long getId() {
         return id;
     }
 
-    // set initial balance
-    public void setInitialBalance(double balance) {
-        this.availableBalance = balance;
+    // cash
+    public void setCash(double balance) {
+        this.cash = balance;
     }
-    // Get account value
+    public double getCash() {
+        return this.cash;
+    }
     public double getTotalValue() {
-        updateValue();
-        return totalValue;
+        return cash + portfolio.getPortfolioValue();
     }
 
-    // get the available balance
-    public double getAvailableBalance() {
-        return this.availableBalance;
-    }
-
-    /**
-     * Returns the portfolio of the account.
-     * @return The portfolio of the account.
-     */
+    // portfolio/watchlist
     public Portfolio getPortfolio() {
         return portfolio;
     }
-
-
     public List<TradeItem> getWatchlistItems() {
         return this.watchlist.getWatchlist();
     }
-
-    /**
-     * Returns the watchlist of the account.
-     * @return The watchlist of the account.
-     */
     public Watchlist getWatchlist() {
         return watchlist;
     }
 
-    // DEPOSIT WITHDRAW UPDATE
-
     // Add value to account
     public boolean depositFunds(double amount) {
-        if (amount < 1) {
+        if (amount <= 0) {
             return false;
         }
-        this.availableBalance += amount;
-        updateValue();
+        this.cash += amount;
         return true;
     }
 
     // withdraw funds from account
     public boolean withdrawFunds(double amount) {
-        if (amount < 1) {
+        if (amount <= 0) {
             return false;
         }
-        if (availableBalance >= amount) {
-            availableBalance -= amount;
-            updateValue();
+        if (cash >= amount) {
+            cash -= amount;
             return true;
         }
         return false;
-        // TODO else throw error
-    }
-
-    public void updateValue() {
-        totalValue = availableBalance + portfolio.getPortfolioValue();
     }
 }

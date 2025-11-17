@@ -2,6 +2,7 @@ package com.gui;
 
 import com.etl.finnhub.ClientFacade;
 import com.models.Database;
+import com.models.ModelFacade;
 import com.models.market.Market;
 import com.models.market.MarketListener;
 import com.models.market.TradeItem;
@@ -109,7 +110,7 @@ public class StartupWindow extends ContentPanel {
         if (!firstRun && !USE_ACCOUNT_PICKER) {
             long profileId = db.getSingletonProfileId();
             Profile profile = db.buildProfile(profileId);
-            runMarketSim(db, profile);
+            runApp(db, profile);
             return;
         }
 
@@ -127,7 +128,7 @@ public class StartupWindow extends ContentPanel {
                         db.depositCash(accountId, balance, System.currentTimeMillis(), "Initial deposit");
                         Profile profile = db.buildProfile(profileId);
 
-                        runMarketSim(db, profile);
+                        runApp(db, profile);
                         frame.dispose();
                     } catch (Exception ex) {
                         ex.printStackTrace();
@@ -146,7 +147,7 @@ public class StartupWindow extends ContentPanel {
                      frame.getContentPane().removeAll();
                      frame.add(createAccountSelectPanel(accounts, selected -> {
                          try {
-                             runMarketSim(db, profile, selected);
+                             runApp(db, profile, selected);
                              frame.dispose();
                          } catch (Exception ex) {
                              ex.printStackTrace();
@@ -169,72 +170,18 @@ public class StartupWindow extends ContentPanel {
         });
     }
 
-    public static void runMarketSim(Database db, Profile profile) {
-        runMarketSim(db, profile, profile.getFirstAccount());
+    public static void runApp(Database db, Profile profile) {
+        runApp(db, profile, profile.getFirstAccount());
     }
-
-    public static void runMarketSim(Database db, Profile profile, Account account) {
+    public static void runApp(Database db, Profile profile, Account account) {
         try {
-            long accountId = account.getId();
-            List<TradeItem> dbSymbols = account.getWatchlistItems();
-            if (dbSymbols == null || dbSymbols.isEmpty()) {
-                // add default watchlist to database
-                dbSymbols = Watchlist.getDefaultWatchlist();
-                db.saveWatchlistSymbols(accountId, "Default", dbSymbols);
-                System.out.println("[startup] Loaded default watchlist and saved to DB (" + dbSymbols.size() + " symbols)");
-            } else {
-                // use watchlist from database
-                account.getWatchlist().clearList();
-                System.out.println("[startup] Loaded watchlist from DB (" + dbSymbols.size() + " symbols)");
-            }
-            for (TradeItem ti : dbSymbols) { account.getWatchlist().addWatchlistItem(ti); }
-
-            /*
-            boolean marketHours = FinnhubMarketStatus.checkStatus();
-            TradeSource client;
-            if (marketHours) {
-                try {
-                    System.out.println("Market open, starting Finnhub...");
-                    client = FinnhubClient.start();
-                    System.out.println("Finnhub started...");
-                } catch (Exception e) {
-                    e.printStackTrace();
-                    throw new RuntimeException(e);
-                }
-            } else {
-                System.out.println("Market closed, starting Mock Client...");
-                client = MockFinnhubClient.start();
-                System.out.println("Mock client started...");
-            }
-            */
-            ClientFacade client = new ClientFacade();
-            // Initialize market
-            Market market;
-            try {
-                market = new Market(client, db, account);
-            } catch (Exception e) {
-                throw new RuntimeException("Failed to start Market", e);
-            }
-            // temporary no-op listener to safely subscribe in addFromWatchlist()
-            // real gui listener attached after MainWindow is initialized
-            market.setMarketListener(new MarketListener() {
-                @Override public void onMarketUpdate() { }
-                @Override public void loadSymbols(List<TradeItem> items) { }
-            });
-            market.addFromWatchlist(account.getWatchlist());
-            while (!market.isReady()) {
-                System.out.println("Waiting for Market status...");
-            }
-            System.out.println("Market started...");
-
-            // Initialize GUI Client
-            SwingUtilities.invokeLater(() -> {
-                MainWindow mw = new MainWindow(db, profile, market);
-                market.setMarketListener(mw.getSymbolListPanel());
-            });
-        }
-        catch (Exception e) {
+            profile.setActiveAccount(account);
+            ModelFacade model = new ModelFacade(db, profile);
+            SwingUtilities.invokeLater(() -> new MainWindow(model));
+        } catch (Exception e) {
             e.printStackTrace();
+            JOptionPane.showMessageDialog(null, "Failed to start: " + e.getMessage(),
+                    "Error", JOptionPane.ERROR_MESSAGE);
         }
     }
 }
