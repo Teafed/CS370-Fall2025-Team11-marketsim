@@ -11,6 +11,7 @@ public class OrderPanel extends ContentPanel {
     private final JPanel header;
     private final JLabel indicator;
     private final JTabbedPane tabs;
+    private OrderHistoryTab historyTab;
     private boolean collapsed = false;
     private final Consumer<Boolean> onCollapseChanged;
 
@@ -53,7 +54,8 @@ public class OrderPanel extends ContentPanel {
         };
         tabs.updateUI();
         tabs.addTab("Order", new OrderTab(model, selectedSymbol));
-        tabs.addTab("Order History", new OrderHistoryTab(model));
+        historyTab = new OrderHistoryTab(model, selectedSymbol);
+        tabs.addTab("Order History", historyTab);
 
         add(header, BorderLayout.NORTH);
         add(tabs, BorderLayout.CENTER);
@@ -72,5 +74,10 @@ public class OrderPanel extends ContentPanel {
 
     int getHeaderHeight() {
         return header.getPreferredSize().height + getInsets().top + getInsets().bottom;
+    }
+
+    // when selected symbol changes
+    public void refreshHistory() {
+        if (historyTab != null) historyTab.refresh();
     }
 }

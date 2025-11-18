@@ -69,12 +69,12 @@ public class ChartPanel extends ContentPanel {
         split.setResizeWeight(0.75);
 
         canvas.setMinimumSize(new Dimension(0, 370));
-        south.setPreferredSize(new Dimension(0, 240));
+        south.setPreferredSize(new Dimension(0, 300));
 
         add(split, BorderLayout.CENTER);
         setMinimumSize(new Dimension(600, 300));
 
-        SwingUtilities.invokeLater(() -> setDividerHeight(240));
+        SwingUtilities.invokeLater(() -> setDividerHeight(300));
 
         // When the ChartPanel is resized, keep south at its last chosen height unless collapsed
         this.addComponentListener(new java.awt.event.ComponentAdapter() {
@@ -126,7 +126,7 @@ public class ChartPanel extends ContentPanel {
     /* load data for a symbol from database; timeframe default to 90 days */
     public void openChart(String symbol) {
         this.symbol = symbol;
-
+        if (orderPanel != null) orderPanel.refreshHistory();
         if (!timeframeBar.fireCurrentSelection()) {
             try {
                 long latest = model.getLatestTimestamp(symbol);
