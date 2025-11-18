@@ -42,7 +42,7 @@ public class OrderHistoryTab extends ContentPanel {
 
     private void initializeComponents() {
         // Table to display portfolio holdings
-        String[] columnNames = {"Time", "Price", "Shares", "ROI"};
+        java.lang.String[] columnNames = {"Time", "Price", "Shares", "ROI"};
         tableModel = new DefaultTableModel(columnNames, 0) {
             @Override
             public boolean isCellEditable(int row, int column) {
@@ -91,8 +91,8 @@ public class OrderHistoryTab extends ContentPanel {
         items = p.listTradeItems();
         for (TradeItem item : items) {
             int shares = p.getNumberOfShares(item);
-            String symbol = item.getSymbol();
-            String name = item.getName();
+            java.lang.String symbol = item.getSymbol();
+            java.lang.String name = item.getName();
             double price = Double.NaN;
             // Prefer market's live price if available
             if (market != null) {
@@ -102,7 +102,7 @@ public class OrderHistoryTab extends ContentPanel {
             if (Double.isNaN(price)) price = 0.0; // fallback
             double total = price * shares;
 
-            Object[] row = {symbol, name, shares, String.format("$%.2f", price), String.format("$%.2f", total)};
+            Object[] row = {symbol, name, shares, java.lang.String.format("$%.2f", price), java.lang.String.format("$%.2f", total)};
             tableModel.addRow(row);
         }
     }

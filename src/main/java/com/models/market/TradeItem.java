@@ -1,34 +1,34 @@
 package com.models.market;
 
 public class TradeItem {
-    private String name;
-    private final String symbol;
+    private java.lang.String name;
+    private final java.lang.String symbol;
     private double price;
     private double changePercent;
     private double change;
     private double open;
     private double prevClose = Double.NaN; // for calculating % change
 
-    public TradeItem(String name, String symbol) {
+    public TradeItem(java.lang.String name, java.lang.String symbol) {
         this.name = name;
         this.symbol = symbol;
         price = 0;
     }
 
-    public TradeItem(String name, String symbol, double price, double changePercent) {
+    public TradeItem(java.lang.String name, java.lang.String symbol, double price, double changePercent) {
         this.name = name;
         this.symbol = symbol;
         this.price = price;
         this.changePercent = changePercent;
     }
 
-    public String getName() {
+    public java.lang.String getName() {
         return name;
     }
 
-    public void setName(String n) { this.name = n; }
+    public void setName(java.lang.String n) { this.name = n; }
 
-    public String getSymbol() {
+    public java.lang.String getSymbol() {
         return symbol;
     }
 
@@ -75,7 +75,7 @@ public class TradeItem {
 
 
     @Override
-    public String toString() {
+    public java.lang.String toString() {
         return this.getClass().getSimpleName() + "{" + "name=" + name + ", symbol=" + symbol + ", price=" + price + '}';
     }
 

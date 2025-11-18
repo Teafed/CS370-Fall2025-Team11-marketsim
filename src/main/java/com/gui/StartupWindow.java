@@ -1,14 +1,10 @@
 package com.gui;
 
-import com.etl.finnhub.ClientFacade;
 import com.models.Database;
 import com.models.ModelFacade;
-import com.models.market.Market;
-import com.models.market.MarketListener;
 import com.models.market.TradeItem;
 import com.models.profile.Account;
 import com.models.profile.Profile;
-import com.models.profile.Watchlist;
 
 import javax.swing.*;
 import java.awt.*;
@@ -52,8 +48,8 @@ public class StartupWindow extends ContentPanel {
         add(startButton);
 
         startButton.addActionListener(e -> {
-            String profileName = profileNameField.getText();
-            String balanceText = balanceField.getText();
+            TradeItem profileName = profileNameField.getText();
+            TradeItem balanceText = balanceField.getText();
 
             //TODO Add error checking and response
 

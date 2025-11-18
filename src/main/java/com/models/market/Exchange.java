@@ -3,13 +3,13 @@ package com.models.market;
 // has a list of TradeItems (stocks, etc)
 
 public class Exchange {
-    private final String name;
+    private final TradeItem name;
 
-    public Exchange(String name) {
+    public Exchange(TradeItem name) {
         this.name = name;
     }
 
-    public String getName() {
+    public TradeItem getName() {
         return name;
     }
 }

@@ -3,10 +3,8 @@
 package com.gui;
 
 import com.models.*;
-import com.models.market.Market;
 import com.models.market.TradeItem;
 import com.models.profile.Account;
-import com.models.profile.Profile;
 
 import javax.swing.*;
 import java.awt.*;
@@ -25,9 +23,9 @@ public class MainWindow extends JFrame
     private JPanel rightContainer; // wrapper to hold top bar + cards
     private JLabel marketStatusLabel;
 
-    private static final String WINDOW_TITLE = "Marketsim";
-    private static final String CARD_CHART = "chart";
-    private static final String CARD_ACCOUNT = "account";
+    private static final java.lang.String WINDOW_TITLE = "Marketsim";
+    private static final java.lang.String CARD_CHART = "chart";
+    private static final java.lang.String CARD_ACCOUNT = "account";
     private static final int LEFT_PANEL_WIDTH = 250;
     private static final int MIN_RIGHT_WIDTH = 300;
 
@@ -95,7 +93,7 @@ public class MainWindow extends JFrame
         symbolPanel = new SymbolPanel(model);
         symbolPanel.addSymbolSelectionListener(this);
         symbolPanel.setAccount(model.getActiveAccount(), this);
-        symbolPanel.loadSymbols(model.getWatchlist());
+        symbolPanel.setSymbols(model.getWatchlist());
 
         cards.show(rightCards, CARD_CHART);
         rightCards.setMinimumSize(new Dimension(MIN_RIGHT_WIDTH, 0));
@@ -163,19 +161,18 @@ public class MainWindow extends JFrame
 
     // ModelListener listeners
     @Override public void onQuotesUpdated() {
-        // repaint list + chart as needed
         symbolPanel.repaint();
-        chartPanel.refresh(); // ensure ChartPanel has a refresh method
+        chartPanel.repaint();
     }
     @Override public void onAccountChanged(AccountDTO snapshot) {
-        // update right-side account panel, balances, etc.
+        // update right-side account panel, balances, etc
         // if AccountPanel exposes a method to refresh with latest model:
         // accountPanel.refresh(snapshot);
     }
     @Override public void onWatchlistChanged(java.util.List<TradeItem> items) {
         symbolPanel.setSymbols(items);
     }
-    @Override public void onError(String message, Throwable t) {
+    @Override public void onError(java.lang.String message, Throwable t) {
         JOptionPane.showMessageDialog(this, message, "Error", JOptionPane.ERROR_MESSAGE);
     }
 }

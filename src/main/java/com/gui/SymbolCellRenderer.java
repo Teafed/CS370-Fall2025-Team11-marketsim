@@ -48,8 +48,8 @@ public class SymbolCellRenderer extends JPanel implements ListCellRenderer<Trade
    
    @Override
    public Component getListCellRendererComponent(
-         JList<? extends TradeItem> list, TradeItem value, int index,
-         boolean isSelected, boolean cellHasFocus) {
+           JList<? extends TradeItem> list, TradeItem value, int index,
+           boolean isSelected, boolean cellHasFocus) {
       
       if (value != null) {
          symbolLabel.setText(value.getSymbol());
@@ -60,14 +60,14 @@ public class SymbolCellRenderer extends JPanel implements ListCellRenderer<Trade
               priceLabel.setText("—");
               priceLabel.setForeground(GUIComponents.TEXT_TERTIARY);
           } else {
-              priceLabel.setText(String.format(java.util.Locale.US, "$%,.2f", px));
+              priceLabel.setText(java.lang.String.format(java.util.Locale.US, "$%,.2f", px));
               priceLabel.setForeground(isSelected ? GUIComponents.TEXT_TERTIARY : GUIComponents.TEXT_PRIMARY);
           }
          
          double changePercent = value.getChangePercent();
           boolean up = changePercent > 0, down = changePercent < 0;
-          String arrow = up ? "▲" : (down ? "▼" : "•");
-          String changeText = Double.isNaN(changePercent) ? "—" : String.format(java.util.Locale.US, "%s %+.2f%%", arrow, changePercent);
+          java.lang.String arrow = up ? "▲" : (down ? "▼" : "•");
+          java.lang.String changeText = Double.isNaN(changePercent) ? "—" : java.lang.String.format(java.util.Locale.US, "%s %+.2f%%", arrow, changePercent);
           changeLabel.setText(changeText);
          
          // color coding for change

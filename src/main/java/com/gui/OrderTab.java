@@ -1,9 +1,15 @@
 package com.gui;
 
+import com.models.ModelFacade;
+
 import javax.swing.*;
 import java.awt.*;
+import java.util.function.Supplier;
 
-public class OrderTab extends JPanel {
+public class OrderTab extends ContentPanel {
+    ModelFacade model;
+    Supplier<String> getSelectedSymbol;
+
     private JButton buyButton;
     private JButton sellButton;
     private JLabel numberOfSharesLabel;
@@ -11,7 +17,9 @@ public class OrderTab extends JPanel {
     private JLabel priceLabel;
     private JTextField priceField;
 
-    public OrderTab() {
+    public OrderTab(ModelFacade model, Supplier<String> getSelectedSymbol) {
+        this.model = model;
+        this.getSelectedSymbol = getSelectedSymbol;
         setLayout(new GridBagLayout());
         setBackground(GUIComponents.BG_MEDIUM);
         setBorder(BorderFactory.createCompoundBorder(
@@ -106,18 +114,26 @@ public class OrderTab extends JPanel {
     }
 
     private void handleBuy() {
-        // TODO: Implement buy functionality
-        JOptionPane.showMessageDialog(this,
-                "Buy functionality coming soon!",
-                "Buy Stock",
-                JOptionPane.INFORMATION_MESSAGE);
+        submit(true);
     }
 
     private void handleSell() {
-        // TODO: Implement sell functionality
-        JOptionPane.showMessageDialog(this,
-                "Sell functionality coming soon!",
-                "Sell Stock",
-                JOptionPane.INFORMATION_MESSAGE);
+        submit(false);
+    }
+
+    private void submit(boolean buy) {
+        String symbol = getSelectedSymbol.get();
+        if (symbol == null || symbol.isBlank()) {
+            JOptionPane.showMessageDialog(this, "No symbol selected.", "Order", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+        int shares;
+        try {
+            shares = Integer.parseInt(numberOfSharesField.getText().trim());
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(this, "Invalid share count.", "Order", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+        model.executeTrade(symbol, buy, shares, System.currentTimeMillis());
     }
 }
