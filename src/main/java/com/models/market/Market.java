@@ -67,6 +67,10 @@ public class Market implements TradeListener {
         return ti == null ? Double.NaN : ti.getCurrentPrice();
     }
 
+    public String[][] searchSymbol(String symbol) {
+        return clientFacade.searchSymbol(symbol);
+    }
+
     private static String normalize(String s) {
         return s == null ? "" : s.trim().toUpperCase(Locale.ROOT);
     }

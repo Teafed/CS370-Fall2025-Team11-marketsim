@@ -12,6 +12,7 @@ public class ClientFacade implements TradeListener, TradeSource {
     QuoteClient quoteClient;
     TradeSource webSocketClient;
     InfoClient infoClient;
+    SearchClient searchClient;
 
     TradeListener tradeListener;
 
@@ -19,6 +20,7 @@ public class ClientFacade implements TradeListener, TradeSource {
         setAPIKey();
         quoteClient = new QuoteClient(apiKey);
         infoClient = new InfoClient(apiKey);
+        searchClient = new SearchClient(apiKey);
 
         if (getMarketStatus()) {
             webSocketClient = WebSocketClient.start(apiKey);
@@ -57,6 +59,10 @@ public class ClientFacade implements TradeListener, TradeSource {
         webSocketClient.subscribe(symbol);
     }
 
+    public String[][] searchSymbol(String symbol) {
+        return searchClient.searchSymbol(symbol);
+    }
+
     private void setAPIKey() {
         Dotenv dotenv = Dotenv.configure().ignoreIfMissing().load();
         String k = (apiKey == null || apiKey.isBlank()) ? dotenv.get("FINNHUB_API_KEY") : apiKey;
@@ -65,5 +71,6 @@ public class ClientFacade implements TradeListener, TradeSource {
         }
         this.apiKey = k;
     }
+
 
 }

@@ -236,4 +236,8 @@ public class ModelFacade {
             return out;
         }
     }
+
+    public String[][] searchSymbol(String symbol) {
+        return market.searchSymbol(symbol);
+    }
 }

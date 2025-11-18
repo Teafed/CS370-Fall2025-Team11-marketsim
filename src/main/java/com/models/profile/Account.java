@@ -75,7 +75,7 @@ public class Account {
     }
 
     // withdraw funds from account
-    public boolean withdrawFunds(double amount) {
+    public boolean reduceBalance(double amount) {
         if (amount <= 0) {
             return false;
         }
@@ -85,4 +85,14 @@ public class Account {
         }
         return false;
     }
+
+//    public void executeBuy(TradeItem tradeItem, int shares, double value) {
+//        reduceBalance(value);
+//        portfolio.addTradeItem(tradeItem, shares);
+//    }
+//
+//    public void executeSell(TradeItem tradeItem, int shares, double value) {
+//        portfolio.removeTradeItem(tradeItem, shares);
+//        depositFunds(value);
+//    }
 }

@@ -3,7 +3,6 @@
     package com.gui;
 
     import com.models.*;
-    import com.models.market.MarketListener;
     import com.models.market.TradeItem;
     import com.models.profile.Account;
 
@@ -20,6 +19,7 @@
         private AccountSelectionListener accountListener;
         private String lastNotifiedSymbol = null;
         private AccountBar accountBar;
+        private ModelFacade model;
 
         // interface that listeners must implement
         public interface SymbolSelectionListener {
@@ -30,6 +30,7 @@
         }
 
         public SymbolPanel(ModelFacade model) {
+            this.model = model;
             this.symbolListener = new ArrayList<>();
             initializeComponents();
 
@@ -61,6 +62,10 @@
             accountBar = new AccountBar();
             accountBar.setVisible(false); // setAccount() will make this visible
 
+            SearchPanel searchBar = new SearchPanel(model);
+            searchBar.setVisible(true);
+
+            add(searchBar, BorderLayout.NORTH);
             add(accountBar, BorderLayout.SOUTH);
             add(scrollPane, BorderLayout.CENTER);
         }
