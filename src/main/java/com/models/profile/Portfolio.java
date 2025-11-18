@@ -1,8 +1,5 @@
 package com.models.profile;
 
-import com.models.market.TradeItem;
-
-
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -14,96 +11,79 @@ import java.util.Map;
     update and return this value.
  */
 public class Portfolio {
+    private final Map<java.lang.String, Integer> positions = new HashMap<>();
 
-    private Map<TradeItem, Integer> portfolioItems;
-    private double portfolioValue; // The total value of the portfolio
-
-    // implement options, ETFs, other as necessary
-
-    public Portfolio() {
-        portfolioItems = new HashMap<>();
-        this.portfolioValue = 0;
-    }
-
+    public Portfolio() { }
 
     /**
-     * Add a TradeItem to the portfolio.
-     * @param tradeItem
+     * Add a share to the portfolio.
+     * @param symbol
      * @param n The number of items to add, must be >0
      * @return True if successfule, false if not
      */
-    boolean addTradeItem(TradeItem tradeItem, int n) {
-        if (tradeItem == null) {
-            // TODO Error
+    boolean addShares(String symbol, int n) {
+        if (symbol == null || symbol.isBlank() || n <= 0) {
             return false;
         }
-        if (n < 1) {
-            return false;
-        }
-        // add tradeItem to map with value, if it already exists, update value by adding new value
-        portfolioItems.merge(tradeItem, n, Integer::sum);
+        // add symbol to map with value, if it already exists, update value by adding new value
+        positions.merge(symbol.toUpperCase(), n, Integer::sum);
         return true;
     }
 
     /*
-        Remove a TradeItem from a portfolio. Removes the entry if entire value is removed.
+        Remove a symbol from a portfolio. Removes the entry if entire value is removed.
         Otherwise, subtracts from existing value.
-        @param tradeItem The item to be removed.
+        @param symbol The item to be removed.
         @param n The amount of the item to be removed. If -1 removes all that item.
      */
-    boolean removeTradeItem(TradeItem tradeItem, int n) {
-        if (tradeItem == null || n < 1 || !portfolioItems.containsKey(tradeItem)) {
-            // TODO Handle error
-            return false;
-        }
-        if (portfolioItems.get(tradeItem) == n) {
-            portfolioItems.remove(tradeItem);
-        }
-        else
-            portfolioItems.merge(tradeItem, -n, Integer::sum);
+    boolean removeShares(String symbol, int n) {
+        if (symbol == null || n <= 0 || symbol.isBlank()) return false;
 
+        String key = symbol.toUpperCase();
+        Integer current = positions.get(key);
+
+        if (current == null || current < n) return false;
+        int left = current - n;
+        if (left == 0) positions.remove(key); else positions.put(key, left);
         return true;
     }
 
-    /** Compatibility: accept a generic TradeItem (from tests) */
-    public boolean hasTradeItem(TradeItem item) {
-        if (item == null) return false;
-        return portfolioItems.containsKey(item.getSymbol());
+    // argument should be from db.getPositions(accountId)
+    public void setFromDb(Map<String,Integer> symbolToQty) {
+        positions.clear();
+        if (symbolToQty != null) {
+            symbolToQty.forEach((k,v) -> {
+                if (v != null && v > 0) positions.put(k.toUpperCase(), v);
+            });
+        }
     }
 
-    /** Return a list of TradeItem representing current holdings (used by tests) */
-    public List<TradeItem> listTradeItems() {
-        List<TradeItem> list = new ArrayList<>();
-        list.addAll(portfolioItems.keySet());
-        return list;
+    /** Compatibility: accept a generic TradeItem (from tests) */
+    public boolean hasShare(String symbol) {
+        if (symbol == null) return false;
+        return positions.containsKey(symbol);
     }
 
     /**
      * Gets the number of shares held for a particular TradeItem
-     * @param tradeItem The item queried.
+     * @param symbol The item queried.
      * @return The number of shares held.
      */
-    public int getNumberOfShares(TradeItem tradeItem) {
-        return portfolioItems.getOrDefault(tradeItem, 0);
+    public int getNumberOfShares(String symbol) {
+        if (symbol == null) return 0;
+        return positions.getOrDefault(symbol.toUpperCase(), 0);
     }
 
-    /*
-        Updates the portfolio value by looping through all holdings.
-     */
-    public double getPortfolioValue() {
-        double aggregateValue = 0;
-        for (Map.Entry<TradeItem, Integer> entry : portfolioItems.entrySet()) {
-            double sharePrice = entry.getKey().getCurrentPrice();
-            int shares = entry.getValue();
-            double totalValue = sharePrice * shares;
-            aggregateValue += totalValue;
+    public Map<String,Integer> asMap() {
+        return java.util.Collections.unmodifiableMap(positions);
+    }
+
+    public double computeMarketValue(java.util.function.ToDoubleFunction<String> priceFn) {
+        double total = 0;
+        for (var e : positions.entrySet()) {
+            double px = priceFn.applyAsDouble(e.getKey());
+            if (!Double.isNaN(px)) total += px * e.getValue();
         }
-        this.portfolioValue = aggregateValue;
-        return portfolioValue;
+        return total;
     }
-
-
-    // TODO implement individual maps for Stock, ETF, Option, etc?
-
-
 }

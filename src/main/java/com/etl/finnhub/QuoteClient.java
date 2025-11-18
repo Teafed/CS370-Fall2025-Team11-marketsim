@@ -22,13 +22,6 @@ public class QuoteClient {
     private String apiKey;
     private final String baseUrl = "https://finnhub.io/api/v1/quote?symbol=";
     private final HttpClient httpClient;
-    private final Set<String> subscribed = new ConcurrentSkipListSet<>();
-
-    private volatile Database dbManager;
-    private volatile TradeListener listener;
-    private ScheduledExecutorService scheduler;
-    private Consumer<Double> priceUpdateCallback;
-    private volatile boolean running = false;
 
 
     public QuoteClient(String apiKey) {

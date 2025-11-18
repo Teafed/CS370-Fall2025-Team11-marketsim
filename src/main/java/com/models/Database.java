@@ -167,7 +167,6 @@ public class Database implements AutoCloseable {
     public Connection getConnection() {
         return conn;
     }
-
     /**
      * distinct symbols in alphabetical order (for SymbolListPanel)
      * @return String list of symbols
@@ -187,7 +186,6 @@ public class Database implements AutoCloseable {
     public ResultSet getCandles(String symbol, long startMs, long endMs) throws SQLException {
         return getCandles(symbol, 1, "day", startMs, endMs);
     }
-
     public ResultSet getCandles(String symbol, int multiplier, String timespan,
                                 long startMs, long endMs) throws SQLException {
         PreparedStatement ps = conn.prepareStatement("""
@@ -204,12 +202,25 @@ public class Database implements AutoCloseable {
         ps.setLong(5, endMs);
         return ps.executeQuery();
     }
+    public double getFallbackPrice(String symbol, long ts) {
+        try {
+            double px = getCloseAtOrBefore(symbol, ts, 1, "day");
+            if (!Double.isNaN(px)) return px;
+            // if ts predates all data, use earliest
+            px = getFirstClose(symbol, 1, "day");
+            if (!Double.isNaN(px)) return px;
+            // else just latest available
+            double[] lp = latestAndPrevClose(symbol, 1, "day");
+            return lp[0];
+        } catch (Exception e) {
+            return Double.NaN;
+        }
+    }
 
     /* old version */
     public long getLatestTimestamp(String symbol) throws SQLException {
         return getLatestTimestamp(symbol, 1, "day");
     }
-
     public long getLatestTimestamp(String symbol, int multiplier, String timespan) throws SQLException {
         String sql = "SELECT MAX(timestamp) FROM prices WHERE symbol=? AND timespan=? AND multiplier=?";
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
@@ -221,7 +232,6 @@ public class Database implements AutoCloseable {
             }
         }
     }
-
     public long getEarliestTimestamp(String symbol, int multiplier, String timespan) throws SQLException {
         String sql = "SELECT MIN(timestamp) FROM prices WHERE symbol=? AND timespan=? AND multiplier=?";
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
@@ -233,9 +243,8 @@ public class Database implements AutoCloseable {
             }
         }
     }
-
     public List<Long> listTimestamps(String symbol, int multiplier, String timespan,
-                                               long startMs, long endMs) throws SQLException {
+                                     long startMs, long endMs) throws SQLException {
         String sql = """
             SELECT timestamp FROM prices
             WHERE symbol=? AND timespan=? AND multiplier=?
@@ -260,7 +269,6 @@ public class Database implements AutoCloseable {
     public double[] latestAndPrevClose(String symbol) throws SQLException {
         return latestAndPrevClose(symbol, 1, "day");
     }
-
     public double[] latestAndPrevClose(String symbol, int multiplier, String timespan) throws SQLException {
         String sql = """
             SELECT close FROM prices
@@ -283,7 +291,37 @@ public class Database implements AutoCloseable {
             }
         }
     }
-
+    public double getCloseAtOrBefore(String symbol, long ts, int mult, String timespan) throws SQLException {
+        String sql = """
+            SELECT close FROM prices
+            WHERE symbol=? AND timespan=? AND multiplier=? AND timestamp <= ?
+            ORDER BY timestamp DESC LIMIT 1
+        """;
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, symbol);
+            ps.setString(2, timespan);
+            ps.setInt(3, mult);
+            ps.setLong(4, ts);
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next() ? rs.getDouble(1) : Double.NaN;
+            }
+        }
+    }
+    public double getFirstClose(String symbol, int mult, String timespan) throws SQLException {
+        String sql = """
+        SELECT close FROM prices
+        WHERE symbol=? AND timespan=? AND multiplier=?
+        ORDER BY timestamp ASC LIMIT 1
+    """;
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, symbol);
+            ps.setString(2, timespan);
+            ps.setInt(3, mult);
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next() ? rs.getDouble(1) : Double.NaN;
+            }
+        }
+    }
 
     public void insertCandle(String symbol, int multiplier, String timespan,
                              long timestamp, double open, double high, double low,
@@ -305,7 +343,6 @@ public class Database implements AutoCloseable {
             ps.executeUpdate();
         }
     }
-
     public void insertCandlesBatch(String symbol, int multiplier, String timespan,
                                    List<CandleData> rows) throws SQLException {
         boolean prev = conn.getAutoCommit();
@@ -491,7 +528,7 @@ public class Database implements AutoCloseable {
     public long withdrawCash(long accountId, double amount, long ts, String note) throws SQLException {
         return recordCash(accountId, ts, -Math.abs(amount), "WITHDRAWAL", note);
     }
-    public double getCashBalance(long accountId) throws SQLException {
+    public double getAccountCash(long accountId) throws SQLException {
         try (PreparedStatement ps = conn.prepareStatement("""
             SELECT COALESCE(SUM(delta), 0.0) FROM cash_ledger WHERE account_id=?
         """)) {
@@ -575,8 +612,19 @@ public class Database implements AutoCloseable {
             }
         }
     }
-    public long recordTrade(long accountId, String symbol, long ts, String side,
-                            int quantity, double price) throws SQLException {
+
+    public long recordOrder(com.models.market.Order order) throws SQLException {
+        // single entry point for an executed order
+        long accountId = order.account().getId();
+        String symbol = order.tradeItem().getSymbol();
+        long ts = order.ts();
+        String side = order.side().name();  // "BUY" or "SELL"
+        int qty = order.shares();
+        double price = order.price();
+        return recordTrade(accountId, symbol, ts, side, qty, price);
+    }
+    private long recordTrade(long accountId, String symbol, long ts, String side,
+                             int quantity, double price) throws SQLException {
         if (!"BUY".equals(side) && !"SELL".equals(side)) {
             throw new IllegalArgumentException("side must be BUY or SELL");
         }
@@ -630,21 +678,55 @@ public class Database implements AutoCloseable {
             conn.setAutoCommit(prev);
         }
     }
-    public List<PositionView> loadPositions(long accountId) throws SQLException {
-        try (PreparedStatement ps = conn.prepareStatement("""
-            SELECT symbol, quantity, avg_cost FROM positions
-            WHERE account_id=? ORDER BY symbol
-        """)) {
+    public java.util.Map<String, Integer> getPositions(long accountId) throws SQLException {
+        String sql = "SELECT symbol, quantity FROM positions WHERE account_id=? ORDER BY symbol";
+        java.util.LinkedHashMap<String, Integer> out = new java.util.LinkedHashMap<>();
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setLong(1, accountId);
             try (ResultSet rs = ps.executeQuery()) {
-                List<PositionView> out = new ArrayList<>();
-                while (rs.next()) out.add(new PositionView(
-                        rs.getString(1), rs.getInt(2), rs.getDouble(3)));
+                while (rs.next()) {
+                    out.put(rs.getString(1), rs.getInt(2));
+                }
+            }
+        }
+        return out;
+    }
+    public List<ModelFacade.TradeRow> listRecentTrades(long accountId, int limit) throws SQLException {
+        String sql = """
+        SELECT t.id, t.timestamp_ms, t.side, t.symbol, t.quantity, t.price,
+               -- compute position after this trade by summing trades <= this timestamp
+               (SELECT COALESCE(SUM(CASE WHEN side='BUY' THEN quantity ELSE -quantity END),0)
+                  FROM trades tt
+                 WHERE tt.account_id = t.account_id
+                   AND tt.symbol = t.symbol
+                   AND (tt.timestamp_ms < t.timestamp_ms
+                        OR (tt.timestamp_ms = t.timestamp_ms AND tt.id <= t.id))
+               ) AS pos_after
+          FROM trades t
+         WHERE t.account_id = ?
+         ORDER BY t.timestamp_ms DESC, t.id DESC
+         LIMIT ?
+    """;
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setLong(1, accountId);
+            ps.setInt(2, Math.max(1, limit));
+            try (ResultSet rs = ps.executeQuery()) {
+                java.util.ArrayList<ModelFacade.TradeRow> out = new java.util.ArrayList<>();
+                while (rs.next()) {
+                    out.add(new ModelFacade.TradeRow(
+                            rs.getLong("id"),
+                            rs.getLong("timestamp_ms"),
+                            rs.getString("side"),
+                            rs.getString("symbol"),
+                            rs.getInt("quantity"),
+                            rs.getDouble("price"),
+                            rs.getInt("pos_after")
+                    ));
+                }
                 return out;
             }
         }
     }
-
     // startup helpers
     public long getExistingProfileIdOrZero() throws SQLException {
         try (PreparedStatement ps = conn.prepareStatement(
@@ -700,8 +782,8 @@ public class Database implements AutoCloseable {
                     Account a = new Account(accountId, accountName);
 
                     // balance
-                    double balance = getCashBalance(accountId);
-                    a.setInitialBalance(balance);
+                    double balance = getAccountCash(accountId);
+                    a.setCash(balance);
 
                     // watchlist
                     List<TradeItem> wl = loadWatchlistSymbols(accountId);

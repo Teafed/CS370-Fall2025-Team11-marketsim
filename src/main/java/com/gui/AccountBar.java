@@ -70,7 +70,7 @@ public class AccountBar extends JPanel {
     public void setAccount(Account account) {
         this.account = account;
         name.setText(account.getName());
-        total.setText(NumberFormat.getCurrencyInstance().format(account.getTotalValue()));
+        total.setText(NumberFormat.getCurrencyInstance().format(account.getCash()));
         avatar.setIcon(createAvatarIcon(account.getName()));
         revalidate();
         repaint();
