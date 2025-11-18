@@ -66,6 +66,7 @@ public class Profile {
 
     public void setActiveAccount(Account account) {
         if (account != null && !accounts.contains(account)) {
+            System.out.println(getNumberOfAccounts());
             throw new IllegalArgumentException("[Profile] Account does not exist");
         }
         this.activeAccount = account;

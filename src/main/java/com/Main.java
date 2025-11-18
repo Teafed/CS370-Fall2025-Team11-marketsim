@@ -7,7 +7,7 @@ import java.sql.SQLException;
 
 public class Main {
     public static void main(String[] args) throws SQLException {
-        String dbFile = "data/marketsim-sample.db";
+        String dbFile = "data/marketsim-sample2.db";
 
         // Initialize Database
         Database db;

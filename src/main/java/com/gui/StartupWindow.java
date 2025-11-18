@@ -2,7 +2,6 @@ package com.gui;
 
 import com.models.Database;
 import com.models.ModelFacade;
-import com.models.market.TradeItem;
 import com.models.profile.Account;
 import com.models.profile.Profile;
 
@@ -15,7 +14,7 @@ import java.util.function.Consumer;
 public class StartupWindow extends ContentPanel {
     private JTextField profileNameField;
     private JTextField balanceField;
-    public static final boolean USE_ACCOUNT_PICKER = false; // settable from account select?
+    public static final boolean USE_ACCOUNT_PICKER = true; // settable from account select?
 
     // constructor for creating profile
     public StartupWindow(StartupListener startupListener) {
@@ -138,7 +137,7 @@ public class StartupWindow extends ContentPanel {
                  try {
                      long profileId = db.getSingletonProfileId();
                      Profile profile = db.buildProfile(profileId);
-                     List<Account> accounts = db.listAccounts(profileId);
+                     List<Account> accounts = profile.getAccounts();
 
                      frame.getContentPane().removeAll();
                      frame.add(createAccountSelectPanel(accounts, selected -> {
@@ -171,8 +170,8 @@ public class StartupWindow extends ContentPanel {
     }
     public static void runApp(Database db, Profile profile, Account account) {
         try {
-            profile.setActiveAccount(account);
             ModelFacade model = new ModelFacade(db, profile);
+            profile.setActiveAccount(account);
             SwingUtilities.invokeLater(() -> new MainWindow(model));
         } catch (Exception e) {
             e.printStackTrace();
