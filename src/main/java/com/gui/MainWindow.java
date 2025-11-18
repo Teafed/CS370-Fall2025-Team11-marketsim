@@ -23,9 +23,9 @@ public class MainWindow extends JFrame
     private JPanel rightContainer; // wrapper to hold top bar + cards
     private JLabel marketStatusLabel;
 
-    private static final java.lang.String WINDOW_TITLE = "Marketsim";
-    private static final java.lang.String CARD_CHART = "chart";
-    private static final java.lang.String CARD_ACCOUNT = "account";
+    private static final String WINDOW_TITLE = "Marketsim";
+    private static final String CARD_CHART = "chart";
+    private static final String CARD_ACCOUNT = "account";
     private static final int LEFT_PANEL_WIDTH = 250;
     private static final int MIN_RIGHT_WIDTH = 300;
 
@@ -81,7 +81,7 @@ public class MainWindow extends JFrame
 
     // create
     private void createPanels() {
-        chartPanel = new ChartPanel();
+        chartPanel = new ChartPanel(model);
         cards = new CardLayout();
         rightCards = new JPanel(cards);
         rightCards.setBackground(GUIComponents.BG_DARK);
@@ -94,6 +94,7 @@ public class MainWindow extends JFrame
         symbolPanel.addSymbolSelectionListener(this);
         symbolPanel.setAccount(model.getActiveAccount(), this);
         symbolPanel.setSymbols(model.getWatchlist());
+        symbolPanel.selectFirst();
 
         cards.show(rightCards, CARD_CHART);
         rightCards.setMinimumSize(new Dimension(MIN_RIGHT_WIDTH, 0));
@@ -152,7 +153,7 @@ public class MainWindow extends JFrame
     @Override
     public void onSymbolSelected(TradeItem item) {
         cards.show(rightCards, CARD_CHART);
-        chartPanel.openChart(model, item.getSymbol());
+        chartPanel.openChart(item.getSymbol());
     }
     @Override
     public void onAccountBarSelected(Account account) {

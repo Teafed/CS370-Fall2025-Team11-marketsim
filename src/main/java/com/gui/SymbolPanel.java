@@ -18,7 +18,7 @@
         private final List<SymbolSelectionListener> symbolListener;
         private Account account;
         private AccountSelectionListener accountListener;
-        private java.lang.String lastNotifiedSymbol = null;
+        private String lastNotifiedSymbol = null;
         private AccountBar accountBar;
 
         // interface that listeners must implement
@@ -126,5 +126,14 @@
         public void clearSelection() {
             symbolList.clearSelection();
             lastNotifiedSymbol = null;
+        }
+
+        public void selectFirst() {
+            if (symbolModel.getSize() > 0) {
+                SwingUtilities.invokeLater(() -> {
+                    symbolList.setSelectedIndex(0);
+                    symbolList.ensureIndexIsVisible(0);
+                });
+            }
         }
     }

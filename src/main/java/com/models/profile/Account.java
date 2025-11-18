@@ -8,7 +8,7 @@ import java.util.Objects;
 // One account
 public class Account {
     private long id; // identifier used in database
-    private java.lang.String name; // User defined name of account
+    private String name; // User defined name of account
 
     private double cash; // the amount the user can currently trade
     private Portfolio portfolio = new Portfolio();
@@ -18,15 +18,15 @@ public class Account {
     public Account() {
         this("New Account");
     }
-    public Account(java.lang.String name) {
+    public Account(String name) {
         setName(name);
     }
-    public Account(long id, java.lang.String name) {
+    public Account(long id, String name) {
         this.id = id;
         setName(name);
     }
 
-    public Account(java.lang.String name, double cash) {
+    public Account(String name, double cash) {
         setName(name);
         this.cash = cash;
         for (TradeItem ti : Watchlist.getDefaultWatchlist()) {
@@ -52,9 +52,6 @@ public class Account {
     }
     public double getCash() {
         return this.cash;
-    }
-    public double getTotalValue() {
-        return cash + portfolio.getPortfolioValue();
     }
 
     // portfolio/watchlist

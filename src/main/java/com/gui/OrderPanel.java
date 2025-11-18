@@ -1,8 +1,11 @@
 package com.gui;
 
+import com.models.ModelFacade;
+
 import javax.swing.*;
 import java.awt.*;
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 
 public class OrderPanel extends ContentPanel {
     private final JPanel header;
@@ -11,10 +14,14 @@ public class OrderPanel extends ContentPanel {
     private boolean collapsed = false;
     private final Consumer<Boolean> onCollapseChanged;
 
-    OrderPanel() { this(null); }
+    private final ModelFacade model;
+    private final Supplier<String> selectedSymbol;
 
-    OrderPanel(Consumer<Boolean> onCollapseChanged) {
+    OrderPanel(ModelFacade model, Supplier<String> selectedSymbol, Consumer<Boolean> onCollapseChanged) {
+        this.model = model;
+        this.selectedSymbol = selectedSymbol;
         this.onCollapseChanged = onCollapseChanged != null ? onCollapseChanged : (c) -> { };
+
         setLayout(new BorderLayout());
         setOpaque(true);
         setBackground(GUIComponents.BG_DARK);
@@ -27,7 +34,6 @@ public class OrderPanel extends ContentPanel {
         indicator = new JLabel("ˇ", SwingConstants.CENTER);
         indicator.setForeground(GUIComponents.TEXT_SECONDARY);
         indicator.setFont(new Font("Segoe UI", Font.PLAIN, 12));
-
         header.add(indicator, BorderLayout.CENTER);
 
         header.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
@@ -46,12 +52,14 @@ public class OrderPanel extends ContentPanel {
             }
         };
         tabs.updateUI();
-        tabs.addTab("Order", new OrderTab());
-        tabs.addTab("Order History", new OrderHistoryTab());
+        tabs.addTab("Order", new OrderTab(model, selectedSymbol));
+        tabs.addTab("Order History", new OrderHistoryTab(model));
 
         add(header, BorderLayout.NORTH);
         add(tabs, BorderLayout.CENTER);
     }
+
+    public boolean isCollapsed() { return collapsed; }
 
     void setCollapsed(boolean collapse) {
         this.collapsed = collapse;

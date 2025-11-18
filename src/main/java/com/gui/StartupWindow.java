@@ -48,8 +48,8 @@ public class StartupWindow extends ContentPanel {
         add(startButton);
 
         startButton.addActionListener(e -> {
-            TradeItem profileName = profileNameField.getText();
-            TradeItem balanceText = balanceField.getText();
+            String profileName = profileNameField.getText();
+            String balanceText = balanceField.getText();
 
             //TODO Add error checking and response
 

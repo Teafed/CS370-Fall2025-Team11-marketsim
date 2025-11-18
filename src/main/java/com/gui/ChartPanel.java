@@ -31,8 +31,9 @@ public class ChartPanel extends ContentPanel {
 
     private SwingWorker<?,?> currentWorker; // for backfilling
 
-    public ChartPanel() {
+    public ChartPanel(ModelFacade model) {
         super();
+        this.model = model;
         this.symbol = null;
         setLayout(new BorderLayout(0, 10));
         setOpaque(true);
@@ -49,12 +50,13 @@ public class ChartPanel extends ContentPanel {
         this.timeframeBar = new TimeframeBar((startMs, endMs, multiplier, timespanToken) -> {
             if (model != null && symbol != null) {
                 HistoricalService.Timespan ts = HistoricalService.Timespan.DAY;
-                openChart(model, symbol, multiplier, ts, startMs, endMs, 400);
+                openChart(symbol, multiplier, ts, startMs, endMs, 400);
             }
         });
         south.add(timeframeBar);
 
-        orderPanel = new OrderPanel(collapsed -> SwingUtilities.invokeLater(() -> adjustDivider(collapsed)));
+        orderPanel = new OrderPanel(model, () -> this.symbol,
+                collapsed -> SwingUtilities.invokeLater(() -> adjustDivider(collapsed)));
         south.add(orderPanel);
         south.setMinimumSize(new Dimension(0, timeframeBar.getPreferredSize().height + orderPanel.getHeaderHeight()));
 
@@ -65,13 +67,23 @@ public class ChartPanel extends ContentPanel {
         split.setDividerSize(0);
         split.setEnabled(false);
         split.setResizeWeight(0.75);
-        split.setDividerLocation(0.75); // proportional
 
         canvas.setMinimumSize(new Dimension(0, 370));
         south.setPreferredSize(new Dimension(0, 240));
 
         add(split, BorderLayout.CENTER);
         setMinimumSize(new Dimension(600, 300));
+
+        SwingUtilities.invokeLater(() -> setDividerHeight(240));
+
+        // When the ChartPanel is resized, keep south at its last chosen height unless collapsed
+        this.addComponentListener(new java.awt.event.ComponentAdapter() {
+            @Override public void componentResized(java.awt.event.ComponentEvent e) {
+                if (split != null && split.isVisible() && !orderPanel.isCollapsed()) {
+                    setDividerHeight(lastDividerLocation > 0 ? (getHeight() - lastDividerLocation) : 240);
+                }
+            }
+        });
     }
 
     private void adjustDivider(boolean collapsed) {
@@ -103,9 +115,16 @@ public class ChartPanel extends ContentPanel {
             split.setDividerLocation(target);
         });
     }
+    private void setDividerHeight(int southHeightPx) {
+        if (split == null) return;
+        int h = split.getHeight();
+        if (h <= 0) return;
+        int target = Math.max(0, h - southHeightPx);
+        split.setDividerLocation(target);
+        lastDividerLocation = target; // remember for resize handler
+    }
     /* load data for a symbol from database; timeframe default to 90 days */
-    public void openChart(ModelFacade model, String symbol) {
-        this.model = model;
+    public void openChart(String symbol) {
         this.symbol = symbol;
 
         if (!timeframeBar.fireCurrentSelection()) {
@@ -114,7 +133,7 @@ public class ChartPanel extends ContentPanel {
                 if (latest == 0L) { canvas.clear(symbol); return; }
                 long ninetyDays = 90L * 24 * 60 * 60 * 1000L;
                 long start = Math.max(0, latest - ninetyDays);
-                openChart(model, symbol, start, latest, 400);
+                openChart(symbol, start, latest, 400);
             } catch (Exception e) {
                 canvas.clear(symbol);
             }
@@ -125,19 +144,17 @@ public class ChartPanel extends ContentPanel {
      * load data for a symbol from database and prep it for painting
      * overloaded to specify time frame
      *
-     * @param model     ModelFacade
      * @param symbol    e.g. "AAPL"
      * @param startMs   inclusive epoch millis
      * @param endMs     inclusive epoch millis
      * @param maxPoints cap plotted points to keep the line smooth (e.g. 200)
      */
-    public void openChart(ModelFacade model, String symbol, long startMs, long endMs, int maxPoints) {
+    public void openChart(String symbol, long startMs, long endMs, int maxPoints) {
         HistoricalService.Timespan timespan = HistoricalService.Timespan.DAY;
-        openChart(model, symbol, 1, timespan, startMs, endMs, maxPoints);
+        openChart(symbol, 1, timespan, startMs, endMs, maxPoints);
     }
 
-    public void openChart(ModelFacade model,
-                          String symbol,
+    public void openChart(String symbol,
                           int multiplier,
                           HistoricalService.Timespan timespan,
                           long startMs, long endMs, int maxPoints) {
@@ -171,10 +188,9 @@ public class ChartPanel extends ContentPanel {
             return;
         }
 
-        System.out.printf("[ChartPanel] Requested %s %d/%s %s - %s%n", symbol, multiplier, timespan, from, to);
-
+        ModelFacade.Range finalMissing = missing;
         startBackfillWorker(() -> {
-            model.backfillRange(symbol, missing);
+            model.backfillRange(symbol, finalMissing);
             return 0;
         }, loadAndPaint);
     }

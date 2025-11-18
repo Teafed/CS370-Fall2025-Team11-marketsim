@@ -3,33 +3,23 @@ package com.gui;
 import java.awt.*;
 import javax.swing.*;
 import javax.swing.table.*;
+import java.text.SimpleDateFormat;
 import java.util.List;
 import java.util.ArrayList;
 
-import com.models.market.Market;
+import com.models.AccountDTO;
+import com.models.ModelFacade;
+import com.models.ModelListener;
 import com.models.market.TradeItem;
-import com.models.profile.Account;
-import com.models.profile.Portfolio;
 
-public class OrderHistoryTab extends ContentPanel {
+public class OrderHistoryTab extends ContentPanel implements ModelListener {
+    private final ModelFacade model;
     private JTable holdingsTable;
     private DefaultTableModel tableModel;
-    private final Market market;
-    private final Account account;
-    private List<TradeItem> items = new ArrayList<>();
+    private final SimpleDateFormat tsFmt = new SimpleDateFormat("yyyy-MM-dd HH:mm");
 
-    /**
-     * No-arg constructor to allow UI components to instantiate a placeholder panel
-     * when the Market/Account are not yet available (e.g. during initial layout).
-     * Delegates to the main constructor with nulls.
-     */
-    public OrderHistoryTab() {
-        this(null, null);
-    }
-
-    public OrderHistoryTab(Market market, Account account) {
-        this.market = market;
-        this.account = account;
+    public OrderHistoryTab(ModelFacade model) {
+        this.model = model;
         setLayout(new BorderLayout());
         setBackground(GUIComponents.BG_LIGHTER);
         setBorder(BorderFactory.createCompoundBorder(
@@ -38,11 +28,13 @@ public class OrderHistoryTab extends ContentPanel {
         ));
 
         initializeComponents();
+        model.addListener(this);
+        refresh();
     }
 
     private void initializeComponents() {
         // Table to display portfolio holdings
-        java.lang.String[] columnNames = {"Time", "Price", "Shares", "ROI"};
+        java.lang.String[] columnNames = {"Time", "Price", "Shares", "P/L"};
         tableModel = new DefaultTableModel(columnNames, 0) {
             @Override
             public boolean isCellEditable(int row, int column) {
@@ -79,31 +71,32 @@ public class OrderHistoryTab extends ContentPanel {
         add(scrollPane, BorderLayout.CENTER);
     }
 
-    /**
-     * Update the portfolio table with data from a Portfolio object.
-     * This will clear existing rows and repopulate the table.
-     */
-    public void updateTable() {
-        // clear existing rows
-        Portfolio p = account.getPortfolio();
+    public void refresh() {
         tableModel.setRowCount(0);
-        if (p == null) return;
-        items = p.listTradeItems();
-        for (TradeItem item : items) {
-            int shares = p.getNumberOfShares(item);
-            java.lang.String symbol = item.getSymbol();
-            java.lang.String name = item.getName();
-            double price = Double.NaN;
-            // Prefer market's live price if available
-            if (market != null) {
-                double pr = market.getPrice(symbol);
-                if (!Double.isNaN(pr)) price = pr;
+        try {
+            List<ModelFacade.TradeRow> rows = model.getRecentTrades(50);
+            for (var r : rows) {
+                double cashDelta = ("BUY".equals(r.side()) ? -1.0 : 1.0) * (r.quantity() * r.price());
+                Object[] line = {
+                        tsFmt.format(new java.util.Date(r.timestamp())),
+                        r.side(),
+                        r.symbol(),
+                        r.quantity(),
+                        String.format("$%.2f", r.price()),
+                        String.format("%+.2f", cashDelta),
+                        r.posAfter() // qty after trade (filled in by DB or façade)
+                };
+                tableModel.addRow(line);
             }
-            if (Double.isNaN(price)) price = 0.0; // fallback
-            double total = price * shares;
-
-            Object[] row = {symbol, name, shares, java.lang.String.format("$%.2f", price), java.lang.String.format("$%.2f", total)};
-            tableModel.addRow(row);
+        } catch (Exception e) {
+            // optionally show a toast
         }
     }
+
+
+    // ModelListener
+    @Override public void onAccountChanged(AccountDTO snapshot) { refresh(); }
+    @Override public void onQuotesUpdated() { /* not needed */ }
+    @Override public void onWatchlistChanged(java.util.List<com.models.market.TradeItem> items) { /* not needed */ }
+    @Override public void onError(String message, Throwable t) { /* optional */ }
 }

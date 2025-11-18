@@ -29,7 +29,7 @@ public class AccountPanel extends ContentPanel {
         name.setFont(new Font("Segoe UI", Font.PLAIN, 14));
 
         NumberFormat balance = NumberFormat.getCurrencyInstance();
-        JLabel total = new JLabel(balance.format(account.getAvailableBalance()));
+        JLabel total = new JLabel(balance.format(account.getCash()));
         total.setForeground(GUIComponents.TEXT_SECONDARY);
         total.setFont(new Font("Segoe UI", Font.PLAIN, 13));
 

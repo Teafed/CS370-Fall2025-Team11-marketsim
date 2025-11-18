@@ -21,6 +21,8 @@ public class ModelFacade {
     private final List<ModelListener> listeners = new CopyOnWriteArrayList<>();
     private final HistoricalService hist;
 
+    public record TradeRow(long id, long timestamp, String side, String symbol, int quantity, double price, int posAfter) { }
+
     public ModelFacade(Database db, Profile profile) throws Exception {
         this.db = db;
         this.profile = profile;
@@ -50,12 +52,34 @@ public class ModelFacade {
                 }
             }));
         }
-    private void fireError(java.lang.String msg, Throwable t) { onEDT(() -> listeners.forEach(l -> l.onError(msg, t))); }
+    private void fireError(String msg, Throwable t) { onEDT(() -> listeners.forEach(l -> l.onError(msg, t))); }
     private static void onEDT(Runnable r) { if (SwingUtilities.isEventDispatchThread()) r.run(); else SwingUtilities.invokeLater(r); }
 
     // queries
     public boolean isMarketOpen() { return client.getMarketStatus(); }
-    public double getPrice(java.lang.String symbol) { return market.getPrice(symbol); }
+    public double getPrice(String symbol) { return getPrice(symbol, System.currentTimeMillis()); }
+    public double getPrice(String symbol, long ts) {
+        if (symbol == null) return Double.NaN;
+        String sym = symbol.trim().toUpperCase();
+
+        // if market is open
+        double live = market.getPrice(sym);
+        if (!Double.isNaN(live)) return live;
+
+        // otherwise fallback to db
+        try {
+            double px = db.getCloseAtOrBefore(sym, ts, 1, "day");
+            if (!Double.isNaN(px)) return px;
+
+            px = db.getFirstClose(sym, 1, "day");
+            if (!Double.isNaN(px)) return px;
+
+            double[] lp = db.latestAndPrevClose(sym, 1, "day");
+            return lp[0];
+        } catch (Exception e) {
+            return Double.NaN;
+        }
+    }
     public Account getActiveAccount() { return profile.getActiveAccount(); }
     public List<Account> listAccounts() { return profile.getAccounts(); }
     public List<TradeItem> getWatchlist() { return profile.getActiveAccount().getWatchlist().getWatchlist(); }
@@ -64,10 +88,19 @@ public class ModelFacade {
         Map<java.lang.String,Integer> positions = db.getPositions(a.getId());
         return new AccountDTO(a.getId(), a.getCash(), positions);
     }
+    public double getAccountTotalValue() {
+        Account a = profile.getActiveAccount();
+        double portfolioValue = a.getPortfolio().computeMarketValue(this::getPrice);
+        return a.getCash() + portfolioValue;
+    }
     public long getLatestTimestamp(String symbol) throws SQLException {
         return db.getLatestTimestamp(symbol);
     }
-
+    public List<TradeRow> getRecentTrades(int limit) throws Exception {
+        Account a = profile.getActiveAccount();
+        if (a == null) return java.util.List.of();
+        return db.listRecentTrades(a.getId(), limit);
+    }
     // commands
     public void close() throws SQLException { db.close(); }
 
@@ -96,7 +129,7 @@ public class ModelFacade {
             }
     }
 
-    public void addToWatchlist(java.lang.String symbol) throws Exception {
+    public void addToWatchlist(String symbol) throws Exception {
         Account a = profile.getActiveAccount();
         TradeItem ti = new TradeItem(symbol, symbol);
         db.saveWatchlistSymbols(a.getId(), "Default", List.of(ti));
@@ -105,10 +138,10 @@ public class ModelFacade {
         fireWatchlistChanged(getWatchlist());
     }
 
-    public void executeTrade(java.lang.String symbol, boolean isBuy, int shares) {
+    public void executeTrade(String symbol, boolean isBuy, int shares) {
         executeTrade(symbol, isBuy, shares, System.currentTimeMillis());
     }
-    public void executeTrade(java.lang.String symbol, boolean isBuy, int shares, long ts) {
+    public void executeTrade(String symbol, boolean isBuy, int shares, long ts) {
         // if ts is today and market is open get price from there
             // otherwise price is gotten from db:
             //    order times outside of range available in db should just get latest/earliest price
@@ -119,11 +152,8 @@ public class ModelFacade {
             if (symbol.isEmpty()) throw new IllegalArgumentException("Symbol required");
             if (shares <= 0) throw new IllegalArgumentException("Shares must be > 0");
 
-            double price = getPrice(symbol);
-            if (Double.isNaN(price)) {
-                price = db.getFallbackPrice(symbol, ts);
-                throw new IllegalStateException("No available price for " + symbol);
-            }
+            double price = getPrice(symbol, ts);
+            if (Double.isNaN(price)) throw new IllegalStateException("No available price for " + symbol);
 
             if (isBuy) {
                 double needed = shares * price;
@@ -136,11 +166,9 @@ public class ModelFacade {
             // persist trade in db
             Order order = new Order(a, new TradeItem(symbol, symbol),
                     isBuy ? Order.side.BUY : Order.side.SELL, shares, price, ts);
-            long tradeId = db.recordOrder(order);
-
+            db.recordOrder(order);
             // update in-memory cash/positions and portfolio
             a.setCash(db.getAccountCash(a.getId()));
-
             try {
                 var positions = db.getPositions(a.getId()); // symbol -> qty
                 a.getPortfolio().setFromDb(positions);
@@ -154,7 +182,7 @@ public class ModelFacade {
         }
     }
 
-    public void deposit(double amount, java.lang.String memo) {
+    public void deposit(double amount, String memo) {
         try {
                 Account a = profile.getActiveAccount();
                 db.depositCash(a.getId(), amount, System.currentTimeMillis(), memo);
@@ -168,25 +196,26 @@ public class ModelFacade {
     // HistoricalService
     public record CandlePoint(long t, double close) { }
     public static record Range(HistoricalService.Timespan timespan, int mult, long startMs, long endMs) { }
-
     public Range ensureRange(String symbol, Range requested) throws Exception {
-        var from = java.time.Instant.ofEpochMilli(requested.startMs).atZone(java.time.ZoneOffset.UTC).toLocalDate();
-        var to   = java.time.Instant.ofEpochMilli(requested.endMs).atZone(java.time.ZoneOffset.UTC).toLocalDate();
+        var utc = java.time.ZoneOffset.UTC;
+
+        var from = java.time.Instant.ofEpochMilli(requested.startMs).atZone(utc).toLocalDate();
+        var to = java.time.Instant.ofEpochMilli(requested.endMs).atZone(utc).toLocalDate();
         var r = new HistoricalService.Range(requested.timespan, requested.mult, from, to);
         var missing = hist.ensureRange(symbol, r);
         if (missing == null) return null;
-        return new Range(missing.timespan, missing.multiplier,
-                missing.from.atStartOfDay(java.time.ZoneOffset.UTC).toInstant().toEpochMilli(),
-                missing.to.atStartOfDay(java.time.ZoneOffset.UTC).toInstant().toEpochMilli());
-    }
 
+        long startMs = missing.from.atStartOfDay(utc).toInstant().toEpochMilli();
+        long endMs   = missing.to.atStartOfDay(utc).toInstant().toEpochMilli();
+        return new Range(missing.timespan, missing.multiplier, startMs, endMs);
+    }
     public int backfillRange(String symbol, Range missing) throws Exception {
-        var from = java.time.Instant.ofEpochMilli(missing.startMs).atZone(java.time.ZoneOffset.UTC).toLocalDate();
-        var to   = java.time.Instant.ofEpochMilli(missing.endMs).atZone(java.time.ZoneOffset.UTC).toLocalDate();
+        var utc  = java.time.ZoneOffset.UTC;
+        var from = java.time.Instant.ofEpochMilli(missing.startMs).atZone(utc).toLocalDate();
+        var to = java.time.Instant.ofEpochMilli(missing.endMs).atZone(utc).toLocalDate();
         var r = new HistoricalService.Range(missing.timespan, missing.mult, from, to);
         return hist.backfillRange(symbol, r);
     }
-
     public List<CandlePoint> loadCloses(String symbol, long startMs, long endMs, int maxPoints)
             throws Exception {
         try (var rs = db.getCandles(symbol, 1, "day", startMs, endMs)) {
