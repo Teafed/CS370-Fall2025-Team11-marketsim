@@ -39,7 +39,7 @@ public class MainWindow extends JFrame
     private void createWindow() {
         setTitle(WINDOW_TITLE);
         fitToScreen(1200, 800); // make sure it doesn't go offscreen
-        setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLocationRelativeTo(null); // center on screen
         getContentPane().setBackground(GUIComponents.BG_DARK);
         setLayout(new BorderLayout());
@@ -66,9 +66,9 @@ public class MainWindow extends JFrame
     }
 
     private void setupSplitPane() {
-    JSplitPane splitPane = GUIComponents.createSplitPane(
-        "horizontal", symbolPanel, rightContainer
-    );
+        JSplitPane splitPane = GUIComponents.createSplitPane(
+            "horizontal", symbolPanel, rightContainer
+        );
 
         splitPane.setDividerLocation(LEFT_PANEL_WIDTH);
         splitPane.setOneTouchExpandable(false);
