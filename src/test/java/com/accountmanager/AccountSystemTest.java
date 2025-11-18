@@ -1,7 +1,11 @@
 package com.accountmanager;
 
-import com.market.Stock;
-import com.market.TradeItem;
+import com.models.market.Stock;
+import com.models.market.TradeItem;
+import com.models.profile.Account;
+import com.models.profile.Portfolio;
+import com.models.profile.Profile;
+import com.models.profile.Watchlist;
 import org.junit.jupiter.api.*;
 
 import java.util.List;
@@ -72,7 +76,7 @@ public class AccountSystemTest {
     void testAccountValueUpdatesWithWithdrawal(){
         // setup account, stock, and portfolio objects
         Account account1 = new Account("account1");
-        Stock stock1 = new Stock("stock1", "s1");
+    Stock stock1 = new Stock("stock1", "s_init");
         Portfolio portfolio = account1.getPortfolio();
 
         // Deposit funds, assign price to stock
@@ -117,35 +121,35 @@ public class AccountSystemTest {
 
     @Test
     void testAccountManager() {
-        AccountManager accountManager = new AccountManager();
+        Profile profile = new Profile();
         // Two test accounts are created
         Account accountOne =  new Account("accountOneName");
         Account accountTwo = new Account("accountTwoName");
         // An account can be added to the account manager
-        assertTrue(accountManager.addAccount(accountOne));
-        assertTrue(accountManager.addAccount(accountTwo));
+        assertTrue(profile.addAccount(accountOne));
+        assertTrue(profile.addAccount(accountTwo));
         // An account manager knows how many accounts it holds
-        assertEquals(2, accountManager.getNumberOfAccounts());
+        assertEquals(2, profile.getNumberOfAccounts());
 
 
         Account accountThree = new Account("accountThreeName");
         Account accountFour = new Account("accountFourName");
         Account accountFive = new Account("accountFiveName");
         Account accountSix = new Account("accountSixName");
-        accountManager.addAccount(accountThree);
-        accountManager.addAccount(accountFour);
-        accountManager.addAccount(accountFive);
+        profile.addAccount(accountThree);
+        profile.addAccount(accountFour);
+        profile.addAccount(accountFive);
 
         // An account manager will only allow 5 accounts
-        assertFalse(accountManager.addAccount(accountSix));
-        assertEquals(5, accountManager.getNumberOfAccounts());
+        assertFalse(profile.addAccount(accountSix));
+        assertEquals(5, profile.getNumberOfAccounts());
 
         // An account manager can remove accounts
-        assertTrue(accountManager.removeAccount(accountOne));
-        assertTrue(accountManager.removeAccount(accountTwo));
+        assertTrue(profile.removeAccount(accountOne));
+        assertTrue(profile.removeAccount(accountTwo));
 
         // An account manager returns false if it does not hold requested account
-        assertFalse(accountManager.removeAccount(accountOne));
+        assertFalse(profile.removeAccount(accountOne));
 
 
     }
@@ -157,7 +161,7 @@ public class AccountSystemTest {
         // A portfolio is created
         Portfolio portfolio = new Portfolio();
 
-        Stock stock1 = new Stock("stock1", "s1");
+    Stock stock1 = new Stock("stock1", "s_init2");
         portfolio.addTradeItem(stock1, 1);
 
         // A portfolio can return true if it holds a stock

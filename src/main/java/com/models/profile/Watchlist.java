@@ -1,9 +1,10 @@
-package com.accountmanager;
+package com.models.profile;
 
-import com.market.*;
+import com.models.market.TradeItem;
 
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.LinkedHashSet;
 import java.util.List;
 
@@ -17,12 +18,10 @@ public class Watchlist {
 
     private LinkedHashSet<TradeItem> watchlist;
     private final int maxSize = 50;
-    private int watchlistSize;
 
 
     public Watchlist() {
         watchlist = new LinkedHashSet<>();
-        this.watchlistSize = 0;
     }
 
 
@@ -39,12 +38,10 @@ public class Watchlist {
         if (watchlist.contains(tradeItem)) {
             return false;
         }
-        if (watchlistSize < maxSize) {
-            watchlist.add(tradeItem);
-            watchlistSize++;
-            return true;
-        }
-        else
+        if (watchlist.size() < maxSize) {
+            boolean added = watchlist.add(tradeItem);
+            return added;
+        } else
             // cannot add more than max size
             return false;
     }
@@ -55,21 +52,15 @@ public class Watchlist {
      * @return True if successful, False if the list did not contain that item.
      */
     public boolean removeWatchlistItem(TradeItem tradeItem) {
-        if (watchlist.remove(tradeItem)) {
-            watchlistSize--;
-            return true;
-        }
-        else
-            return false;
+        return watchlist.remove(tradeItem);
     }
 
     public void clearList(){
         watchlist.clear();
-        watchlistSize = 0;
     }
 
     public int  getWatchlistSize() {
-        return watchlistSize;
+        return watchlist.size();
     }
 
     public int getMaxSize() {
@@ -81,7 +72,25 @@ public class Watchlist {
     }
 
     public List<TradeItem> getWatchlist() {
-        return new ArrayList(watchlist);
+        return new ArrayList<>(watchlist);
+    }
+
+    public static List<TradeItem> getDefaultWatchlist() {
+        TradeItem[] initialSymbols = {
+                new TradeItem("Apple", "AAPL"),
+                new TradeItem("Microsoft", "MSFT"),
+                new TradeItem("Alphabet", "GOOGL"),
+                new TradeItem("NVIDIA", "NVDA"),
+                new TradeItem("Amazon", "AMZN"),
+                new TradeItem("Meta Platforms", "META"),
+                new TradeItem("Tesla", "TSLA"),
+                new TradeItem("Broadcom", "AVGO"),
+                new TradeItem("Taiwan Semiconductor Manufacturing Company", "TSM"),
+                new TradeItem("Berkshire Hathaway", "BRK.B")
+        };
+        List<TradeItem> wl = new java.util.ArrayList<>();
+        wl.addAll(Arrays.asList(initialSymbols));
+        return wl;
     }
 
 }

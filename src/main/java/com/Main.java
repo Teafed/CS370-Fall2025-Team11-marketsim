@@ -1,96 +1,29 @@
 package com;
 
-
-import com.etl.*;
-import com.etl.finnhub.ClientFacade;
-import com.gui.startup.*;
-import com.market.*;
+import com.models.*;
 import com.gui.*;
-import com.accountmanager.*;
 
-import javax.swing.*;
-
+import java.sql.SQLException;
 
 public class Main {
+    public static void main(String[] args) throws SQLException {
+        String dbFile = "data/marketsim-sample.db";
 
+        // Initialize Database
+        Database db;
+        try {
+            db = new Database(dbFile);
+        } catch (Exception e) {
+            throw new SQLException("Failed to open database: " + dbFile, e);
+        }
 
+        StartupWindow.getStartWindow(db);
 
-    public static void main(String[] args) {
-        boolean gate = false;
-        StartupPanel.getStartWindow((profileName, balance)-> {
-            System.out.println("Profile: " + profileName + " Balance: " + balance);
-            runMarketSim(profileName, balance);
-        });
-
-        //runTestCase();
+        // runTestCase();
     }
 
     public static void runTestCase() {
         // Add new testing data
 
-    }
-
-    public static void runMarketSim(String profileName, double balance) {
-        try {
-            String dbFile = "data/marketsim-sample.db";
-
-            // Initialize Database
-            DatabaseManager db;
-            try {
-                db = new DatabaseManager(dbFile);
-            } catch (Exception e) {
-                throw new RuntimeException("Failed to open database: " + dbFile, e);
-            }
-
-            // Initialize account
-            Account account = new Account(profileName,balance);
-
-            long profileId = db.getOrCreateProfile("Test Profile");
-            long accountId = db.getOrCreateAccount(profileId, account.getName(), "USD");
-            java.util.List<String> dbSymbols = db.loadWatchlistSymbols(accountId);
-
-            if (dbSymbols.isEmpty()) {
-                // add in-memory demo watchlist to database
-                java.util.List<String> current = new java.util.ArrayList<>();
-                for (com.market.TradeItem ti : account.getWatchList().getWatchlist()) {
-                    current.add(ti.getSymbol());
-                }
-                db.saveWatchlistSymbols(accountId, "Default", current);
-                System.out.println("[startup] Seeded DB watchlist from demo account (" + current.size() + " symbols)");
-            } else {
-                // use watchlist from database
-                account.getWatchList().clearList();
-                for (String sym : dbSymbols) {
-                    // TODO: get the actual name of the symbol
-                    account.getWatchList().addWatchlistItem(new com.market.TradeItem(sym, sym));
-                }
-                System.out.println("[startup] Loaded watchlist from DB (" + dbSymbols.size() + " symbols)");
-            }
-
-
-            ClientFacade client = new ClientFacade();
-
-            TradeManager tradeManager = TradeManager.getInstance();
-            tradeManager.setAccount(account);
-
-            // Initialize market
-            Market market = Market.getInstance();
-            market.setClientFacade(client);
-            market.setDatabase(db);
-            market.addFromWatchlist(account.getWatchList());
-            while (!market.isReady()) {
-                System.out.println("Waiting for Market status...");
-            }
-            System.out.println("Market started...");
-
-            // Initialize GUI Client
-            SwingUtilities.invokeLater(() -> {
-                MainWindow mw = new MainWindow(db, account, market);
-                market.setMarketListener(mw.getSymbolListPanel());
-            });
-        }
-        catch (Exception e) {
-            e.printStackTrace();
-        }
     }
 }

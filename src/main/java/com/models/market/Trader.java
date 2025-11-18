@@ -1,4 +1,4 @@
-package com.market;
+package com.models.market;
 
 // Handles buying and selling of stocks
 public class Trader {

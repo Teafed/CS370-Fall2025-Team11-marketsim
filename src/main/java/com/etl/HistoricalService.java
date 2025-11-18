@@ -1,6 +1,6 @@
 package com.etl;
 
-import com.market.DatabaseManager;
+import com.models.Database;
 
 import java.sql.SQLException;
 import com.google.gson.JsonParser;
@@ -40,7 +40,7 @@ public class HistoricalService {
         Timespan(String token) { this.token = token; }
     }
 
-    private final DatabaseManager db;
+    private final Database db;
     private final HttpClient http;
     private final String apiKey;
     private final String baseUrl;
@@ -54,13 +54,13 @@ public class HistoricalService {
     private static final Semaphore TOKENS = new Semaphore(1);
     private static long last = System.nanoTime();
 
-    public HistoricalService(DatabaseManager db) {
+    public HistoricalService(Database db) {
         this(db, HttpClient.newHttpClient(), System.getenv("POLYGON_API_KEY"),
                 "https://api.polygon.io"); // default
     }
 
     // package-private for tests
-    HistoricalService(DatabaseManager db, HttpClient http, String apiKey, String baseUrl) {
+    HistoricalService(Database db, HttpClient http, String apiKey, String baseUrl) {
         this.db = db;
         this.http = http;
         this.baseUrl = baseUrl;
@@ -238,7 +238,8 @@ public class HistoricalService {
                         break;
                     }
                     if (sc != 200) {
-                        throw new RuntimeException("[HS.chunk] " + sc + " " + resp.body());
+                        // tests expect a message containing "[HistoricalService] <status>"
+                        throw new RuntimeException("[HistoricalService] " + sc + " " + resp.body());
                     }
 
                     var root = JsonParser.parseString(resp.body()).getAsJsonObject();
@@ -249,7 +250,7 @@ public class HistoricalService {
                                 status, err, symbol, cursor, chunkEnd);
                     }
 
-                    var rows = new java.util.ArrayList<DatabaseManager.CandleData>();
+                    var rows = new java.util.ArrayList<Database.CandleData>();
                     if (root.has("results")) {
                         for (var e : root.getAsJsonArray("results")) {
                             var r = e.getAsJsonObject();
@@ -259,7 +260,7 @@ public class HistoricalService {
                             double l = r.get("l").getAsDouble();
                             double c = r.get("c").getAsDouble();
                             double v = r.get("v").getAsDouble();
-                            rows.add(new DatabaseManager.CandleData(symbol, t, o, h, l, c, v));
+                            rows.add(new Database.CandleData(symbol, t, o, h, l, c, v));
                         }
                     }
 

@@ -1,6 +1,6 @@
 package com.etl;
 
-import com.market.DatabaseManager;
+import com.models.Database;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonArray;
 import org.junit.jupiter.api.Test;
@@ -37,7 +37,7 @@ class HistoricalServiceTest {
         when(mockResp.body()).thenReturn(root.toString());
         when(mockHttp.send(any(), any(HttpResponse.BodyHandler.class))).thenReturn(mockResp);
 
-        try (DatabaseManager db = new DatabaseManager(":memory:")) {
+        try (Database db = new Database(":memory:")) {
             HistoricalService svc = new HistoricalService(db, mockHttp, "test-key", "https://fake");
 
             HistoricalService.Range range = new HistoricalService.Range(
@@ -73,7 +73,7 @@ class HistoricalServiceTest {
         when(mockResp.body()).thenReturn("{\"status\":\"NOT_AUTHORIZED\"}");
         when(mockHttp.send(any(), any(HttpResponse.BodyHandler.class))).thenReturn(mockResp);
 
-        try (DatabaseManager db = new DatabaseManager(":memory:")) {
+        try (Database db = new Database(":memory:")) {
             HistoricalService svc =
                     new HistoricalService(db, mockHttp, "test-key", "https://fake");
 

@@ -1,4 +1,4 @@
-package com.market;
+package com.models;
 
 
 import org.junit.jupiter.api.Test;
@@ -9,7 +9,7 @@ class DatabaseManagerTest {
 
     @Test
     void insertsAndReadsBack() throws Exception {
-        DatabaseManager db = new DatabaseManager(":memory:");
+        Database db = new Database(":memory:");
 
         db.insertCandle("AAPL", 1000L, 10, 11, 9, 10.5, 123);
         db.insertCandle("AAPL", 2000L, 10.6, 12, 10.2, 11.9, 456);
@@ -33,7 +33,7 @@ class DatabaseManagerTest {
 
     @Test
     void uniqueConstraintPreventsDupes() throws Exception {
-        DatabaseManager db = new DatabaseManager(":memory:");
+        Database db = new Database(":memory:");
         db.insertCandle("MSFT", 12345L, 1,1,1,1,1);
         // REPLACE behavior means this will overwrite rather than duplicate
         db.insertCandle("MSFT", 12345L, 2,2,2,2,2);
