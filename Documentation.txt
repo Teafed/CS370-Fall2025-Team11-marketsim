@@ -9,3 +9,7 @@ Order.java was created, identifying key information regarding trades; Including 
 Group members met to discuss and begin working on the Software Design Spec (SDS), changes have been made including the elimination of redundant files, trade logic, and UI design.
 
 Changes to prior package and class diagrams are in the works to reflect changes and additions to the project.
+
+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+--November 18 2025--
+Group members discused refactorization using the new models class. Important stylistic updates to start-up window and cursor function implementation. Crashing resolved with initalization of accounts. Further development of live graph update to be completed. 
