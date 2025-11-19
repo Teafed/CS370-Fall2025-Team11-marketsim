@@ -59,16 +59,30 @@ public class StartupWindow extends JPanel {
                 g2.setPaint(gradient);
                 g2.fillRoundRect(0, 0, 100, 100, 25, 25);
 
-                // Chart line with arrow
+                // Draw upward trending chart line
+                g2.setColor(Color.WHITE);
+                g2.setStroke(new BasicStroke(3.5f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+
+                // Draw upward trending zig-zag chart line
                 g2.setColor(Color.WHITE);
                 g2.setStroke(new BasicStroke(4f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
-                int[] xPoints = {25, 40, 55, 75};
-                int[] yPoints = {65, 50, 55, 35};
-                g2.drawPolyline(xPoints, yPoints, 4);
 
-                // Arrow head
-                g2.drawLine(75, 35, 70, 40);
-                g2.drawLine(75, 35, 70, 30);
+                // More dramatic zig-zag coordinates
+                int[] xPoints = {20, 35, 50, 65, 80};
+                int[] yPoints = {70, 45, 60, 40, 25};
+                g2.drawPolyline(xPoints, yPoints, xPoints.length);
+
+//                // Draw arrowhead at the last point
+//                int tipX = 80;
+//                int tipY = 25;
+
+                // Arrowhead angled upward-right
+//                Polygon arrow = new Polygon();
+//                arrow.addPoint(tipX, tipY);
+//                arrow.addPoint(tipX - 10, tipY + 6);
+//                arrow.addPoint(tipX - 4, tipY + 10);
+//                g2.fill(arrow);
+
             }
         };
         logoPanel.setBounds(300, 80, 100, 100);
