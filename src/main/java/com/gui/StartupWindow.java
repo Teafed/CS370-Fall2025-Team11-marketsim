@@ -1,9 +1,9 @@
 package com.gui;
 
 import com.models.Database;
+import com.models.ModelFacade;
 import com.models.profile.Profile;
 import com.models.profile.Account;
-import com.models.ModelFacade;
 
 import javax.swing.*;
 import java.awt.*;
@@ -35,6 +35,14 @@ public class StartupWindow extends JPanel {
         setBackground(new Color(20, 24, 32));
         setPreferredSize(new Dimension(700, 700));
 
+        // Add component listener to re-center when resized
+        addComponentListener(new ComponentAdapter() {
+            @Override
+            public void componentResized(ComponentEvent e) {
+                centerContent();
+            }
+        });
+
         // Logo panel with chart icon
         JPanel logoPanel = new JPanel() {
             @Override
@@ -65,6 +73,7 @@ public class StartupWindow extends JPanel {
         };
         logoPanel.setBounds(300, 80, 100, 100);
         logoPanel.setOpaque(false);
+        logoPanel.setName("logo"); // For centering reference
         add(logoPanel);
 
         // MarketSim title
@@ -72,6 +81,7 @@ public class StartupWindow extends JPanel {
         titleLabel.setFont(new Font("Segoe UI", Font.BOLD, 48));
         titleLabel.setBounds(220, 195, 400, 60);
         titleLabel.setHorizontalAlignment(SwingConstants.CENTER);
+        titleLabel.setName("title"); // For centering reference
         add(titleLabel);
 
         // Form container
@@ -88,6 +98,7 @@ public class StartupWindow extends JPanel {
         formPanel.setLayout(null);
         formPanel.setBounds(100, 300, 500, 360);
         formPanel.setOpaque(false);
+        formPanel.setName("form"); // For centering reference
         add(formPanel);
 
         // "Your Name" label
@@ -272,6 +283,67 @@ public class StartupWindow extends JPanel {
         });
 
         formPanel.add(continueButton);
+
+        // Initial centering
+        SwingUtilities.invokeLater(this::centerContent);
+    }
+
+    /**
+     * Centers all content in the middle of the panel, regardless of size
+     */
+    private void centerContent() {
+        int panelWidth = getWidth();
+        int panelHeight = getHeight();
+
+        if (panelWidth == 0 || panelHeight == 0) return;
+
+        // Find components
+        Component logo = findComponentByName("logo");
+        Component title = findComponentByName("title");
+        Component form = findComponentByName("form");
+
+        if (logo == null || title == null || form == null) return;
+
+        // Calculate total content height
+        int logoHeight = logo.getHeight();
+        int titleHeight = title.getHeight();
+        int formHeight = form.getHeight();
+        int spacingLogoToTitle = 15;
+        int spacingTitleToForm = 45;
+
+        int totalHeight = logoHeight + spacingLogoToTitle + titleHeight + spacingTitleToForm + formHeight;
+
+        // Calculate starting Y position to center vertically
+        int startY = (panelHeight - totalHeight) / 2;
+
+        // Position logo (centered horizontally)
+        int logoX = (panelWidth - logo.getWidth()) / 2;
+        logo.setBounds(logoX, startY, logo.getWidth(), logo.getHeight());
+
+        // Position title (centered horizontally)
+        int titleX = (panelWidth - title.getWidth()) / 2;
+        int titleY = startY + logoHeight + spacingLogoToTitle;
+        title.setBounds(titleX, titleY, title.getWidth(), title.getHeight());
+
+        // Position form (centered horizontally)
+        int formX = (panelWidth - form.getWidth()) / 2;
+        int formY = titleY + titleHeight + spacingTitleToForm;
+        form.setBounds(formX, formY, form.getWidth(), form.getHeight());
+
+        revalidate();
+        repaint();
+    }
+
+    /**
+     * Helper to find component by name
+     */
+    private Component findComponentByName(String name) {
+        for (Component comp : getComponents()) {
+            if (name.equals(comp.getName())) {
+                return comp;
+            }
+        }
+        return null;
     }
 
     private void formatBalanceField() {
