@@ -14,41 +14,41 @@
     public class SymbolPanel extends ContentPanel {
         private final DefaultListModel<TradeItem> symbolModel = new DefaultListModel<>();
         private final JList<TradeItem> symbolList = new JList<>(symbolModel);
-        private final List<SymbolSelectionListener> symbolListener;
-        private Account account;
-        private AccountSelectionListener accountListener;
-        private String lastNotifiedSymbol = null;
-        private AccountBar accountBar;
-        private ModelFacade model;
+    private final List<SymbolSelectionListener> symbolListener;
+    private Account account;
+    private AccountSelectionListener accountListener;
+    private String lastNotifiedSymbol = null;
+    private AccountBar accountBar;
+    private ModelFacade model;
+    private LogoCache logoCache;
 
-        // interface that listeners must implement
-        public interface SymbolSelectionListener {
-            void onSymbolSelected(TradeItem symbol);
-        }
-        public interface AccountSelectionListener {
-            void onAccountBarSelected(Account account);
-        }
+    // interface that listeners must implement
+    public interface SymbolSelectionListener {
+        void onSymbolSelected(TradeItem symbol);
+    }
+    public interface AccountSelectionListener {
+        void onAccountBarSelected(Account account);
+    }
 
-        public SymbolPanel(ModelFacade model) {
-            this.model = model;
-            this.symbolListener = new ArrayList<>();
-            initializeComponents();
+    public SymbolPanel(ModelFacade model) {
+        this.model = model;
+        this.symbolListener = new ArrayList<>();
+        this.logoCache = new LogoCache(40);
+        initializeComponents();
 
-            setupListeners();
-        }
+        setupListeners();
+    }
 
-        private void initializeComponents() {
-            setLayout(new BorderLayout());
-            setBackground(GUIComponents.BG_MEDIUM);
-            setBorder(GUIComponents.createBorder());
+    private void initializeComponents() {
+        setLayout(new BorderLayout());
+        setBackground(GUIComponents.BG_MEDIUM);
+        setBorder(GUIComponents.createBorder());
 
-            GUIComponents.createList(symbolModel);
+        GUIComponents.createList(symbolModel);
 
-            symbolList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-            symbolList.setCellRenderer(new SymbolCellRenderer());
-            symbolList.setFixedCellHeight(50);
-
-            JScrollPane scrollPane = GUIComponents.createScrollPane(symbolList);
+        symbolList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        symbolList.setCellRenderer(new SymbolCellRenderer(logoCache, model));
+        symbolList.setFixedCellHeight(50);            JScrollPane scrollPane = GUIComponents.createScrollPane(symbolList);
             scrollPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
             scrollPane.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
 

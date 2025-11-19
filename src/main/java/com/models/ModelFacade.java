@@ -7,10 +7,10 @@ import com.models.market.TradeItem;
 import com.models.profile.*;
 
 import javax.swing.*;
-import java.awt.*;
 import java.sql.SQLException;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 public class ModelFacade {
@@ -20,6 +20,9 @@ public class ModelFacade {
     private final Profile profile;
     private final List<ModelListener> listeners = new CopyOnWriteArrayList<>();
     private final HistoricalService hist;
+    private final Map<String, String> logoCache = new ConcurrentHashMap<>();
+    private final Map<String, Long> logoFetchAttempts = new ConcurrentHashMap<>();
+    private static final long LOGO_RETRY_DELAY_MS = 60000; // 1 minute before retry
 
     public record TradeRow(long id, long timestamp, String side, String symbol, int quantity, double price, int posAfter) { }
 
@@ -239,5 +242,55 @@ public class ModelFacade {
 
     public String[][] searchSymbol(String symbol) {
         return market.searchSymbol(symbol);
+    }
+
+    /**
+     * Get the company logo URL for a symbol. Returns null on failure.
+     * Uses caching to avoid repeated API calls and rate limiting.
+     * @param symbol the stock symbol
+     * @return logo URL string or null
+     */
+    public String getLogoForSymbol(String symbol) {
+        if (symbol == null || symbol.isBlank()) {
+            return null;
+        }
+        
+        String key = symbol.trim().toUpperCase();
+        
+        // Check cache first
+        if (logoCache.containsKey(key)) {
+            return logoCache.get(key);
+        }
+        
+        // Check if we recently failed to fetch this logo
+        Long lastAttempt = logoFetchAttempts.get(key);
+        if (lastAttempt != null) {
+            long elapsed = System.currentTimeMillis() - lastAttempt;
+            if (elapsed < LOGO_RETRY_DELAY_MS) {
+                // Too soon to retry, return null
+                return null;
+            }
+        }
+        
+        // Record this fetch attempt
+        logoFetchAttempts.put(key, System.currentTimeMillis());
+        
+        try {
+            com.etl.CompanyProfile profile = client.fetchInfo(key);
+            if (profile != null) {
+                String logo = profile.getLogo();
+                // Check if logo is valid (not null, not blank, not "unknown")
+                if (logo != null && !logo.isBlank() && !"unknown".equals(logo)) {
+                    logoCache.put(key, logo);
+                    return logo;
+                }
+            }
+            // Cache null result to avoid repeated failed lookups
+            logoCache.put(key, null);
+        } catch (Exception e) {
+            // Silently fail and cache null
+            logoCache.put(key, null);
+        }
+        return null;
     }
 }
