@@ -106,6 +106,12 @@ public class WebSocketClient implements TradeSource {
         }
     }
 
+    public void unsubscribe(String symbol) throws Exception {
+        if (session != null && session.isOpen()) {
+            String msg = "{\"type\":\"unsubscribe\",\"symbol\":\"" + symbol + "\"}";
+        }
+    }
+
     /**
      * To listen for trades to update stocks
      */

@@ -141,6 +141,18 @@ public class ModelFacade {
         fireWatchlistChanged(getWatchlist());
     }
 
+    public void removeFromWatchlist(TradeItem ti) {
+        Account a = profile.getActiveAccount();
+        a.getWatchlist().removeWatchlistItem(ti);
+        try {
+            db.saveWatchlistSymbols(a.getId(), "Default", a.getWatchlistItems());
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+        //unsubscribe from client
+        fireWatchlistChanged(getWatchlist());
+    }
+
     public void executeTrade(String symbol, boolean isBuy, int shares) {
         executeTrade(symbol, isBuy, shares, System.currentTimeMillis());
     }

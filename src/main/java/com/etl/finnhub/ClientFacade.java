@@ -62,6 +62,10 @@ public class ClientFacade implements TradeListener, TradeSource {
         webSocketClient.subscribe(symbol);
     }
 
+    public void unsubscribe(String symbol) throws Exception {
+        webSocketClient.unsubscribe(symbol);
+    }
+
     public String[][] searchSymbol(String symbol) {
         return searchClient.searchSymbol(symbol);
     }

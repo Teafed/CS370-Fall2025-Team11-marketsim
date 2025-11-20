@@ -75,6 +75,11 @@ public class MockFinnhubClient implements TradeSource { ;
         }
     }
 
+    public void unsubscribe(String symbol) {
+        System.out.println("[Mock] Unsubscribed from " + symbol);
+        subscribedSymbols.remove(symbol);
+    }
+
     public static List<String> returnRandomSymbolList() {
         if (subscribedSymbols.isEmpty()) {
             return Collections.emptyList();
