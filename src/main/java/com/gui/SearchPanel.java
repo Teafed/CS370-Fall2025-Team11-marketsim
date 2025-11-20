@@ -44,7 +44,6 @@ public class SearchPanel extends ContentPanel {
 
             JMenuItem item = new JMenuItem(display);
             item.addActionListener(e2 -> {
-                searchField.setText(symbol);
                 suggestionPopup.setVisible(false);
                 try {
                     model.addToWatchlist(symbol);

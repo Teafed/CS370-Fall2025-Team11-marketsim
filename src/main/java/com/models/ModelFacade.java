@@ -134,6 +134,7 @@ public class ModelFacade {
     public void addToWatchlist(String symbol) throws Exception {
         Account a = profile.getActiveAccount();
         TradeItem ti = new TradeItem(symbol, symbol);
+        market.add(ti);
         a.getWatchlist().addWatchlistItem(ti);
         db.saveWatchlistSymbols(a.getId(), "Default", a.getWatchlistItems());
         client.subscribe(symbol);
