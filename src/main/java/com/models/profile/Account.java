@@ -29,9 +29,6 @@ public class Account {
     public Account(String name, double cash) {
         setName(name);
         this.cash = cash;
-        for (TradeItem ti : Watchlist.getDefaultWatchlist()) {
-            this.watchlist.addWatchlistItem(ti);
-        }
     }
 
     // name
