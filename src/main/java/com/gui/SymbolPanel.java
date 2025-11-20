@@ -48,7 +48,7 @@
 
             symbolList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
             symbolList.setCellRenderer(new SymbolCellRenderer());
-            symbolList.setFixedCellHeight(50);
+            symbolList.setFixedCellHeight(704);
 
             JScrollPane scrollPane = GUIComponents.createScrollPane(symbolList);
             scrollPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
