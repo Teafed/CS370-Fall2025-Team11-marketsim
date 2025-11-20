@@ -72,17 +72,6 @@ public class StartupWindow extends JPanel {
                 int[] yPoints = {70, 45, 60, 40, 25};
                 g2.drawPolyline(xPoints, yPoints, xPoints.length);
 
-//                // Draw arrowhead at the last point
-//                int tipX = 80;
-//                int tipY = 25;
-
-                // Arrowhead angled upward-right
-//                Polygon arrow = new Polygon();
-//                arrow.addPoint(tipX, tipY);
-//                arrow.addPoint(tipX - 10, tipY + 6);
-//                arrow.addPoint(tipX - 4, tipY + 10);
-//                g2.fill(arrow);
-
             }
         };
         logoPanel.setBounds(300, 80, 100, 100);
