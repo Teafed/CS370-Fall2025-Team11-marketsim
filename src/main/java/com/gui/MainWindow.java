@@ -9,6 +9,12 @@ import com.models.profile.Account;
 import javax.swing.*;
 import java.awt.*;
 
+/**
+ * The main application window.
+ * Splits the window into a left panel (SymbolPanel) and a right panel
+ * (ChartPanel/AccountPanel).
+ * Listens for symbol and account selection events, as well as model updates.
+ */
 public class MainWindow extends JFrame
         implements SymbolPanel.SymbolSelectionListener,
                    SymbolPanel.AccountSelectionListener,
@@ -29,6 +35,11 @@ public class MainWindow extends JFrame
     private static final int LEFT_PANEL_WIDTH = 250;
     private static final int MIN_RIGHT_WIDTH = 300;
 
+    /**
+     * Constructs a new MainWindow.
+     *
+     * @param model The ModelFacade instance.
+     */
     public MainWindow(ModelFacade model) {
         this.model = model;
         model.addListener(this);
@@ -129,17 +140,29 @@ public class MainWindow extends JFrame
 
     private void setupCloseHook() {
         addWindowListener(new java.awt.event.WindowAdapter() {
-            @Override public void windowClosing(java.awt.event.WindowEvent e) {
-                try { model.close(); } catch (Exception ignored) { }
+            @Override
+            public void windowClosing(java.awt.event.WindowEvent e) {
+                try {
+                    model.close();
+                } catch (Exception ignored) {
+                }
             }
         });
     }
 
     /**
-     * Set the market open/closed indicator. true => OPEN (green), false => CLOSED (red).
+     * Set the market open/closed indicator. true => OPEN (green), false => CLOSED
+     * (red).
+     */
+    /**
+     * Set the market open/closed indicator. true => OPEN (green), false => CLOSED
+     * (red).
+     *
+     * @param open True if the market is open, false otherwise.
      */
     public void setMarketOpen(boolean open) {
-        if (marketStatusLabel == null) return;
+        if (marketStatusLabel == null)
+            return;
         if (open) {
             marketStatusLabel.setText("OPEN");
             marketStatusLabel.setBackground(GUIComponents.ACCENT_GREEN.darker());
@@ -150,30 +173,68 @@ public class MainWindow extends JFrame
     }
 
     // SymbolPanel listeners
+    /**
+     * Callback for symbol selection. Switches to the chart view and opens the
+     * selected symbol.
+     *
+     * @param item The selected TradeItem.
+     */
     @Override
     public void onSymbolSelected(TradeItem item) {
         cards.show(rightCards, CARD_CHART);
         chartPanel.openChart(item.getSymbol());
     }
+
+    /**
+     * Callback for account selection. Switches to the account view.
+     *
+     * @param account The selected Account.
+     */
     @Override
     public void onAccountBarSelected(Account account) {
         cards.show(rightCards, CARD_ACCOUNT);
     }
 
     // ModelListener listeners
-    @Override public void onQuotesUpdated() {
+    /**
+     * Callback for quote updates. Repaints the symbol and chart panels.
+     */
+    @Override
+    public void onQuotesUpdated() {
         symbolPanel.repaint();
         chartPanel.repaint();
     }
-    @Override public void onAccountChanged(AccountDTO snapshot) {
+
+    /**
+     * Callback for account changes.
+     *
+     * @param snapshot The updated AccountDTO.
+     */
+    @Override
+    public void onAccountChanged(AccountDTO snapshot) {
         // update right-side account panel, balances, etc
         // if AccountPanel exposes a method to refresh with latest model:
         // accountPanel.refresh(snapshot);
     }
-    @Override public void onWatchlistChanged(java.util.List<TradeItem> items) {
+
+    /**
+     * Callback for watchlist changes. Updates the symbol panel.
+     *
+     * @param items The updated list of TradeItems.
+     */
+    @Override
+    public void onWatchlistChanged(java.util.List<TradeItem> items) {
         symbolPanel.setSymbols(items);
     }
-    @Override public void onError(java.lang.String message, Throwable t) {
+
+    /**
+     * Callback for errors. Displays an error message dialog.
+     *
+     * @param message The error message.
+     * @param t       The exception (optional).
+     */
+    @Override
+    public void onError(java.lang.String message, Throwable t) {
         JOptionPane.showMessageDialog(this, message, "Error", JOptionPane.ERROR_MESSAGE);
     }
 }

@@ -17,6 +17,11 @@ import java.util.Map;
 import java.util.TimeZone;
 import java.util.TreeMap;
 
+/**
+ * A panel that displays a stock chart and an order panel.
+ * Handles fetching and displaying historical data, as well as user interactions
+ * for timeframes and orders.
+ */
 public class ChartPanel extends ContentPanel {
     private ModelFacade model;
     private String symbol;
@@ -29,8 +34,13 @@ public class ChartPanel extends ContentPanel {
     private OrderPanel orderPanel;
     private int lastDividerLocation = -1;
 
-    private SwingWorker<?,?> currentWorker; // for backfilling
+    private SwingWorker<?, ?> currentWorker; // for backfilling
 
+    /**
+     * Constructs a new ChartPanel.
+     *
+     * @param model The ModelFacade instance.
+     */
     public ChartPanel(ModelFacade model) {
         super();
         this.model = model;
@@ -76,9 +86,11 @@ public class ChartPanel extends ContentPanel {
 
         SwingUtilities.invokeLater(() -> setDividerHeight(300));
 
-        // When the ChartPanel is resized, keep south at its last chosen height unless collapsed
+        // When the ChartPanel is resized, keep south at its last chosen height unless
+        // collapsed
         this.addComponentListener(new java.awt.event.ComponentAdapter() {
-            @Override public void componentResized(java.awt.event.ComponentEvent e) {
+            @Override
+            public void componentResized(java.awt.event.ComponentEvent e) {
                 if (split != null && split.isVisible() && !orderPanel.isCollapsed()) {
                     setDividerHeight(lastDividerLocation > 0 ? (getHeight() - lastDividerLocation) : 240);
                 }
@@ -101,7 +113,8 @@ public class ChartPanel extends ContentPanel {
             return;
         }
 
-        // Collapsing: remember current location, then shrink south to just timeframe + header
+        // Collapsing: remember current location, then shrink south to just timeframe +
+        // header
         lastDividerLocation = split.getDividerLocation();
 
         // Ensure south minimum reflects the collapsed height
@@ -115,6 +128,7 @@ public class ChartPanel extends ContentPanel {
             split.setDividerLocation(target);
         });
     }
+
     private void setDividerHeight(int southHeightPx) {
         if (split == null) return;
         int h = split.getHeight();
@@ -123,14 +137,23 @@ public class ChartPanel extends ContentPanel {
         split.setDividerLocation(target);
         lastDividerLocation = target; // remember for resize handler
     }
-    /* load data for a symbol from database; timeframe default to 90 days */
+
+    /**
+     * Loads data for a symbol from the database and prepares it for painting.
+     * Defaults to a 90-day timeframe.
+     *
+     * @param symbol The stock symbol (e.g., "AAPL").
+     */
     public void openChart(String symbol) {
         this.symbol = symbol;
         if (orderPanel != null) orderPanel.refreshHistory();
         if (!timeframeBar.fireCurrentSelection()) {
             try {
                 long latest = model.getLatestTimestamp(symbol);
-                if (latest == 0L) { canvas.clear(symbol); return; }
+                if (latest == 0L) {
+                    canvas.clear(symbol);
+                    return;
+                }
                 long ninetyDays = 90L * 24 * 60 * 60 * 1000L;
                 long start = Math.max(0, latest - ninetyDays);
                 openChart(symbol, start, latest, 400);
@@ -141,23 +164,33 @@ public class ChartPanel extends ContentPanel {
     }
 
     /**
-     * load data for a symbol from database and prep it for painting
-     * overloaded to specify time frame
+     * Loads data for a symbol from the database and prepares it for painting.
+     * Overloaded to specify a custom time frame.
      *
-     * @param symbol    e.g. "AAPL"
-     * @param startMs   inclusive epoch millis
-     * @param endMs     inclusive epoch millis
-     * @param maxPoints cap plotted points to keep the line smooth (e.g. 200)
+     * @param symbol    The stock symbol (e.g., "AAPL").
+     * @param startMs   The start time in epoch milliseconds (inclusive).
+     * @param endMs     The end time in epoch milliseconds (inclusive).
+     * @param maxPoints The maximum number of points to plot (for smoothing).
      */
     public void openChart(String symbol, long startMs, long endMs, int maxPoints) {
         HistoricalService.Timespan timespan = HistoricalService.Timespan.DAY;
         openChart(symbol, 1, timespan, startMs, endMs, maxPoints);
     }
 
+    /**
+     * Loads data for a symbol with full control over timeframe and resolution.
+     *
+     * @param symbol     The stock symbol.
+     * @param multiplier The time unit multiplier.
+     * @param timespan   The time unit (e.g., DAY, MINUTE).
+     * @param startMs    The start time in epoch milliseconds.
+     * @param endMs      The end time in epoch milliseconds.
+     * @param maxPoints  The maximum number of points to plot.
+     */
     public void openChart(String symbol,
-                          int multiplier,
-                          HistoricalService.Timespan timespan,
-                          long startMs, long endMs, int maxPoints) {
+            int multiplier,
+            HistoricalService.Timespan timespan,
+            long startMs, long endMs, int maxPoints) {
         this.model = model;
         this.symbol = symbol;
         canvas.setLoading(true);
@@ -264,7 +297,10 @@ public class ChartPanel extends ContentPanel {
             repaint();
         }
 
-        void setLoading(boolean v) { loading = v; repaint(); }
+        void setLoading(boolean v) {
+            loading = v;
+            repaint();
+        }
 
         void loadFromDb(Database db, String symbol, long startMs, long endMs, int maxPoints) {
             this.symbol = symbol;
@@ -277,7 +313,12 @@ public class ChartPanel extends ContentPanel {
                     sorted.put(t, c);
                 }
 
-                if (sorted.isEmpty()) { times = null; prices = null; repaint(); return; }
+                if (sorted.isEmpty()) {
+                    times = null;
+                    prices = null;
+                    repaint();
+                    return;
+                }
 
                 int dataSize = sorted.size();
                 int step = Math.max(1, dataSize / Math.max(1, maxPoints));
@@ -301,12 +342,14 @@ public class ChartPanel extends ContentPanel {
                     i++;
                 }
             } catch (Exception ex) {
-                times = null; prices = null;
+                times = null;
+                prices = null;
             }
             repaint();
         }
 
-        @Override protected void paintComponent(Graphics g) {
+        @Override
+        protected void paintComponent(Graphics g) {
             super.paintComponent(g);
 
             if (times == null || times.length < 2) {
@@ -324,7 +367,7 @@ public class ChartPanel extends ContentPanel {
             boolean isPositive = prices[prices.length - 1] >= prices[0];
             Color lineColor = isPositive ? GUIComponents.ACCENT_GREEN : GUIComponents.ACCENT_RED;
             Color gradientStart = new Color(lineColor.getRed(), lineColor.getGreen(), lineColor.getBlue(), 100);
-            Color gradientEnd   = new Color(lineColor.getRed(), lineColor.getGreen(), lineColor.getBlue(), 0);
+            Color gradientEnd = new Color(lineColor.getRed(), lineColor.getGreen(), lineColor.getBlue(), 0);
             Color labelColor = new Color(120, 120, 120);
             Font labelFont = new Font("Segoe UI", Font.PLAIN, 10);
 
@@ -333,7 +376,8 @@ public class ChartPanel extends ContentPanel {
             Insets in = getInsets();
             int drawWidth = w - in.left - in.right;
             int drawHeight = h - in.top - in.bottom;
-            if (maxTime == minTime || maxPrice == minPrice) return;
+            if (maxTime == minTime || maxPrice == minPrice)
+                return;
 
             int n = times.length;
             int[] xPoints = new int[n];
@@ -345,7 +389,8 @@ public class ChartPanel extends ContentPanel {
 
             Path2D.Double path = new Path2D.Double();
             path.moveTo(xPoints[0], h - in.bottom);
-            for (int i = 0; i < n; i++) path.lineTo(xPoints[i], yPoints[i]);
+            for (int i = 0; i < n; i++)
+                path.lineTo(xPoints[i], yPoints[i]);
             path.lineTo(xPoints[n - 1], h - in.bottom);
             path.closePath();
 
@@ -372,13 +417,13 @@ public class ChartPanel extends ContentPanel {
 
             if (loading) {
                 g2 = (Graphics2D) g.create();
-                g2.setColor(new Color(0,0,0,120));
+                g2.setColor(new Color(0, 0, 0, 120));
                 g2.fillRect(0, 0, getWidth(), getHeight());
                 g2.setFont(new Font("Segoe UI", Font.BOLD, 16));
                 g2.setColor(Color.WHITE);
                 String msg = "Loading…";
                 fm = g2.getFontMetrics();
-                g2.drawString(msg, (getWidth()-fm.stringWidth(msg))/2, (getHeight()+fm.getAscent())/2);
+                g2.drawString(msg, (getWidth() - fm.stringWidth(msg)) / 2, (getHeight() + fm.getAscent()) / 2);
                 g2.dispose();
             }
         }

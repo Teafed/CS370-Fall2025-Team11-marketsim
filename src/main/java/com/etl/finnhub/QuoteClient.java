@@ -12,6 +12,9 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
 
+/**
+ * Client for fetching stock quotes from Finnhub.
+ */
 public class QuoteClient {
 
     private static final String LOG_PREFIX = "[FinnhubQuoteClient]";
@@ -19,14 +22,21 @@ public class QuoteClient {
     private final String baseUrl = "https://finnhub.io/api/v1/quote?symbol=";
     private final HttpClient httpClient;
 
-
+    /**
+     * Constructs a new QuoteClient.
+     *
+     * @param apiKey The Finnhub API key.
+     */
     public QuoteClient(String apiKey) {
         this.apiKey = apiKey;
         this.httpClient = HttpClient.newHttpClient();
     }
 
     /**
-     * Fetch quote from Finnhub REST API
+     * Fetches the current quote for a symbol.
+     *
+     * @param symbol The stock symbol.
+     * @return The open price of the stock (as per current implementation).
      */
     public String fetchQuote(String symbol) {
 

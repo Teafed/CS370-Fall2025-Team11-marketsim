@@ -5,6 +5,10 @@ import com.models.ModelFacade;
 import javax.swing.*;
 import java.awt.*;
 
+/**
+ * A panel for searching stock symbols.
+ * Provides a text field and a popup with search suggestions.
+ */
 public class SearchPanel extends ContentPanel {
 
     private final JTextField searchField;
@@ -12,6 +16,11 @@ public class SearchPanel extends ContentPanel {
     private final JPopupMenu suggestionPopup;
     private ModelFacade model;
 
+    /**
+     * Constructs a new SearchPanel.
+     *
+     * @param model The ModelFacade instance.
+     */
     public SearchPanel(ModelFacade model) {
         this.model = model;
         setLayout(new BorderLayout());

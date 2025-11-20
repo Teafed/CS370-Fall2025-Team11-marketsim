@@ -9,22 +9,41 @@ import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.util.function.Consumer;
 
+/**
+ * A UI component representing an account card or an "Add Account" button.
+ * Used in the account selection screen.
+ */
 public class AccountCard extends ContentPanel {
-    public enum Mode { ACCOUNT, ADD }
+    public enum Mode {
+        ACCOUNT, ADD
+    }
 
     private final Mode mode;
-    private final Account account;                // only when mode == ACCOUNT
-    private final Consumer<Account> onPick;       // only when mode == ACCOUNT
-    private final Runnable onAdd;                 // only when mode == ADD
+    private final Account account; // only when mode == ACCOUNT
+    private final Consumer<Account> onPick; // only when mode == ACCOUNT
+    private final Runnable onAdd; // only when mode == ADD
 
     private boolean hover;
 
     // constructor for an account tile
+    /**
+     * Creates an AccountCard for an existing account.
+     *
+     * @param account The Account object.
+     * @param onPick  The callback when the card is selected.
+     * @return A new AccountCard instance.
+     */
     public static AccountCard forAccount(Account account, Consumer<Account> onPick) {
         return new AccountCard(Mode.ACCOUNT, account, onPick, null);
     }
 
     // constructor for the "+ add account" tile
+    /**
+     * Creates an AccountCard for adding a new account.
+     *
+     * @param onAdd The callback when the "Add" card is clicked.
+     * @return A new AccountCard instance.
+     */
     public static AccountCard forAdd(Runnable onAdd) {
         return new AccountCard(Mode.ADD, null, null, onAdd);
     }
@@ -33,7 +52,7 @@ public class AccountCard extends ContentPanel {
         this.mode = mode;
         this.account = account;
         this.onPick = onPick;
-        this.onAdd  = onAdd;
+        this.onAdd = onAdd;
 
         setPreferredSize(new Dimension(140, 170));
         setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
@@ -43,24 +62,43 @@ public class AccountCard extends ContentPanel {
 
         // mouse + keyboard activation
         MouseAdapter ma = new MouseAdapter() {
-            @Override public void mouseClicked(MouseEvent e) { activate(); }
-            @Override public void mouseEntered(MouseEvent e) { hover = true; repaint(); }
-            @Override public void mouseExited(MouseEvent e)  { hover = false; repaint(); }
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                activate();
+            }
+
+            @Override
+            public void mouseEntered(MouseEvent e) {
+                hover = true;
+                repaint();
+            }
+
+            @Override
+            public void mouseExited(MouseEvent e) {
+                hover = false;
+                repaint();
+            }
         };
         addMouseListener(ma);
 
         getInputMap(WHEN_FOCUSED).put(KeyStroke.getKeyStroke("ENTER"), "activate");
         getActionMap().put("activate", new AbstractAction() {
-            @Override public void actionPerformed(java.awt.event.ActionEvent e) { activate(); }
+            @Override
+            public void actionPerformed(java.awt.event.ActionEvent e) {
+                activate();
+            }
         });
     }
 
     private void activate() {
-        if (mode == Mode.ACCOUNT && onPick != null && account != null) onPick.accept(account);
-        else if (mode == Mode.ADD && onAdd != null) onAdd.run();
+        if (mode == Mode.ACCOUNT && onPick != null && account != null)
+            onPick.accept(account);
+        else if (mode == Mode.ADD && onAdd != null)
+            onAdd.run();
     }
 
-    @Override protected void paintComponent(Graphics g) {
+    @Override
+    protected void paintComponent(Graphics g) {
         super.paintComponent(g);
         Graphics2D g2 = (Graphics2D) g.create();
         try {
@@ -91,7 +129,8 @@ public class AccountCard extends ContentPanel {
             if (mode == Mode.ACCOUNT) {
                 // letter
                 String letter = (account == null || account.getName() == null || account.getName().isBlank())
-                        ? "?" : account.getName().trim().substring(0, 1).toUpperCase();
+                        ? "?"
+                        : account.getName().trim().substring(0, 1).toUpperCase();
                 g2.setFont(getFont().deriveFont(Font.BOLD, 36f));
                 FontMetrics fm = g2.getFontMetrics();
                 int tx = w / 2 - fm.stringWidth(letter) / 2;
@@ -128,8 +167,10 @@ public class AccountCard extends ContentPanel {
     }
 
     private static String clip(String s, FontMetrics fm, int maxWidth) {
-        if (s == null) return "";
-        if (fm.stringWidth(s) <= maxWidth) return s;
+        if (s == null)
+            return "";
+        if (fm.stringWidth(s) <= maxWidth)
+            return s;
         String ell = "…";
         int w = fm.stringWidth(ell);
         for (int i = 0; i < s.length(); i++) {

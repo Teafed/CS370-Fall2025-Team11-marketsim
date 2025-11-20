@@ -14,6 +14,10 @@ import com.models.ModelFacade;
 import com.models.ModelListener;
 import com.models.market.TradeItem;
 
+/**
+ * A tab displaying the history of orders/trades.
+ * Shows a table with time, side, quantity, price, cash change, and position.
+ */
 public class OrderHistoryTab extends ContentPanel implements ModelListener {
     private final ModelFacade model;
     private final Supplier<String> selectedSymbol; // may be null → no filter
@@ -23,6 +27,13 @@ public class OrderHistoryTab extends ContentPanel implements ModelListener {
     private final SimpleDateFormat tsFmt = new SimpleDateFormat("yyyy-MM-dd HH:mm");
     private final DecimalFormat money = new DecimalFormat("$#,##0.00");
 
+    /**
+     * Constructs a new OrderHistoryTab.
+     *
+     * @param model          The ModelFacade instance.
+     * @param selectedSymbol A supplier for the currently selected symbol (for
+     *                       filtering).
+     */
     public OrderHistoryTab(ModelFacade model, Supplier<String> selectedSymbol) {
         this.model = model;
         this.selectedSymbol = selectedSymbol;
@@ -31,8 +42,7 @@ public class OrderHistoryTab extends ContentPanel implements ModelListener {
         setBackground(GUIComponents.BG_LIGHTER);
         setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createLineBorder(GUIComponents.BORDER_COLOR, 1),
-                BorderFactory.createEmptyBorder(16, 16, 16, 16)
-        ));
+                BorderFactory.createEmptyBorder(16, 16, 16, 16)));
 
         initializeComponents();
         model.addListener(this);
@@ -41,7 +51,7 @@ public class OrderHistoryTab extends ContentPanel implements ModelListener {
 
     private void initializeComponents() {
         // Table to display portfolio holdings
-        String[] cols = {"Time", "Side", "Qty", "Price", "Cash Δ", "Pos"};
+        String[] cols = { "Time", "Side", "Qty", "Price", "Cash Δ", "Pos" };
         tableModel = new DefaultTableModel(cols, 0) {
             @Override
             public boolean isCellEditable(int row, int column) {
@@ -50,7 +60,8 @@ public class OrderHistoryTab extends ContentPanel implements ModelListener {
         };
 
         holdingsTable = new JTable(tableModel) {
-            @Override public Component prepareRenderer(TableCellRenderer r, int row, int col) {
+            @Override
+            public Component prepareRenderer(TableCellRenderer r, int row, int col) {
                 Component c = super.prepareRenderer(r, row, col);
                 if (!isRowSelected(row)) {
                     c.setBackground((row % 2 == 0) ? GUIComponents.BG_DARK : GUIComponents.BG_MEDIUM);
@@ -84,7 +95,8 @@ public class OrderHistoryTab extends ContentPanel implements ModelListener {
         holdingsTable.getColumnModel().getColumn(5).setCellRenderer(right); // Pos
 
         holdingsTable.getColumnModel().getColumn(1).setCellRenderer(new DefaultTableCellRenderer() {
-            @Override protected void setValue(Object value) {
+            @Override
+            protected void setValue(Object value) {
                 super.setValue(value);
                 setHorizontalAlignment(SwingConstants.CENTER);
                 String v = value == null ? "" : value.toString();
@@ -100,12 +112,11 @@ public class OrderHistoryTab extends ContentPanel implements ModelListener {
 
         // widths
         holdingsTable.getColumnModel().getColumn(0).setPreferredWidth(150); // Time
-        holdingsTable.getColumnModel().getColumn(1).setPreferredWidth(60);  // Side
-        holdingsTable.getColumnModel().getColumn(2).setPreferredWidth(60);  // Qty
-        holdingsTable.getColumnModel().getColumn(3).setPreferredWidth(90);  // Price
+        holdingsTable.getColumnModel().getColumn(1).setPreferredWidth(60); // Side
+        holdingsTable.getColumnModel().getColumn(2).setPreferredWidth(60); // Qty
+        holdingsTable.getColumnModel().getColumn(3).setPreferredWidth(90); // Price
         holdingsTable.getColumnModel().getColumn(4).setPreferredWidth(100); // Cash Δ
-        holdingsTable.getColumnModel().getColumn(5).setPreferredWidth(60);  // Pos
-
+        holdingsTable.getColumnModel().getColumn(5).setPreferredWidth(60); // Pos
 
         TableRowSorter<TableModel> sorter = new TableRowSorter<>(tableModel);
         holdingsTable.setRowSorter(sorter);
@@ -116,15 +127,21 @@ public class OrderHistoryTab extends ContentPanel implements ModelListener {
         add(scrollPane, BorderLayout.CENTER);
     }
 
+    /**
+     * Refreshes the order history table with the latest data.
+     * Filters by the selected symbol if applicable.
+     */
     public void refresh() {
         tableModel.setRowCount(0);
         try {
             String symFilter = (selectedSymbol == null ? null : selectedSymbol.get());
-            if (symFilter != null) symFilter = symFilter.trim().toUpperCase();
+            if (symFilter != null)
+                symFilter = symFilter.trim().toUpperCase();
 
             List<ModelFacade.TradeRow> rows = model.getRecentTrades(100);
             for (var r : rows) {
-                if (symFilter != null && !symFilter.equals(r.symbol())) continue;
+                if (symFilter != null && !symFilter.equals(r.symbol()))
+                    continue;
 
                 double cashDelta = ("BUY".equals(r.side()) ? -1.0 : 1.0) * (r.quantity() * r.price());
                 Object[] line = {
@@ -138,7 +155,7 @@ public class OrderHistoryTab extends ContentPanel implements ModelListener {
                 tableModel.addRow(line);
 
                 if (tableModel.getRowCount() == 0) {
-                    tableModel.addRow(new Object[]{"—", "—", "—", "—", "—", "—"});
+                    tableModel.addRow(new Object[] { "—", "—", "—", "—", "—", "—" });
                 }
 
                 @SuppressWarnings("unchecked")
@@ -150,10 +167,21 @@ public class OrderHistoryTab extends ContentPanel implements ModelListener {
         }
     }
 
-
     // ModelListener
-    @Override public void onAccountChanged(AccountDTO snapshot) { refresh(); }
-    @Override public void onQuotesUpdated() { /* not needed */ }
-    @Override public void onWatchlistChanged(List<com.models.market.TradeItem> items) { /* not needed */ }
-    @Override public void onError(String message, Throwable t) { /* optional */ }
+    @Override
+    public void onAccountChanged(AccountDTO snapshot) {
+        refresh();
+    }
+
+    @Override
+    public void onQuotesUpdated() {
+        /* not needed */ }
+
+    @Override
+    public void onWatchlistChanged(List<com.models.market.TradeItem> items) {
+        /* not needed */ }
+
+    @Override
+    public void onError(String message, Throwable t) {
+        /* optional */ }
 }

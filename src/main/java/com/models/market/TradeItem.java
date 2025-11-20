@@ -1,5 +1,9 @@
 package com.models.market;
 
+/**
+ * Represents a stock or tradeable item in the market.
+ * Holds current price, change, and other market data.
+ */
 public class TradeItem {
     private String name;
     private final String symbol;
@@ -9,6 +13,12 @@ public class TradeItem {
     private double open;
     private double prevClose = Double.NaN; // for calculating % change
 
+    /**
+     * Constructs a new TradeItem.
+     *
+     * @param name   The name of the company.
+     * @param symbol The stock symbol.
+     */
     public TradeItem(String name, String symbol) {
         this.name = name;
         this.symbol = symbol;
@@ -16,6 +26,14 @@ public class TradeItem {
     }
 
     public TradeItem(String name, String symbol, double price, double changePercent) {
+    /**
+     * Constructs a new TradeItem with initial price data.
+     *
+     * @param name          The name of the company.
+     * @param symbol        The stock symbol.
+     * @param price         The current price.
+     * @param changePercent The percentage change.
+     */
         this.name = name;
         this.symbol = symbol;
         this.price = price;
@@ -32,6 +50,11 @@ public class TradeItem {
         return symbol;
     }
 
+    /**
+     * Gets the current price.
+     *
+     * @return The current price.
+     */
     public double getCurrentPrice() {
         //updatePrice();
         return price;
@@ -52,6 +75,12 @@ public class TradeItem {
         return change;
     }
 
+    /**
+     * Updates the price and recalculates change metrics.
+     *
+     * @param price The new price.
+     * @return True if updated successfully, false if price is invalid.
+     */
     public boolean updatePrice(double price) {
         if (price < 0) {
             return false;
@@ -67,6 +96,12 @@ public class TradeItem {
         this.changePercent = change/prevClose * 100;
     }
 
+    /**
+     * Sets the previous close price and recalculates change metrics if current
+     * price is valid.
+     *
+     * @param prevClose The previous close price.
+     */
     public void setPrevClose(double prevClose) {
         this.prevClose = prevClose;
         if (!Double.isNaN(price) && prevClose > 0.0) {
@@ -84,20 +119,31 @@ public class TradeItem {
         this.changePercent = changePercent;
     }
 
-
     @Override
     public String toString() {
         return this.getClass().getSimpleName() + "{" + "name=" + name + ", symbol=" + symbol + ", price=" + price + '}';
     }
 
-    @Override public boolean equals(Object o) {
-        if (this == o) return true;
-        if (!(o instanceof TradeItem ti)) return false;
+    @Override
+    public boolean equals(Object o) {
+        if (this == o)
+            return true;
+        if (!(o instanceof TradeItem ti))
+            return false;
         return symbol != null && symbol.equalsIgnoreCase(ti.getSymbol());
     }
-    @Override public int hashCode() { return symbol == null ? 0 : symbol.toUpperCase().hashCode(); }
 
-    // predefined symbol names
+    @Override
+    public int hashCode() {
+        return symbol == null ? 0 : symbol.toUpperCase().hashCode();
+    }
+
+    /**
+     * Sets a user-friendly name for known symbols if the current name is unknown.
+     *
+     * @param ti The TradeItem to update.
+     * @return The updated TradeItem.
+     */
     public TradeItem setNameLookup(TradeItem ti) {
         if (ti.getSymbol() == null) { ti.setName("Unknown Symbol"); return ti; }
         switch (ti.getSymbol()) {

@@ -14,8 +14,15 @@ import java.time.*;
 
 import static java.lang.Long.parseLong;
 
+/**
+ * Service for fetching and managing historical market data.
+ * Handles backfilling data from Polygon.io and storing it in the database.
+ */
 public class HistoricalService {
     // desired range for
+    /**
+     * Represents a requested range of historical data.
+     */
     public static class Range {
         public int multiplier;
         public Timespan timespan;
@@ -31,6 +38,9 @@ public class HistoricalService {
     }
 
     // not really useful anymore since we're storing everything in the day range
+    /**
+     * Enumeration of supported time spans for historical data.
+     */
     public enum Timespan {
         MINUTE("minute"),
         HOUR("hour"),
@@ -54,6 +64,11 @@ public class HistoricalService {
     private static final Semaphore TOKENS = new Semaphore(1);
     private static long last = System.nanoTime();
 
+    /**
+     * Constructs a new HistoricalService with default settings.
+     *
+     * @param db The database instance to use for storage.
+     */
     public HistoricalService(Database db) {
         this(db, HttpClient.newHttpClient(), System.getenv("POLYGON_API_KEY"),
                 "https://api.polygon.io"); // default
@@ -67,10 +82,21 @@ public class HistoricalService {
 
         Dotenv dotenv = Dotenv.configure().ignoreIfMissing().load();
         String k = (apiKey == null || apiKey.isBlank()) ? dotenv.get("POLYGON_API_KEY") : apiKey;
-        if (k == null || k.isBlank()) throw new IllegalStateException("Set POLYGON_API_KEY");
+        if (k == null || k.isBlank())
+            throw new IllegalStateException("Set POLYGON_API_KEY");
         this.apiKey = k;
     }
 
+    /**
+     * Ensures that the requested range of data is available in the database.
+     * If data is missing, it identifies the missing ranges (holes) to be fetched.
+     *
+     * @param symbol    The stock symbol.
+     * @param requested The requested range.
+     * @return A Range object representing the missing data to be fetched, or null
+     *         if no data is missing.
+     * @throws SQLException If a database error occurs.
+     */
     public Range ensureRange(String symbol, Range requested) throws SQLException {
         LocalDate todayUtc = Instant.ofEpochMilli(System.currentTimeMillis())
                 .atZone(ZoneOffset.UTC).toLocalDate();
@@ -152,6 +178,15 @@ public class HistoricalService {
         );
     }
 
+    /**
+     * Backfills the requested range of data for the given symbol.
+     * This method is thread-safe for the same symbol and range.
+     *
+     * @param symbol    The stock symbol.
+     * @param requested The requested range.
+     * @return The total number of rows inserted.
+     * @throws Exception If an error occurs during backfilling.
+     */
     public int backfillRange(String symbol, Range requested) throws Exception {
         String k = key(symbol, requested);
         Object lock = KEY_LOCKS.computeIfAbsent(k, s -> new Object());
@@ -207,8 +242,8 @@ public class HistoricalService {
             prevRange = range;
 
             final int maxChunkDays = switch (range.timespan) {
-                case DAY    -> 30;
-                case HOUR   -> 14;
+                case DAY -> 30;
+                case HOUR -> 14;
                 case MINUTE -> 7;
             };
 
@@ -245,7 +280,7 @@ public class HistoricalService {
 
                     if (sc == 429) {
                         long base = parseLong(resp.headers().firstValue("Retry-After").orElse("5"), 5) * 1000L;
-                        long sleepMs = (long)(base * Math.pow(1.8, attempts-1) + (Math.random()*250));
+                        long sleepMs = (long) (base * Math.pow(1.8, attempts - 1) + (Math.random() * 250));
                         System.out.printf("[HS.chunk] 429 rate limit for %s %s - %s; sleeping %dms (attempt %d)%n",
                                 symbol, reqStart, reqEnd, sleepMs, attempts);
                         Thread.sleep(sleepMs);
@@ -326,7 +361,7 @@ public class HistoricalService {
     /* search for subrange in case there's an interior hole */
     private Range findInteriorHole(String symbol, Range req) throws SQLException {
         long startMs = req.from.atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli();
-        long endMs = req.to.atTime(23,59,59).toInstant(ZoneOffset.UTC).toEpochMilli();
+        long endMs = req.to.atTime(23, 59, 59).toInstant(ZoneOffset.UTC).toEpochMilli();
 
         var ts = db.listTimestamps(symbol, req.multiplier, req.timespan.token, startMs, endMs);
         if (ts.isEmpty()) {

@@ -6,9 +6,18 @@ import javax.swing.*;
 import java.awt.*;
 import java.text.NumberFormat;
 
+/**
+ * A panel displaying detailed information about a specific account.
+ * Shows the account name and current balance.
+ */
 public class AccountPanel extends ContentPanel {
     private final Account account;
 
+    /**
+     * Constructs a new AccountPanel.
+     *
+     * @param account The Account to display.
+     */
     public AccountPanel(Account account) {
         this.account = account;
 

@@ -1,5 +1,8 @@
 package com.etl;
 
+/**
+ * Represents the company profile data returned by the Finnhub API.
+ */
 public class CompanyProfile {
     private String country;
     private String currency;
@@ -11,6 +14,9 @@ public class CompanyProfile {
     private String sharesOutstanding;
     private String weburl;
 
+    /**
+     * Default constructor.
+     */
     public CompanyProfile() {
     }
 
@@ -51,15 +57,41 @@ public class CompanyProfile {
         this.weburl = weburl;
     }
 
-    public String getCountry() { return country; }
-    public String getCurrency() { return currency; }
-    public String getExchange() { return exchange; }
-    public String getIpo() { return ipo; }
-    public String getLogo() { return logo; }
-    public String getMarketCapitalization() { return marketCapitalization; }
-    public String getName() { return name; }
-    public String getSharesOutstanding() { return sharesOutstanding; }
-    public String getWeburl() { return weburl; }
+    public String getCountry() {
+        return country;
+    }
+
+    public String getCurrency() {
+        return currency;
+    }
+
+    public String getExchange() {
+        return exchange;
+    }
+
+    public String getIpo() {
+        return ipo;
+    }
+
+    public String getLogo() {
+        return logo;
+    }
+
+    public String getMarketCapitalization() {
+        return marketCapitalization;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public String getSharesOutstanding() {
+        return sharesOutstanding;
+    }
+
+    public String getWeburl() {
+        return weburl;
+    }
 
     @Override
     public String toString() {
