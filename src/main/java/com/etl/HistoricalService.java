@@ -80,7 +80,8 @@ public class HistoricalService {
 
         requested.timespan = Timespan.DAY;
 
-        reqTo = prevTradingDay(reqTo.minusDays(1));
+        // make sure we DEFINITELY have the data
+        reqTo = prevTradingDay(todayUtc.minusDays(2));
 
         if (reqTo.isBefore(reqFrom)) return null;
 
@@ -95,6 +96,8 @@ public class HistoricalService {
 
         LocalDate haveLatest = Instant.ofEpochMilli(latestMs).atZone(ZoneOffset.UTC).toLocalDate();
         LocalDate haveEarliest = Instant.ofEpochMilli(earliestMs).atZone(ZoneOffset.UTC).toLocalDate();
+//        System.out.printf("[DEBUG] %s %d/%s; reqFrom=%s reqTo=%s haveEarliest=%s haveLatest=%s%n",
+//                symbol, requested.multiplier, requested.timespan, reqFrom, reqTo, haveEarliest, haveLatest);
 
         // forward fill (newer data missing)
         LocalDate forwardFrom = nextTradingDay(haveLatest.plusDays(1));
@@ -119,11 +122,25 @@ public class HistoricalService {
         }
 
         // if there's a hole (null if none found)
-        Range hole = findInteriorHole(symbol, new Range(requested.timespan, requested.multiplier, reqFrom, reqTo));
-        if (hole != null) System.out.printf("[HS.ensureRange] Hole fill %s %d/%s; fetching %s - %s%n",
-                symbol, requested.multiplier, requested.timespan, hole.from, hole.to);
+        if (reqFrom.isBefore(haveLatest) && reqTo.isAfter(haveEarliest)) {
+            // check for interior holes in the ENTIRE range we have data for, not just requested range
+            // but only return a hole if it overlaps with the requested range
+            Range hole = findInteriorHole(symbol,
+                    new Range(requested.timespan, requested.multiplier, haveEarliest, haveLatest));
 
-        return hole;
+            if (hole != null) {
+                // clip the hole to the requested range
+                LocalDate holeStart = hole.from.isBefore(reqFrom) ? reqFrom : hole.from;
+                LocalDate holeEnd = hole.to.isAfter(reqTo) ? reqTo : hole.to;
+
+                if (!holeEnd.isBefore(holeStart)) {
+                    System.out.printf("[HS.ensureRange] Hole fill %s %d/%s; fetching %s - %s%n",
+                            symbol, requested.multiplier, requested.timespan, holeStart, holeEnd);
+                    return new Range(requested.timespan, requested.multiplier, holeStart, holeEnd);
+                }
+            }
+        }
+        return null;
     }
 
     /* format url string for candles */
@@ -322,10 +339,10 @@ public class HistoricalService {
         for (int i = 1; i < ts.size(); i++) {
             LocalDate currDate = Instant.ofEpochMilli(ts.get(i)).atZone(ZoneOffset.UTC).toLocalDate();
 
-            int missingTradingDays = businessDaysBetween(prevDate, currDate);
-            if (missingTradingDays >= 1) {
-                LocalDate holeStart = nextTradingDay(prevDate);
-                LocalDate holeEnd = prevTradingDay(currDate);
+            LocalDate expectedNext = nextTradingDay(prevDate.plusDays(1));
+            if (currDate.isAfter(expectedNext)) {
+                LocalDate holeStart = expectedNext;
+                LocalDate holeEnd = prevTradingDay(currDate.minusDays(1));
 
                 if (holeStart.isBefore(req.from)) holeStart = req.from;
                 if (holeEnd.isAfter(req.to)) holeEnd = req.to;
@@ -338,17 +355,6 @@ public class HistoricalService {
             prevDate = currDate;
         }
         return null;
-    }
-
-    /* count trading days (Mon–Fri) strictly between a and b, assuming a <= b. */
-    private static int businessDaysBetween(LocalDate a, LocalDate b) {
-        int days = 0;
-        LocalDate d = a.plusDays(1);
-        while (!d.isAfter(b.minusDays(1))) {
-            if (isTradingDay(d)) days++;
-            d = d.plusDays(1);
-        }
-        return Math.max(0, days);
     }
 
     private static boolean isTradingDay(LocalDate d) {

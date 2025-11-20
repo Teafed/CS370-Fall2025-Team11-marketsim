@@ -196,14 +196,19 @@ public class ChartPanel extends ContentPanel {
     }
 
     // only one worker fetches historical data
-    // TODO: if a backfill worker starts for a range and we switch to a new view,
-    //       we still keep backfilling for prev view but new view gets no worker
-    private void startBackfillWorker(java.util.concurrent.Callable<Integer> task,
-                                     Runnable onDone) {
+    private volatile int workerGeneration = 0;
+    private void startBackfillWorker(java.util.concurrent.Callable<Integer> task, Runnable onDone) {
         if (currentWorker != null && !currentWorker.isDone()) currentWorker.cancel(true);
+
+        final int thisGeneration = ++workerGeneration;
+
         currentWorker = new SwingWorker<Integer, Void>() {
-            @Override protected Integer doInBackground() throws Exception { return task.call(); }
-            @Override protected void done() { onDone.run(); }
+            @Override protected Integer doInBackground() throws Exception {
+                return task.call();
+            }
+            @Override protected void done() {
+                if (thisGeneration == workerGeneration) onDone.run();
+            }
         };
         currentWorker.execute();
     }
