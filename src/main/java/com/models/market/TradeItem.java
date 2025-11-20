@@ -1,7 +1,7 @@
 package com.models.market;
 
 public class TradeItem {
-    private java.lang.String name;
+    private String name;
     private final java.lang.String symbol;
     private double price;
     private double changePercent;

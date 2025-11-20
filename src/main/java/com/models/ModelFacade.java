@@ -131,9 +131,9 @@ public class ModelFacade {
             }
     }
 
-    public void addToWatchlist(String symbol) throws Exception {
+    public void addToWatchlist(String symbol, String name) throws Exception {
         Account a = profile.getActiveAccount();
-        TradeItem ti = new TradeItem(symbol, symbol);
+        TradeItem ti = new TradeItem(name, symbol);
         market.add(ti);
         a.getWatchlist().addWatchlistItem(ti);
         db.saveWatchlistSymbols(a.getId(), "Default", a.getWatchlistItems());
