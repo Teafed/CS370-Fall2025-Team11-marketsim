@@ -8,6 +8,8 @@
 
     import javax.swing.*;
     import java.awt.*;
+    import java.awt.event.MouseAdapter;
+    import java.awt.event.MouseEvent;
     import java.util.ArrayList;
     import java.util.List;
 
@@ -103,6 +105,37 @@
                             lastNotifiedSymbol = sym;
                             notifyListeners(selected);
                         }
+                    }
+                }
+            });
+            symbolList.addMouseListener(new MouseAdapter() {
+                @Override
+                public void mousePressed(MouseEvent e) {
+                    if (e.isPopupTrigger()) showContextMenu(e);
+                }
+
+                @Override
+                public void mouseReleased(MouseEvent e) {
+                    if (e.isPopupTrigger()) showContextMenu(e);
+                }
+
+                private void showContextMenu(MouseEvent e) {
+                    int index = symbolList.locationToIndex(e.getPoint());
+                    if (index >= 0) {
+                        symbolList.setSelectedIndex(index);
+                        TradeItem item = symbolModel.getElementAt(index);
+
+                        JPopupMenu menu = new JPopupMenu();
+                        JMenuItem removeItem = new JMenuItem("Remove from Watchlist");
+                        removeItem.addActionListener(ev -> {
+                            symbolModel.removeElementAt(index);
+                            symbolList.clearSelection();
+                            lastNotifiedSymbol = null;
+                            model.removeFromWatchlist(item);
+                        });
+
+                        menu.add(removeItem);
+                        menu.show(symbolList, e.getX(), e.getY());
                     }
                 }
             });

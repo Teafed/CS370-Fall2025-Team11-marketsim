@@ -115,6 +115,7 @@ public class ModelFacade {
     private void ensureWatchlistPopulated(Account a) throws Exception {
         List<TradeItem> dbSymbols = a.getWatchlistItems();
         if (dbSymbols == null || dbSymbols.isEmpty()) {
+            System.out.println("Here");
                 // add defaults and persist
                 List<TradeItem> defaults = Watchlist.getDefaultWatchlist();
                 db.saveWatchlistSymbols(a.getId(), "Default", defaults);
@@ -125,6 +126,7 @@ public class ModelFacade {
                 // hydrate in-memory list from DB
                 a.getWatchlist().clearList();
                 for (TradeItem ti : dbSymbols) a.getWatchlist().addWatchlistItem(ti);
+                db.saveWatchlistSymbols(a.getId(), "User List", dbSymbols);
                 System.out.println("[facade] Loaded watchlist from DB (" + dbSymbols.size() + ")");
             }
     }
@@ -132,9 +134,22 @@ public class ModelFacade {
     public void addToWatchlist(String symbol) throws Exception {
         Account a = profile.getActiveAccount();
         TradeItem ti = new TradeItem(symbol, symbol);
-        db.saveWatchlistSymbols(a.getId(), "Default", List.of(ti));
+        market.add(ti);
         a.getWatchlist().addWatchlistItem(ti);
+        db.saveWatchlistSymbols(a.getId(), "Default", a.getWatchlistItems());
         client.subscribe(symbol);
+        fireWatchlistChanged(getWatchlist());
+    }
+
+    public void removeFromWatchlist(TradeItem ti) {
+        Account a = profile.getActiveAccount();
+        a.getWatchlist().removeWatchlistItem(ti);
+        try {
+            db.saveWatchlistSymbols(a.getId(), "Default", a.getWatchlistItems());
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+        //unsubscribe from client
         fireWatchlistChanged(getWatchlist());
     }
 

@@ -24,7 +24,8 @@ public class Market implements TradeListener {
         if (stocks.containsKey(sym)) return;
 
         clientFacade.subscribe(sym);
-        item.setOpen(clientFacade.fetchQuote(sym));
+        item.setValues(clientFacade.fetchInitializingQuote(sym));
+        item.updatePrice(clientFacade.fetchCurrentQuote(sym));
         stocks.put(sym, item);
         if (listener != null) listener.loadSymbols(new ArrayList<>(stocks.values()));
     }

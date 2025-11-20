@@ -3,10 +3,7 @@ package com.models.profile;
 import com.models.market.TradeItem;
 
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.LinkedHashSet;
-import java.util.List;
+import java.util.*;
 
 
 /*
@@ -22,6 +19,7 @@ public class Watchlist {
 
     public Watchlist() {
         watchlist = new LinkedHashSet<>();
+        setDefaultWatchlist();
     }
 
 
@@ -73,6 +71,23 @@ public class Watchlist {
 
     public List<TradeItem> getWatchlist() {
         return new ArrayList<>(watchlist);
+    }
+
+    private void setDefaultWatchlist() {
+        watchlist.clear();
+        TradeItem[] initialSymbols = {
+                new TradeItem("Apple", "AAPL"),
+                new TradeItem("Microsoft", "MSFT"),
+                new TradeItem("Alphabet", "GOOGL"),
+                new TradeItem("NVIDIA", "NVDA"),
+                new TradeItem("Amazon", "AMZN"),
+                new TradeItem("Meta Platforms", "META"),
+                new TradeItem("Tesla", "TSLA"),
+                new TradeItem("Broadcom", "AVGO"),
+                new TradeItem("Taiwan Semiconductor Manufacturing Company", "TSM"),
+                new TradeItem("Berkshire Hathaway", "BRK.B")
+        };
+        Collections.addAll(watchlist, initialSymbols);
     }
 
     public static List<TradeItem> getDefaultWatchlist() {

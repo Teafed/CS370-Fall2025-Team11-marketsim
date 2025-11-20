@@ -36,8 +36,11 @@ public class ClientFacade implements TradeListener, TradeSource {
         return MarketStatusClient.checkStatus();
     }
 
-    public double fetchQuote(String symbol) {
-        return quoteClient.fetchQuote(symbol);
+    public double[] fetchInitializingQuote(String symbol) {
+        return quoteClient.fetchInitializingQuote(symbol);
+    }
+    public double fetchCurrentQuote(String symbol) {
+        return quoteClient.fetchCurrentQuote(symbol);
     }
 
     public CompanyProfile fetchInfo(String symbol) {
@@ -57,6 +60,10 @@ public class ClientFacade implements TradeListener, TradeSource {
     @Override
     public void subscribe(String symbol) throws Exception {
         webSocketClient.subscribe(symbol);
+    }
+
+    public void unsubscribe(String symbol) throws Exception {
+        webSocketClient.unsubscribe(symbol);
     }
 
     public String[][] searchSymbol(String symbol) {

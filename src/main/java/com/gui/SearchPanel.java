@@ -10,8 +10,10 @@ public class SearchPanel extends ContentPanel {
     private final JTextField searchField;
     private final JButton searchButton;
     private final JPopupMenu suggestionPopup;
+    private ModelFacade model;
 
     public SearchPanel(ModelFacade model) {
+        this.model = model;
         setLayout(new BorderLayout());
 
         searchField = new JTextField();
@@ -42,8 +44,12 @@ public class SearchPanel extends ContentPanel {
 
             JMenuItem item = new JMenuItem(display);
             item.addActionListener(e2 -> {
-                searchField.setText(symbol);
                 suggestionPopup.setVisible(false);
+                try {
+                    model.addToWatchlist(symbol);
+                } catch (Exception e) {
+                    throw new RuntimeException(e);
+                }
             });
             suggestionPopup.add(item);
         }
