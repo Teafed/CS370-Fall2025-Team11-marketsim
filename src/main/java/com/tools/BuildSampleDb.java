@@ -4,8 +4,18 @@ import com.models.Database;
 import java.time.*;
 import java.util.*;
 
+/**
+ * Utility class to seed a sample SQLite database with historical market data.
+ * Generates deterministic random data for testing purposes.
+ */
 public class BuildSampleDb {
 
+    /**
+     * Main entry point for the database seeding tool.
+     *
+     * @param args Command line arguments. Use "--force" to overwrite existing data.
+     * @throws Exception If an error occurs during database operations.
+     */
     public static void main(String[] args) throws Exception {
         String dbFile = "data/marketsim-sample.db";
         boolean force = Arrays.asList(args).contains("--force");
@@ -21,10 +31,23 @@ public class BuildSampleDb {
         System.out.println("[seed] Done: " + dbFile);
     }
 
+    /**
+     * Checks if the database is already seeded with data.
+     *
+     * @param db The database instance to check.
+     * @return True if the database contains data, false otherwise.
+     * @throws Exception If an error occurs during the check.
+     */
     private static boolean isSeeded(Database db) throws Exception {
         return !db.listSymbols().isEmpty() && db.getLatestTimestamp("AAPL", 1, "day") > 0;
     }
 
+    /**
+     * Seeds the database with sample data for a predefined set of symbols.
+     *
+     * @param db The database instance to seed.
+     * @throws Exception If an error occurs during seeding.
+     */
     private static void seedAll(Database db) throws Exception {
         List<String> symbols = List.of("AAPL", "MSFT", "SPY");
         int days = 120;
@@ -36,7 +59,13 @@ public class BuildSampleDb {
         System.out.println("[seed] Inserted " + symbols.size() + " symbols × " + days + " days");
     }
 
-    /** Make a simple, repeatable OHLCV series (daily close around 16:00 UTC). */
+    /**
+     * Generates a simple, repeatable OHLCV series (daily close around 16:00 UTC).
+     *
+     * @param symbol The stock symbol to generate data for.
+     * @param days   The number of days of history to generate.
+     * @return A list of CandleData objects.
+     */
     private static java.util.List<Database.CandleData> makeDailySeries(String symbol, int days) {
         // deterministic RNG per symbol
         long seed = symbol.chars().asLongStream().reduce(0, (a, b) -> a * 131L + b);
@@ -45,12 +74,12 @@ public class BuildSampleDb {
         double base = switch (symbol) {
             case "AAPL" -> 180.0;
             case "MSFT" -> 400.0;
-            case "SPY"  -> 500.0;
+            case "SPY" -> 500.0;
             default -> 100.0;
         };
 
         double drift = 0.0005;
-        double vol   = 0.01;
+        double vol = 0.01;
         double close = base;
 
         var out = new ArrayList<Database.CandleData>(days);
@@ -60,11 +89,11 @@ public class BuildSampleDb {
         for (LocalDate d = start; !d.isAfter(end); d = d.plusDays(1)) {
             // sinusoid + noise + drift
             double wave = 0.01 * Math.sin(2 * Math.PI * (d.toEpochDay() % 30) / 30.0);
-            double ret  = drift + wave + (rng.nextGaussian() * vol * 0.2);
+            double ret = drift + wave + (rng.nextGaussian() * vol * 0.2);
             double newClose = Math.max(1.0, close * (1.0 + ret));
             double open = close * (1.0 + (rng.nextGaussian() * vol * 0.05));
             double high = Math.max(open, newClose) * (1.0 + Math.abs(rng.nextGaussian()) * 0.01);
-            double low  = Math.min(open, newClose) * (1.0 - Math.abs(rng.nextGaussian()) * 0.01);
+            double low = Math.min(open, newClose) * (1.0 - Math.abs(rng.nextGaussian()) * 0.01);
             double volume = (5_000_000 + Math.abs(rng.nextGaussian()) * 2_000_000);
 
             long ts = d.atTime(16, 0).toInstant(ZoneOffset.UTC).toEpochMilli(); // 16:00 UTC

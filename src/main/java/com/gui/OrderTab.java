@@ -7,19 +7,23 @@ import java.awt.*;
 import java.text.DecimalFormat;
 import java.util.function.Supplier;
 
+/**
+ * A tab for placing buy/sell orders.
+ * Displays current symbol info, price, and allows entering share quantity.
+ */
 public class OrderTab extends ContentPanel {
     ModelFacade model;
     Supplier<String> getSelectedSymbol;
 
     private final JLabel lblSymbol = new JLabel("-", SwingConstants.LEFT);
-    private final JLabel lblPrice  = new JLabel("-", SwingConstants.LEFT);
-    private final JLabel lblCash   = new JLabel("-", SwingConstants.LEFT);
-    private final JLabel lblPos    = new JLabel("-", SwingConstants.LEFT);
-    private final JLabel lblEst    = new JLabel("-", SwingConstants.LEFT);
+    private final JLabel lblPrice = new JLabel("-", SwingConstants.LEFT);
+    private final JLabel lblCash = new JLabel("-", SwingConstants.LEFT);
+    private final JLabel lblPos = new JLabel("-", SwingConstants.LEFT);
+    private final JLabel lblEst = new JLabel("-", SwingConstants.LEFT);
 
     private final JTextField sharesField = new JTextField("1", 8);
     private final JButton btnMinus = new JButton("–");
-    private final JButton btnPlus  = new JButton("+");
+    private final JButton btnPlus = new JButton("+");
     private final JButton buyButton;
     private final JButton sellButton;
 
@@ -28,6 +32,12 @@ public class OrderTab extends ContentPanel {
 
     private final Timer refreshTimer;
 
+    /**
+     * Constructs a new OrderTab.
+     *
+     * @param model             The ModelFacade instance.
+     * @param getSelectedSymbol A supplier for the currently selected symbol.
+     */
     public OrderTab(ModelFacade model, Supplier<String> getSelectedSymbol) {
         this.model = model;
         this.getSelectedSymbol = getSelectedSymbol;
@@ -36,10 +46,9 @@ public class OrderTab extends ContentPanel {
         setBackground(GUIComponents.BG_MEDIUM);
         setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createLineBorder(GUIComponents.BORDER_COLOR, 1),
-                BorderFactory.createEmptyBorder(15, 15, 15, 15)
-        ));
+                BorderFactory.createEmptyBorder(15, 15, 15, 15)));
 
-        buyButton  = createActionButton("Buy",  GUIComponents.ACCENT_GREEN);
+        buyButton = createActionButton("Buy", GUIComponents.ACCENT_GREEN);
         sellButton = createActionButton("Sell", GUIComponents.ACCENT_RED);
 
         buyButton.addActionListener(e -> submit(true));
@@ -54,11 +63,13 @@ public class OrderTab extends ContentPanel {
         GridBagConstraints gbc = baseGbc();
 
         // Row 0: Symbol & Price
-        add(label("Symbol:"), gbc(0,0,1)); add(value(lblSymbol), gbc(1,0,2));
-        add(label("Price:"),  gbc(3,0,1)); add(value(lblPrice),  gbc(4,0,1));
+        add(label("Symbol:"), gbc(0, 0, 1));
+        add(value(lblSymbol), gbc(1, 0, 2));
+        add(label("Price:"), gbc(3, 0, 1));
+        add(value(lblPrice), gbc(4, 0, 1));
 
         // Row 1: Shares (+/-)
-        add(label("Shares:"), gbc(0,1,1));
+        add(label("Shares:"), gbc(0, 1, 1));
         JPanel sharesBox = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 0));
         sharesBox.setOpaque(false);
         sharesField.setColumns(8);
@@ -66,24 +77,36 @@ public class OrderTab extends ContentPanel {
         sharesBox.add(btnMinus);
         sharesBox.add(sharesField);
         sharesBox.add(btnPlus);
-        add(sharesBox, gbc(1,1,2));
+        add(sharesBox, gbc(1, 1, 2));
 
         // Row 2: Estimated cost/proceeds
-        add(label("Estimated:"), gbc(0,2,1)); add(value(lblEst), gbc(1,2,2));
+        add(label("Estimated:"), gbc(0, 2, 1));
+        add(value(lblEst), gbc(1, 2, 2));
 
         // Row 3: Cash / Position
-        add(label("Cash:"), gbc(3,1,1)); add(value(lblCash), gbc(4,1,1));
-        add(label("Position:"), gbc(3,2,1)); add(value(lblPos), gbc(4,2,1));
+        add(label("Cash:"), gbc(3, 1, 1));
+        add(value(lblCash), gbc(4, 1, 1));
+        add(label("Position:"), gbc(3, 2, 1));
+        add(value(lblPos), gbc(4, 2, 1));
 
         // Row 4: Buttons
         gbc = baseGbc();
-        gbc.gridx = 0; gbc.gridy = 3; gbc.gridwidth = 2; gbc.fill = GridBagConstraints.HORIZONTAL;
+        gbc.gridx = 0;
+        gbc.gridy = 3;
+        gbc.gridwidth = 2;
+        gbc.fill = GridBagConstraints.HORIZONTAL;
         add(buyButton, gbc);
-        gbc.gridx = 2; gbc.gridy = 3; gbc.gridwidth = 2;
+        gbc.gridx = 2;
+        gbc.gridy = 3;
+        gbc.gridwidth = 2;
         add(sellButton, gbc);
 
         // Spacer
-        gbc.gridx = 0; gbc.gridy = 4; gbc.gridwidth = 5; gbc.weighty = 1.0; gbc.fill = GridBagConstraints.BOTH;
+        gbc.gridx = 0;
+        gbc.gridy = 4;
+        gbc.gridwidth = 5;
+        gbc.weighty = 1.0;
+        gbc.fill = GridBagConstraints.BOTH;
         add(Box.createVerticalGlue(), gbc);
 
         // Live refresh (price, est, cash, pos)
@@ -127,9 +150,11 @@ public class OrderTab extends ContentPanel {
             var pos = dto.positions;
             if (sym != null && pos != null) {
                 Integer q = pos.get(sym);
-                if (q != null) qty = q;
+                if (q != null)
+                    qty = q;
             }
-        } catch (Exception ignore) {}
+        } catch (Exception ignore) {
+        }
         lblPos.setText(sharesFmt.format(qty));
 
         // Button enablement
@@ -146,6 +171,7 @@ public class OrderTab extends ContentPanel {
         l.setFont(new Font("Segoe UI", Font.PLAIN, 12));
         return l;
     }
+
     private JLabel value(JLabel l) {
         l.setForeground(GUIComponents.TEXT_PRIMARY);
         l.setFont(new Font("Segoe UI", Font.BOLD, 12));
@@ -162,8 +188,7 @@ public class OrderTab extends ContentPanel {
         button.setForeground(GUIComponents.TEXT_PRIMARY);
         button.setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createLineBorder(GUIComponents.BORDER_COLOR, 1),
-                BorderFactory.createEmptyBorder(8, 16, 8, 16)
-        ));
+                BorderFactory.createEmptyBorder(8, 16, 8, 16)));
 
         // Hover effect
         button.addMouseListener(new java.awt.event.MouseAdapter() {
@@ -187,6 +212,7 @@ public class OrderTab extends ContentPanel {
         b.setBackground(GUIComponents.BG_LIGHT);
         b.setForeground(GUIComponents.TEXT_PRIMARY);
     }
+
     private GridBagConstraints baseGbc() {
         GridBagConstraints gbc = new GridBagConstraints();
         gbc.insets = new Insets(6, 6, 6, 6);
@@ -195,10 +221,14 @@ public class OrderTab extends ContentPanel {
         gbc.weightx = 0.0;
         return gbc;
     }
+
     private GridBagConstraints gbc(int x, int y, int w) {
         GridBagConstraints g = baseGbc();
-        g.gridx = x; g.gridy = y; g.gridwidth = w;
-        if (w > 1) g.weightx = 1.0;
+        g.gridx = x;
+        g.gridy = y;
+        g.gridwidth = w;
+        if (w > 1)
+            g.weightx = 1.0;
         return g;
     }
 
@@ -221,12 +251,17 @@ public class OrderTab extends ContentPanel {
         try {
             int n = Integer.parseInt(sharesField.getText().trim());
             return Math.max(0, n);
-        } catch (Exception ex) { return 0; }
+        } catch (Exception ex) {
+            return 0;
+        }
     }
 
     private String symbol() {
-        try { return getSelectedSymbol.get(); }
-        catch (Exception ignore) { return null; }
+        try {
+            return getSelectedSymbol.get();
+        } catch (Exception ignore) {
+            return null;
+        }
     }
 
     private void submit(boolean buy) {
@@ -267,13 +302,28 @@ public class OrderTab extends ContentPanel {
         sharesField.setText("1");
         refreshReadouts();
     }
+
     private void msg(String text) {
         JOptionPane.showMessageDialog(this, text, "Order", JOptionPane.WARNING_MESSAGE);
     }
-    @FunctionalInterface interface SimpleDocListener extends javax.swing.event.DocumentListener {
+
+    @FunctionalInterface
+    interface SimpleDocListener extends javax.swing.event.DocumentListener {
         void changed();
-        @Override default void insertUpdate(javax.swing.event.DocumentEvent e){ changed(); }
-        @Override default void removeUpdate(javax.swing.event.DocumentEvent e){ changed(); }
-        @Override default void changedUpdate(javax.swing.event.DocumentEvent e){ changed(); }
+
+        @Override
+        default void insertUpdate(javax.swing.event.DocumentEvent e) {
+            changed();
+        }
+
+        @Override
+        default void removeUpdate(javax.swing.event.DocumentEvent e) {
+            changed();
+        }
+
+        @Override
+        default void changedUpdate(javax.swing.event.DocumentEvent e) {
+            changed();
+        }
     }
 }

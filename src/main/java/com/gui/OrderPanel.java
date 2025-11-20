@@ -7,6 +7,10 @@ import java.awt.*;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
+/**
+ * A panel containing the order entry form and order history.
+ * Collapsible to save space.
+ */
 public class OrderPanel extends ContentPanel {
     private final JPanel header;
     private final JLabel indicator;
@@ -18,10 +22,18 @@ public class OrderPanel extends ContentPanel {
     private final ModelFacade model;
     private final Supplier<String> selectedSymbol;
 
+    /**
+     * Constructs a new OrderPanel.
+     *
+     * @param model             The ModelFacade instance.
+     * @param selectedSymbol    A supplier for the currently selected symbol.
+     * @param onCollapseChanged Callback for when the panel is collapsed/expanded.
+     */
     OrderPanel(ModelFacade model, Supplier<String> selectedSymbol, Consumer<Boolean> onCollapseChanged) {
         this.model = model;
         this.selectedSymbol = selectedSymbol;
-        this.onCollapseChanged = onCollapseChanged != null ? onCollapseChanged : (c) -> { };
+        this.onCollapseChanged = onCollapseChanged != null ? onCollapseChanged : (c) -> {
+        };
 
         setLayout(new BorderLayout());
         setOpaque(true);
@@ -39,11 +51,15 @@ public class OrderPanel extends ContentPanel {
 
         header.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
         header.addMouseListener(new java.awt.event.MouseAdapter() {
-            @Override public void mouseClicked(java.awt.event.MouseEvent e) { setCollapsed(!collapsed); }
+            @Override
+            public void mouseClicked(java.awt.event.MouseEvent e) {
+                setCollapsed(!collapsed);
+            }
         });
 
         tabs = new JTabbedPane() {
-            @Override public void updateUI() {
+            @Override
+            public void updateUI() {
                 super.updateUI();
                 setUI(new TabStripUI());
                 setOpaque(false);
@@ -61,8 +77,20 @@ public class OrderPanel extends ContentPanel {
         add(tabs, BorderLayout.CENTER);
     }
 
-    public boolean isCollapsed() { return collapsed; }
+    /**
+     * Checks if the panel is currently collapsed.
+     *
+     * @return True if collapsed, false otherwise.
+     */
+    public boolean isCollapsed() {
+        return collapsed;
+    }
 
+    /**
+     * Sets the collapsed state of the panel.
+     *
+     * @param collapse True to collapse, false to expand.
+     */
     void setCollapsed(boolean collapse) {
         this.collapsed = collapse;
         tabs.setVisible(!collapse);
@@ -72,12 +100,22 @@ public class OrderPanel extends ContentPanel {
         onCollapseChanged.accept(this.collapsed);
     }
 
+    /**
+     * Gets the height of the header component.
+     *
+     * @return The header height in pixels.
+     */
     int getHeaderHeight() {
         return header.getPreferredSize().height + getInsets().top + getInsets().bottom;
     }
 
     // when selected symbol changes
+    /**
+     * Refreshes the order history tab.
+     * Should be called when the selected symbol changes.
+     */
     public void refreshHistory() {
-        if (historyTab != null) historyTab.refresh();
+        if (historyTab != null)
+            historyTab.refresh();
     }
 }

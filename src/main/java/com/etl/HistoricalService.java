@@ -14,8 +14,15 @@ import java.time.*;
 
 import static java.lang.Long.parseLong;
 
+/**
+ * Service for fetching and managing historical market data.
+ * Handles backfilling data from Polygon.io and storing it in the database.
+ */
 public class HistoricalService {
     // desired range for
+    /**
+     * Represents a requested range of historical data.
+     */
     public static class Range {
         public int multiplier;
         public Timespan timespan;
@@ -31,13 +38,19 @@ public class HistoricalService {
     }
 
     // not really useful anymore since we're storing everything in the day range
+    /**
+     * Enumeration of supported time spans for historical data.
+     */
     public enum Timespan {
         MINUTE("minute"),
         HOUR("hour"),
         DAY("day");
 
         public final String token;
-        Timespan(String token) { this.token = token; }
+
+        Timespan(String token) {
+            this.token = token;
+        }
     }
 
     private final Database db;
@@ -48,12 +61,20 @@ public class HistoricalService {
     // ensure only one caller can backfill
     private static final ConcurrentHashMap<String, Object> KEY_LOCKS = new ConcurrentHashMap<>();
     private static final ConcurrentHashMap<String, Boolean> IN_FLIGHT = new ConcurrentHashMap<>();
-    private static String key(String s, Range r){ return s+"|"+r.multiplier+"|"+r.timespan.token; }
+
+    private static String key(String s, Range r) {
+        return s + "|" + r.multiplier + "|" + r.timespan.token;
+    }
 
     // rate limiter - for acquiring tokens
     private static final Semaphore TOKENS = new Semaphore(1);
     private static long last = System.nanoTime();
 
+    /**
+     * Constructs a new HistoricalService with default settings.
+     *
+     * @param db The database instance to use for storage.
+     */
     public HistoricalService(Database db) {
         this(db, HttpClient.newHttpClient(), System.getenv("POLYGON_API_KEY"),
                 "https://api.polygon.io"); // default
@@ -67,10 +88,21 @@ public class HistoricalService {
 
         Dotenv dotenv = Dotenv.configure().ignoreIfMissing().load();
         String k = (apiKey == null || apiKey.isBlank()) ? dotenv.get("POLYGON_API_KEY") : apiKey;
-        if (k == null || k.isBlank()) throw new IllegalStateException("Set POLYGON_API_KEY");
+        if (k == null || k.isBlank())
+            throw new IllegalStateException("Set POLYGON_API_KEY");
         this.apiKey = k;
     }
 
+    /**
+     * Ensures that the requested range of data is available in the database.
+     * If data is missing, it identifies the missing ranges (holes) to be fetched.
+     *
+     * @param symbol    The stock symbol.
+     * @param requested The requested range.
+     * @return A Range object representing the missing data to be fetched, or null
+     *         if no data is missing.
+     * @throws SQLException If a database error occurs.
+     */
     public Range ensureRange(String symbol, Range requested) throws SQLException {
         LocalDate todayUtc = Instant.ofEpochMilli(System.currentTimeMillis())
                 .atZone(ZoneOffset.UTC).toLocalDate();
@@ -82,7 +114,8 @@ public class HistoricalService {
 
         reqTo = prevTradingDay(reqTo.minusDays(1));
 
-        if (reqTo.isBefore(reqFrom)) return null;
+        if (reqTo.isBefore(reqFrom))
+            return null;
 
         long latestMs = db.getLatestTimestamp(symbol, requested.multiplier, requested.timespan.token);
         long earliestMs = db.getEarliestTimestamp(symbol, requested.multiplier, requested.timespan.token);
@@ -120,35 +153,48 @@ public class HistoricalService {
 
         // if there's a hole (null if none found)
         Range hole = findInteriorHole(symbol, new Range(requested.timespan, requested.multiplier, reqFrom, reqTo));
-        if (hole != null) System.out.printf("[HS.ensureRange] Hole fill %s %d/%s; fetching %s - %s%n",
-                symbol, requested.multiplier, requested.timespan, hole.from, hole.to);
+        if (hole != null)
+            System.out.printf("[HS.ensureRange] Hole fill %s %d/%s; fetching %s - %s%n",
+                    symbol, requested.multiplier, requested.timespan, hole.from, hole.to);
 
         return hole;
     }
 
     /* format url string for candles */
     private String buildCandlesUrl(String symbol, int multiplier, Timespan timespan,
-                                   LocalDate from, LocalDate to) {
+            LocalDate from, LocalDate to) {
         return String.format(
                 "%s/v2/aggs/ticker/%s/range/%d/%s/%s/%s?adjusted=true&sort=asc&limit=50000&apiKey=%s",
-                baseUrl, symbol, multiplier, timespan.token, from, to, apiKey
-        );
+                baseUrl, symbol, multiplier, timespan.token, from, to, apiKey);
     }
 
+    /**
+     * Backfills the requested range of data for the given symbol.
+     * This method is thread-safe for the same symbol and range.
+     *
+     * @param symbol    The stock symbol.
+     * @param requested The requested range.
+     * @return The total number of rows inserted.
+     * @throws Exception If an error occurs during backfilling.
+     */
     public int backfillRange(String symbol, Range requested) throws Exception {
         String k = key(symbol, requested);
         Object lock = KEY_LOCKS.computeIfAbsent(k, s -> new Object());
         synchronized (lock) {
-            if (Boolean.TRUE.equals(IN_FLIGHT.putIfAbsent(k, true))) return 0;
+            if (Boolean.TRUE.equals(IN_FLIGHT.putIfAbsent(k, true)))
+                return 0;
             try {
                 return doBackfillRange(symbol, requested); // extract existing logic into this
-            } finally { IN_FLIGHT.remove(k); }
+            } finally {
+                IN_FLIGHT.remove(k);
+            }
         }
     }
 
     /**
      * pulls range in chunks, parses polygon json, and batch-inserts
-     * @param symbol the symbol to fetch
+     * 
+     * @param symbol    the symbol to fetch
      * @param requested requested range (ensured valid)
      * @throws Exception throws if status code != 200
      */
@@ -175,11 +221,13 @@ public class HistoricalService {
 
             if (range == null || range.to.isBefore(range.from)) {
                 System.out.printf("[HS.backfillRange] Covered %s %d/%s after %d pass%s, totalInserted=%d%n",
-                        symbol, requested.multiplier, requested.timespan, (pass - 1), (pass - 1) == 1 ? "" : "es", totalInsertedAll);
+                        symbol, requested.multiplier, requested.timespan, (pass - 1), (pass - 1) == 1 ? "" : "es",
+                        totalInsertedAll);
                 break;
             }
 
-            // if ensureRange keeps returning the same span but we didn't insert anything last time, stop
+            // if ensureRange keeps returning the same span but we didn't insert anything
+            // last time, stop
             if (prevRange != null
                     && prevRange.from.equals(range.from)
                     && prevRange.to.equals(range.to)) {
@@ -190,8 +238,8 @@ public class HistoricalService {
             prevRange = range;
 
             final int maxChunkDays = switch (range.timespan) {
-                case DAY    -> 30;
-                case HOUR   -> 14;
+                case DAY -> 30;
+                case HOUR -> 14;
                 case MINUTE -> 7;
             };
 
@@ -217,7 +265,7 @@ public class HistoricalService {
                 String url = buildCandlesUrl(symbol, range.multiplier, range.timespan, reqStart, reqEnd);
 
                 int attempts;
-                for (attempts = 1; ; attempts++) {
+                for (attempts = 1;; attempts++) {
                     var req = HttpRequest.newBuilder(java.net.URI.create(url)).GET().build();
 
                     // request only when you have a token (for rate limit, ~5/min)
@@ -228,11 +276,12 @@ public class HistoricalService {
 
                     if (sc == 429) {
                         long base = parseLong(resp.headers().firstValue("Retry-After").orElse("5"), 5) * 1000L;
-                        long sleepMs = (long)(base * Math.pow(1.8, attempts-1) + (Math.random()*250));
+                        long sleepMs = (long) (base * Math.pow(1.8, attempts - 1) + (Math.random() * 250));
                         System.out.printf("[HS.chunk] 429 rate limit for %s %s - %s; sleeping %dms (attempt %d)%n",
                                 symbol, reqStart, reqEnd, sleepMs, attempts);
                         Thread.sleep(sleepMs);
-                        if (attempts < 3) continue; // retry a couple of times <3
+                        if (attempts < 3)
+                            continue; // retry a couple of times <3
                         Thread.sleep(sleepMs); // cool-off before next chunk
                         System.out.println("[HS.chunk] giving up on this chunk due to 429");
                         break;
@@ -254,7 +303,7 @@ public class HistoricalService {
                     if (root.has("results")) {
                         for (var e : root.getAsJsonArray("results")) {
                             var r = e.getAsJsonObject();
-                            long   t = r.get("t").getAsLong();
+                            long t = r.get("t").getAsLong();
                             double o = r.get("o").getAsDouble();
                             double h = r.get("h").getAsDouble();
                             double l = r.get("l").getAsDouble();
@@ -277,12 +326,16 @@ public class HistoricalService {
                 }
 
                 // be nicer to the API between chunks
-                try { Thread.sleep(400); } catch (InterruptedException ignore) {}
+                try {
+                    Thread.sleep(400);
+                } catch (InterruptedException ignore) {
+                }
 
                 cursor = reqEnd.plusDays(1);
             }
 
-            // if this pass did nothing, there's probably nothing left (or we’re rate-limited)
+            // if this pass did nothing, there's probably nothing left (or we’re
+            // rate-limited)
             if (totalInsertedThisPass == 0) {
                 System.out.printf("[HS.backfillRange] Pass %d inserted 0 rows; stopping early%n", pass);
                 break;
@@ -301,7 +354,8 @@ public class HistoricalService {
                 TOKENS.release();
                 last = now;
             }
-            if (TOKENS.tryAcquire()) return;
+            if (TOKENS.tryAcquire())
+                return;
             Thread.sleep(100);
         }
     }
@@ -309,7 +363,7 @@ public class HistoricalService {
     /* search for subrange in case there's an interior hole */
     private Range findInteriorHole(String symbol, Range req) throws SQLException {
         long startMs = req.from.atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli();
-        long endMs = req.to.atTime(23,59,59).toInstant(ZoneOffset.UTC).toEpochMilli();
+        long endMs = req.to.atTime(23, 59, 59).toInstant(ZoneOffset.UTC).toEpochMilli();
 
         var ts = db.listTimestamps(symbol, req.multiplier, req.timespan.token, startMs, endMs);
         if (ts.isEmpty()) {
@@ -327,11 +381,14 @@ public class HistoricalService {
                 LocalDate holeStart = nextTradingDay(prevDate);
                 LocalDate holeEnd = prevTradingDay(currDate);
 
-                if (holeStart.isBefore(req.from)) holeStart = req.from;
-                if (holeEnd.isAfter(req.to)) holeEnd = req.to;
+                if (holeStart.isBefore(req.from))
+                    holeStart = req.from;
+                if (holeEnd.isAfter(req.to))
+                    holeEnd = req.to;
 
                 if (!holeEnd.isBefore(holeStart)) {
-                    // System.out.printf("[HS.findInteriorHole] holeFrom = %s, holeTo = %s%n", holeStart, holeEnd);
+                    // System.out.printf("[HS.findInteriorHole] holeFrom = %s, holeTo = %s%n",
+                    // holeStart, holeEnd);
                     return new Range(req.timespan, req.multiplier, holeStart, holeEnd);
                 }
             }
@@ -345,7 +402,8 @@ public class HistoricalService {
         int days = 0;
         LocalDate d = a.plusDays(1);
         while (!d.isAfter(b.minusDays(1))) {
-            if (isTradingDay(d)) days++;
+            if (isTradingDay(d))
+                days++;
             d = d.plusDays(1);
         }
         return Math.max(0, days);
@@ -354,26 +412,32 @@ public class HistoricalService {
     private static boolean isTradingDay(LocalDate d) {
         return !isWeekend(d) && !isHoliday(d);
     }
+
     private static boolean isWeekend(LocalDate d) {
         var w = d.getDayOfWeek();
         return w == DayOfWeek.SATURDAY || w == DayOfWeek.SUNDAY;
     }
+
     private static LocalDate prevTradingDay(LocalDate d) {
-        while (!isTradingDay(d)) d = d.minusDays(1);
+        while (!isTradingDay(d))
+            d = d.minusDays(1);
         return d;
     }
+
     private static LocalDate nextTradingDay(LocalDate d) {
-        while (!isTradingDay(d)) d = d.plusDays(1);
+        while (!isTradingDay(d))
+            d = d.plusDays(1);
         return d;
     }
+
     private static boolean isHoliday(LocalDate d) {
         // fixed-date holidays
         final Set<MonthDay> FIXED_HOLIDAYS = Set.of(
-                MonthDay.of(1, 1),   // New Year's Day
-                MonthDay.of(1, 9),   // Day of Mourning for Jimmy Carter (2025)
-                MonthDay.of(6, 19),  // Juneteenth
-                MonthDay.of(7, 4),   // Independence Day
-                MonthDay.of(12, 25)  // Christmas
+                MonthDay.of(1, 1), // New Year's Day
+                MonthDay.of(1, 9), // Day of Mourning for Jimmy Carter (2025)
+                MonthDay.of(6, 19), // Juneteenth
+                MonthDay.of(7, 4), // Independence Day
+                MonthDay.of(12, 25) // Christmas
         );
         for (MonthDay md : FIXED_HOLIDAYS) {
             LocalDate actual = md.atYear(d.getYear());
@@ -382,32 +446,42 @@ public class HistoricalService {
                 case SUNDAY -> actual.plusDays(1);
                 default -> actual;
             };
-            if (d.equals(observed)) return true;
+            if (d.equals(observed))
+                return true;
         }
 
         // moving holidays
         int y = d.getYear();
-        if (d.equals(nthWeekdayOfMonth(y, Month.JANUARY, DayOfWeek.MONDAY, 3))) return true;   // MLK Day
-        if (d.equals(nthWeekdayOfMonth(y, Month.FEBRUARY, DayOfWeek.MONDAY, 3))) return true;  // Presidents’ Day
-        if (d.equals(lastWeekdayOfMonth(y, Month.MAY, DayOfWeek.MONDAY))) return true;         // Memorial Day
-        if (d.equals(nthWeekdayOfMonth(y, Month.SEPTEMBER, DayOfWeek.MONDAY, 1))) return true; // Labor Day
-        if (d.equals(nthWeekdayOfMonth(y, Month.NOVEMBER, DayOfWeek.THURSDAY, 4))) return true;// Thanksgiving
+        if (d.equals(nthWeekdayOfMonth(y, Month.JANUARY, DayOfWeek.MONDAY, 3)))
+            return true; // MLK Day
+        if (d.equals(nthWeekdayOfMonth(y, Month.FEBRUARY, DayOfWeek.MONDAY, 3)))
+            return true; // Presidents’ Day
+        if (d.equals(lastWeekdayOfMonth(y, Month.MAY, DayOfWeek.MONDAY)))
+            return true; // Memorial Day
+        if (d.equals(nthWeekdayOfMonth(y, Month.SEPTEMBER, DayOfWeek.MONDAY, 1)))
+            return true; // Labor Day
+        if (d.equals(nthWeekdayOfMonth(y, Month.NOVEMBER, DayOfWeek.THURSDAY, 4)))
+            return true;// Thanksgiving
 
         // Good Friday
-        if (d.equals(easterSunday(y).minusDays(2))) return true;
+        if (d.equals(easterSunday(y).minusDays(2)))
+            return true;
 
         return false;
     }
+
     private static LocalDate nthWeekdayOfMonth(int y, Month m, DayOfWeek dow, int n) {
         LocalDate d = LocalDate.of(y, m, 1);
         int shift = (dow.getValue() - d.getDayOfWeek().getValue() + 7) % 7;
         return d.plusDays(shift + (n - 1) * 7L);
     }
+
     private static LocalDate lastWeekdayOfMonth(int y, Month m, DayOfWeek dow) {
         LocalDate d = LocalDate.of(y, m, m.length(Year.isLeap(y)));
         int shiftBack = (d.getDayOfWeek().getValue() - dow.getValue() + 7) % 7;
         return d.minusDays(shiftBack);
     }
+
     private static LocalDate easterSunday(int y) {
         int a = y % 19;
         int b = y / 100, c = y % 100;

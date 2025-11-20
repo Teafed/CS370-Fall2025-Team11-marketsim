@@ -12,13 +12,20 @@ import java.util.concurrent.TimeUnit;
  * Small smoke-test runner for LogoCache. Runs without compiling project tests.
  */
 public class LogoCacheSmokeTestRunner {
+    /**
+     * Main method to run the smoke test.
+     * Creates a dummy image, loads it into the cache, and verifies the result.
+     *
+     * @param args Command line arguments (unused).
+     * @throws Exception If an error occurs during the test.
+     */
     public static void main(String[] args) throws Exception {
         int size = 8;
         // create a tiny in-memory PNG
         BufferedImage img = new BufferedImage(16, 16, BufferedImage.TYPE_INT_ARGB);
         var g = img.createGraphics();
         g.setColor(java.awt.Color.BLUE);
-        g.fillRect(0,0,16,16);
+        g.fillRect(0, 0, 16, 16);
         g.dispose();
 
         ByteArrayOutputStream baos = new ByteArrayOutputStream();

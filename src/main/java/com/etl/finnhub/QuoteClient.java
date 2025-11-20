@@ -16,6 +16,9 @@ import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.function.Consumer;
 
+/**
+ * Client for fetching stock quotes from Finnhub.
+ */
 public class QuoteClient {
 
     private static final String LOG_PREFIX = "[FinnhubQuoteClient]";
@@ -23,14 +26,21 @@ public class QuoteClient {
     private final String baseUrl = "https://finnhub.io/api/v1/quote?symbol=";
     private final HttpClient httpClient;
 
-
+    /**
+     * Constructs a new QuoteClient.
+     *
+     * @param apiKey The Finnhub API key.
+     */
     public QuoteClient(String apiKey) {
         this.apiKey = apiKey;
         this.httpClient = HttpClient.newHttpClient();
     }
 
     /**
-     * Fetch quote from Finnhub REST API
+     * Fetches the current quote for a symbol.
+     *
+     * @param symbol The stock symbol.
+     * @return The open price of the stock (as per current implementation).
      */
     public double fetchQuote(String symbol) {
 
@@ -43,8 +53,7 @@ public class QuoteClient {
                 .build();
 
         try {
-            HttpResponse<String> response =
-                    httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
 
             int sc = response.statusCode();
             if (sc < 200 || sc >= 300) {
@@ -63,11 +72,15 @@ public class QuoteClient {
             System.err.println(LOG_PREFIX + " Error fetching quote: " + e.getMessage());
             Thread.currentThread().interrupt();
         }
-    return 0;
+        return 0;
     }
 
     /**
-     * Parse and store quote data
+     * Parses the quote data from the JSON response.
+     *
+     * @param symbol       The stock symbol.
+     * @param responseBody The JSON response string.
+     * @return The open price.
      */
     private double parseAndStoreQuote(String symbol, String responseBody) {
         try {
@@ -81,20 +94,17 @@ public class QuoteClient {
             }
 
             double currentPrice = jsonObject.get("c").getAsDouble(); // current price
-            double openPrice = jsonObject.get("o").getAsDouble();    // open price
-            double highPrice = jsonObject.get("h").getAsDouble();    // high price
-            double lowPrice = jsonObject.get("l").getAsDouble();     // low price
-            long timestamp = jsonObject.get("t").getAsLong();        // timestamp
+            double openPrice = jsonObject.get("o").getAsDouble(); // open price
+            double highPrice = jsonObject.get("h").getAsDouble(); // high price
+            double lowPrice = jsonObject.get("l").getAsDouble(); // low price
+            long timestamp = jsonObject.get("t").getAsLong(); // timestamp
 
             System.out.println(openPrice);
             return openPrice;
 
-
-
-
         } catch (Exception e) {
             System.err.println(LOG_PREFIX + " Error parsing quote: " + e.getMessage());
         }
-    return 0;
+        return 0;
     }
 }

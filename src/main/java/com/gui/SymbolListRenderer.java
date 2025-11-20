@@ -7,7 +7,10 @@ import com.gui.LogoCache;
 import javax.swing.*;
 import java.awt.*;
 
-
+/**
+ * Custom renderer for a JList containing TradeItem objects.
+ * Displays the symbol's logo (asynchronously loaded) and its name/symbol text.
+ */
 public class SymbolListRenderer extends JPanel implements ListCellRenderer<TradeItem> {
     private final JLabel iconLabel = new JLabel();
     private final JLabel textLabel = new JLabel();
@@ -15,11 +18,18 @@ public class SymbolListRenderer extends JPanel implements ListCellRenderer<Trade
     private final ModelFacade model;
     private final int iconSize;
 
+    /**
+     * Constructs a new SymbolListRenderer.
+     *
+     * @param cache    The LogoCache used to retrieve and load logos.
+     * @param model    The ModelFacade used to fetch logo URLs.
+     * @param iconSize The size (width and height) of the icons to display.
+     */
     public SymbolListRenderer(LogoCache cache, ModelFacade model, int iconSize) {
         this.logoCache = cache;
         this.model = model;
         this.iconSize = iconSize;
-        setLayout(new BorderLayout(6,0));
+        setLayout(new BorderLayout(6, 0));
         iconLabel.setPreferredSize(new Dimension(iconSize, iconSize));
         iconLabel.setHorizontalAlignment(SwingConstants.CENTER);
         add(iconLabel, BorderLayout.WEST);
@@ -27,9 +37,20 @@ public class SymbolListRenderer extends JPanel implements ListCellRenderer<Trade
         setOpaque(true);
     }
 
+    /**
+     * Returns a component that has been configured to display the specified value.
+     *
+     * @param list         The JList we're painting.
+     * @param value        The value returned by
+     *                     list.getModel().getElementAt(index).
+     * @param index        The cells index.
+     * @param isSelected   True if the specified cell was selected.
+     * @param cellHasFocus True if the specified cell has the focus.
+     * @return A component whose paint() method will render the specified value.
+     */
     @Override
     public Component getListCellRendererComponent(JList<? extends TradeItem> list, TradeItem value, int index,
-                                                  boolean isSelected, boolean cellHasFocus) {
+            boolean isSelected, boolean cellHasFocus) {
         String symbol = value != null ? value.getSymbol() : "";
         String name = (value != null && value.getName() != null) ? value.getName() : symbol;
         textLabel.setText(name + " (" + symbol + ")");
@@ -38,7 +59,8 @@ public class SymbolListRenderer extends JPanel implements ListCellRenderer<Trade
         String logoStr = null;
         try {
             logoStr = model != null ? model.getLogoForSymbol(symbol) : null;
-        } catch (Exception ignored) { }
+        } catch (Exception ignored) {
+        }
 
         ImageIcon cached = logoCache.getIfCached(logoStr != null ? logoStr : symbol);
         if (cached != null) {
@@ -50,8 +72,10 @@ public class SymbolListRenderer extends JPanel implements ListCellRenderer<Trade
                 // repaint the specific row once icon arrives
                 if (list != null && list.getModel().getSize() > index) {
                     Rectangle rect = list.getCellBounds(index, index);
-                    if (rect != null) list.repaint(rect);
-                    else list.repaint();
+                    if (rect != null)
+                        list.repaint(rect);
+                    else
+                        list.repaint();
                 } else if (list != null) {
                     list.repaint();
                 }

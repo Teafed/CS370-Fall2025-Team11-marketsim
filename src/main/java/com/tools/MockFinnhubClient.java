@@ -11,12 +11,20 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Random;
 
-public class MockFinnhubClient implements TradeSource { ;
+/**
+ * A mock implementation of TradeSource that simulates real-time trade data.
+ * Generates random trade events for subscribed symbols.
+ */
+public class MockFinnhubClient implements TradeSource {
+    ;
     private TradeListener listener;
     private static final List<String> subscribedSymbols = new ArrayList<>();
     private static final Random rand = new Random();
 
-    public MockFinnhubClient(){
+    /**
+     * Constructs a new MockFinnhubClient and starts the simulation thread.
+     */
+    public MockFinnhubClient() {
         new Thread(() -> {
             try {
                 Thread.sleep(5000);
@@ -50,24 +58,40 @@ public class MockFinnhubClient implements TradeSource { ;
                 message.addProperty("type", "trade");
                 message.add("data", trades);
 
-//                System.out.println("[Mock] Emitting: " + message);
+                // System.out.println("[Mock] Emitting: " + message);
 
                 try {
                     Thread.sleep(900);
-                } catch (InterruptedException ignore) {}
+                } catch (InterruptedException ignore) {
+                }
             }
         }, "MockFinnhub-Emitter").start();
     }
 
+    /**
+     * Sets the listener for trade events.
+     *
+     * @param listener The TradeListener to receive trade updates.
+     */
     public void setTradeListener(TradeListener listener) {
         this.listener = listener;
     }
 
+    /**
+     * Handles incoming WebSocket messages (not used in this mock).
+     *
+     * @param msg The message received.
+     */
     @OnMessage
     public void onMessage(String msg) {
         System.out.println(msg);
     }
 
+    /**
+     * Subscribes to trade updates for a specific symbol.
+     *
+     * @param symbol The symbol to subscribe to.
+     */
     public void subscribe(String symbol) {
         System.out.println("[Mock] Subscribed to " + symbol);
         if (!subscribedSymbols.contains(symbol)) {
@@ -75,6 +99,11 @@ public class MockFinnhubClient implements TradeSource { ;
         }
     }
 
+    /**
+     * Returns a random list of subscribed symbols.
+     *
+     * @return A list of random symbols from the subscribed set.
+     */
     public static List<String> returnRandomSymbolList() {
         if (subscribedSymbols.isEmpty()) {
             return Collections.emptyList();
@@ -87,9 +116,12 @@ public class MockFinnhubClient implements TradeSource { ;
         return copy.subList(0, count);
     }
 
+    /**
+     * Factory method to start a new MockFinnhubClient.
+     *
+     * @return A new instance of MockFinnhubClient.
+     */
     public static TradeSource start() {
         return new MockFinnhubClient();
     }
 }
-
-

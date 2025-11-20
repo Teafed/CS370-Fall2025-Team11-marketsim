@@ -11,17 +11,25 @@ import java.net.http.HttpResponse;
 
 import static java.net.http.HttpClient.newHttpClient;
 
+/**
+ * Client for checking the status of the market (open/closed).
+ */
 public class MarketStatusClient {
 
+    /**
+     * Checks if the US market is currently open.
+     *
+     * @return True if the market is open, false otherwise.
+     */
     public static boolean checkStatus() {
         Dotenv dotenv = Dotenv.configure().ignoreIfMissing().load();
         String k = System.getenv("FINNHUB_API_KEY");
-        if (k == null || k.isBlank()) k = dotenv.get("FINNHUB_API_KEY");
+        if (k == null || k.isBlank())
+            k = dotenv.get("FINNHUB_API_KEY");
 
         URI uri = URI.create("https://finnhub.io/api/v1/stock/market-status?exchange=US&token=" + k);
 
         HttpRequest request = HttpRequest.newBuilder().uri(uri).build();
-
 
         HttpResponse<String> response = null;
         try {

@@ -12,12 +12,21 @@ import java.sql.SQLException;
 import java.util.List;
 import java.util.function.Consumer;
 
+/**
+ * Window for initial setup or account selection.
+ * Allows creating a new profile or selecting an existing account.
+ */
 public class StartupWindow extends ContentPanel {
     private JTextField profileNameField;
     private JTextField balanceField;
     public static final boolean USE_ACCOUNT_PICKER = false; // settable from account select?
 
     // constructor for creating profile
+    /**
+     * Constructs a new StartupWindow for creating a profile.
+     *
+     * @param startupListener The listener for startup events.
+     */
     public StartupWindow(StartupListener startupListener) {
         createProfileUI(startupListener);
     }
@@ -41,7 +50,6 @@ public class StartupWindow extends ContentPanel {
         balanceField = new JTextField("10000");
         add(balanceField);
 
-
         // Start Button
         JButton startButton = new JButton("Start Marketsim");
         startButton.setAlignmentX(Component.CENTER_ALIGNMENT);
@@ -51,7 +59,7 @@ public class StartupWindow extends ContentPanel {
             String profileName = profileNameField.getText();
             String balanceText = balanceField.getText();
 
-            //TODO Add error checking and response
+            // TODO Add error checking and response
 
             double balance = Double.parseDouble(balanceText);
             startupListener.onStart(profileName, balance);
@@ -93,12 +101,20 @@ public class StartupWindow extends ContentPanel {
 
         startButton.addActionListener(e -> {
             Account selected = (Account) combo.getSelectedItem();
-            if (selected != null) onPick.accept(selected);
+            if (selected != null)
+                onPick.accept(selected);
         });
 
         return panel;
     }
 
+    /**
+     * Entry point for the GUI. Determines the startup state and shows the
+     * appropriate window.
+     *
+     * @param db The Database instance.
+     * @throws SQLException If a database error occurs.
+     */
     public static void getStartWindow(Database db) throws SQLException {
         Database.StartupState state = db.determineStartupState();
         final boolean firstRun = (state == Database.StartupState.FIRST_RUN);
@@ -134,41 +150,55 @@ public class StartupWindow extends ContentPanel {
                     }
                 }));
             } else {
-                 // show accounts and start with the chosen one
-                 try {
-                     long profileId = db.getSingletonProfileId();
-                     Profile profile = db.buildProfile(profileId);
-                     List<Account> accounts = db.listAccounts(profileId);
+                // show accounts and start with the chosen one
+                try {
+                    long profileId = db.getSingletonProfileId();
+                    Profile profile = db.buildProfile(profileId);
+                    List<Account> accounts = db.listAccounts(profileId);
 
-                     frame.getContentPane().removeAll();
-                     frame.add(createAccountSelectPanel(accounts, selected -> {
-                         try {
-                             runApp(db, profile, selected);
-                             frame.dispose();
-                         } catch (Exception ex) {
-                             ex.printStackTrace();
-                             JOptionPane.showMessageDialog(frame,
-                                     "Failed to launch Marketsim:\n" + ex.getMessage(),
-                                     "Error", JOptionPane.ERROR_MESSAGE);
-                         }
-                     }));
-                     frame.revalidate();
-                     frame.repaint();
-                 } catch (Exception ex) {
-                     ex.printStackTrace();
-                     JOptionPane.showMessageDialog(frame,
-                             "Failed to load accounts:\n" + ex.getMessage(),
-                             "Error", JOptionPane.ERROR_MESSAGE);
-                 }
-             }
+                    frame.getContentPane().removeAll();
+                    frame.add(createAccountSelectPanel(accounts, selected -> {
+                        try {
+                            runApp(db, profile, selected);
+                            frame.dispose();
+                        } catch (Exception ex) {
+                            ex.printStackTrace();
+                            JOptionPane.showMessageDialog(frame,
+                                    "Failed to launch Marketsim:\n" + ex.getMessage(),
+                                    "Error", JOptionPane.ERROR_MESSAGE);
+                        }
+                    }));
+                    frame.revalidate();
+                    frame.repaint();
+                } catch (Exception ex) {
+                    ex.printStackTrace();
+                    JOptionPane.showMessageDialog(frame,
+                            "Failed to load accounts:\n" + ex.getMessage(),
+                            "Error", JOptionPane.ERROR_MESSAGE);
+                }
+            }
 
             frame.setVisible(true);
         });
     }
 
+    /**
+     * Launches the main application window.
+     *
+     * @param db      The Database instance.
+     * @param profile The user Profile.
+     */
     public static void runApp(Database db, Profile profile) {
         runApp(db, profile, profile.getFirstAccount());
     }
+
+    /**
+     * Launches the main application window with a specific account.
+     *
+     * @param db      The Database instance.
+     * @param profile The user Profile.
+     * @param account The active Account.
+     */
     public static void runApp(Database db, Profile profile, Account account) {
         try {
             profile.setActiveAccount(account);

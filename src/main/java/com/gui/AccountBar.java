@@ -9,6 +9,11 @@ import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.text.NumberFormat;
 
+/**
+ * A UI component representing an account summary bar.
+ * Displays the account avatar, name, and total balance.
+ * Supports click interactions and accessibility features.
+ */
 public class AccountBar extends JPanel {
     private final JLabel avatar = new JLabel();
     private final JLabel name = new JLabel();
@@ -16,6 +21,10 @@ public class AccountBar extends JPanel {
     private Runnable onClick = null;
     private Account account;
 
+    /**
+     * Constructs a new AccountBar.
+     * Initializes UI components, layout, and event listeners.
+     */
     public AccountBar() {
         super(new BorderLayout(10, 0));
         setOpaque(true);
@@ -40,33 +49,55 @@ public class AccountBar extends JPanel {
         add(texts, BorderLayout.CENTER);
 
         addMouseListener(new MouseAdapter() {
-            @Override public void mouseClicked(MouseEvent e) {
-                if (onClick != null) onClick.run();
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                if (onClick != null)
+                    onClick.run();
             }
-            @Override public void mouseEntered(MouseEvent e) {
+
+            @Override
+            public void mouseEntered(MouseEvent e) {
                 setBackground(GUIComponents.BG_LIGHT);
             }
-            @Override public void mouseExited(MouseEvent e) {
+
+            @Override
+            public void mouseExited(MouseEvent e) {
                 setBackground(GUIComponents.BG_MEDIUM);
             }
         });
 
-        // keyboard activation for accessibility: ENTER and SPACE should trigger the same action
+        // keyboard activation for accessibility: ENTER and SPACE should trigger the
+        // same action
         getInputMap(WHEN_FOCUSED).put(KeyStroke.getKeyStroke("ENTER"), "activate");
         getInputMap(WHEN_FOCUSED).put(KeyStroke.getKeyStroke("SPACE"), "activate");
         getActionMap().put("activate", new javax.swing.AbstractAction() {
-            @Override public void actionPerformed(java.awt.event.ActionEvent e) {
-                if (onClick != null) onClick.run();
+            @Override
+            public void actionPerformed(java.awt.event.ActionEvent e) {
+                if (onClick != null)
+                    onClick.run();
             }
         });
 
         // focus visuals
         addFocusListener(new java.awt.event.FocusAdapter() {
-            @Override public void focusGained(java.awt.event.FocusEvent e) { setBackground(GUIComponents.BG_LIGHT); }
-            @Override public void focusLost(java.awt.event.FocusEvent e)   { setBackground(GUIComponents.BG_MEDIUM); }
+            @Override
+            public void focusGained(java.awt.event.FocusEvent e) {
+                setBackground(GUIComponents.BG_LIGHT);
+            }
+
+            @Override
+            public void focusLost(java.awt.event.FocusEvent e) {
+                setBackground(GUIComponents.BG_MEDIUM);
+            }
         });
     }
 
+    /**
+     * Sets the account to display.
+     * Updates the name, balance, and avatar.
+     *
+     * @param account The Account object.
+     */
     public void setAccount(Account account) {
         this.account = account;
         name.setText(account.getName());
@@ -76,6 +107,11 @@ public class AccountBar extends JPanel {
         repaint();
     }
 
+    /**
+     * Sets the action to run when the bar is clicked or activated.
+     *
+     * @param onClick The Runnable action.
+     */
     public void setOnClick(Runnable onClick) {
         this.onClick = onClick;
     }
@@ -84,7 +120,8 @@ public class AccountBar extends JPanel {
         final int size = 28;
         final String initials = safeInitials(displayName);
         return new Icon() {
-            @Override public void paintIcon(Component c, Graphics g, int x, int y) {
+            @Override
+            public void paintIcon(Component c, Graphics g, int x, int y) {
                 Graphics2D g2 = (Graphics2D) g.create();
                 g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
                 g2.setColor(GUIComponents.ACCENT_BLUE);
@@ -98,13 +135,22 @@ public class AccountBar extends JPanel {
                 g2.drawString(initials, tx, ty);
                 g2.dispose();
             }
-            @Override public int getIconWidth() { return size; }
-            @Override public int getIconHeight() { return size; }
+
+            @Override
+            public int getIconWidth() {
+                return size;
+            }
+
+            @Override
+            public int getIconHeight() {
+                return size;
+            }
         };
     }
 
     private static String safeInitials(String name) {
-        if (name == null || name.isBlank()) return "A";
+        if (name == null || name.isBlank())
+            return "A";
         String[] parts = name.trim().split("\\s+");
         String first = parts[0].substring(0, 1).toUpperCase();
         String second = parts.length > 1 ? parts[1].substring(0, 1).toUpperCase() : "";
