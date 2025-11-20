@@ -36,8 +36,11 @@ public class ClientFacade implements TradeListener, TradeSource {
         return MarketStatusClient.checkStatus();
     }
 
-    public double fetchQuote(String symbol) {
-        return quoteClient.fetchQuote(symbol);
+    public double[] fetchInitializingQuote(String symbol) {
+        return quoteClient.fetchInitializingQuote(symbol);
+    }
+    public double fetchCurrentQuote(String symbol) {
+        return quoteClient.fetchCurrentQuote(symbol);
     }
 
     public CompanyProfile fetchInfo(String symbol) {

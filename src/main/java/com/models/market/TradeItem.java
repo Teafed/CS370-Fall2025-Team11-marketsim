@@ -41,6 +41,13 @@ public class TradeItem {
         return changePercent;
     }
 
+    public void setValues(double[] openCurrent) {
+        this.open = openCurrent[0];
+        this.price = openCurrent[1];
+        this.prevClose = openCurrent[2];
+        calculateChange();
+    }
+
     public double getChange() {
         return change;
     }
@@ -50,10 +57,14 @@ public class TradeItem {
             return false;
         }
         this.price = price;
-        this.change = price-open;
-        this.changePercent = change/open * 100;
+        calculateChange();
 
         return true;
+    }
+
+    private void calculateChange() {
+        this.change = price-prevClose;
+        this.changePercent = change/prevClose * 100;
     }
 
     public void setPrevClose(double prevClose) {
