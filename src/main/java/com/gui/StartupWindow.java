@@ -140,8 +140,7 @@ public class StartupWindow extends ContentPanel {
                         db.depositCash(accountId, balance, System.currentTimeMillis(), "Initial deposit");
                         Profile profile = db.buildProfile(profileId);
 
-                        runApp(db, profile);
-                        frame.dispose();
+                        runApp(db, profile).thenRun(() -> frame.dispose());
                     } catch (Exception ex) {
                         ex.printStackTrace();
                         JOptionPane.showMessageDialog(frame,
@@ -159,8 +158,7 @@ public class StartupWindow extends ContentPanel {
                     frame.getContentPane().removeAll();
                     frame.add(createAccountSelectPanel(accounts, selected -> {
                         try {
-                            runApp(db, profile, selected);
-                            frame.dispose();
+                            runApp(db, profile, selected).thenRun(() -> frame.dispose());
                         } catch (Exception ex) {
                             ex.printStackTrace();
                             JOptionPane.showMessageDialog(frame,
@@ -187,9 +185,10 @@ public class StartupWindow extends ContentPanel {
      *
      * @param db      The Database instance.
      * @param profile The user Profile.
+     * @return A CompletableFuture that completes when the app is running.
      */
-    public static void runApp(Database db, Profile profile) {
-        runApp(db, profile, profile.getFirstAccount());
+    public static java.util.concurrent.CompletableFuture<Void> runApp(Database db, Profile profile) {
+        return runApp(db, profile, profile.getFirstAccount());
     }
 
     /**
@@ -198,16 +197,41 @@ public class StartupWindow extends ContentPanel {
      * @param db      The Database instance.
      * @param profile The user Profile.
      * @param account The active Account.
+     * @return A CompletableFuture that completes when the app is running.
      */
-    public static void runApp(Database db, Profile profile, Account account) {
+    public static java.util.concurrent.CompletableFuture<Void> runApp(Database db, Profile profile, Account account) {
+        java.util.concurrent.CompletableFuture<Void> completion = new java.util.concurrent.CompletableFuture<>();
         try {
             profile.setActiveAccount(account);
             ModelFacade model = new ModelFacade(db, profile);
-            SwingUtilities.invokeLater(() -> new MainWindow(model));
+
+            // Initialize and preload logos
+            LogoCache logoCache = new LogoCache(40);
+            java.util.List<String> symbols = model.getWatchlist().stream()
+                    .map(TradeItem::getSymbol)
+                    .collect(java.util.stream.Collectors.toList());
+
+            logoCache.preload(symbols, model::getLogoForSymbol)
+                    .thenRun(() -> {
+                        SwingUtilities.invokeLater(() -> {
+                            new MainWindow(model, logoCache);
+                            completion.complete(null);
+                        });
+                    })
+                    .exceptionally(ex -> {
+                        SwingUtilities.invokeLater(() -> {
+                            JOptionPane.showMessageDialog(null, "Failed to preload logos: " + ex.getMessage(),
+                                    "Error", JOptionPane.ERROR_MESSAGE);
+                        });
+                        completion.completeExceptionally(ex);
+                        return null;
+                    });
         } catch (Exception e) {
             e.printStackTrace();
             JOptionPane.showMessageDialog(null, "Failed to start: " + e.getMessage(),
                     "Error", JOptionPane.ERROR_MESSAGE);
+            completion.completeExceptionally(e);
         }
+        return completion;
     }
 }

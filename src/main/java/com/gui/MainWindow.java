@@ -40,8 +40,17 @@ public class MainWindow extends JFrame
      *
      * @param model The ModelFacade instance.
      */
-    public MainWindow(ModelFacade model) {
+    private final LogoCache logoCache;
+
+    /**
+     * Constructs a new MainWindow.
+     *
+     * @param model     The ModelFacade instance.
+     * @param logoCache The LogoCache instance.
+     */
+    public MainWindow(ModelFacade model, LogoCache logoCache) {
         this.model = model;
+        this.logoCache = logoCache;
         model.addListener(this);
         createWindow();
         setMarketOpen(model.isMarketOpen());
@@ -99,7 +108,7 @@ public class MainWindow extends JFrame
         AccountPanel accountPanel = new AccountPanel(model.getActiveAccount());
         rightCards.add(accountPanel, CARD_ACCOUNT);
 
-        symbolPanel = new SymbolPanel(model);
+        symbolPanel = new SymbolPanel(model, logoCache);
         symbolPanel.addSymbolSelectionListener(this);
         symbolPanel.setAccount(model.getActiveAccount(), this);
         symbolPanel.setSymbols(model.getWatchlist());

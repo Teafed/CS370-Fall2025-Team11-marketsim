@@ -57,10 +57,16 @@ public class SymbolPanel extends ContentPanel {
      *
      * @param model The ModelFacade instance.
      */
-    public SymbolPanel(ModelFacade model) {
+    /**
+     * Constructs a new SymbolPanel.
+     *
+     * @param model     The ModelFacade instance.
+     * @param logoCache The LogoCache instance.
+     */
+    public SymbolPanel(ModelFacade model, LogoCache logoCache) {
         this.model = model;
         this.symbolListener = new ArrayList<>();
-        this.logoCache = new LogoCache(40);
+        this.logoCache = logoCache;
         initializeComponents();
 
         setupListeners();

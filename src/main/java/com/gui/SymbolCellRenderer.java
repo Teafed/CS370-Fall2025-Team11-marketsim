@@ -5,7 +5,6 @@ import com.models.market.TradeItem;
 import javax.swing.*;
 import javax.swing.border.Border;
 import java.awt.*;
-import java.util.concurrent.atomic.AtomicInteger;
 
 // handles cell rendering in SymbolListPanel
 /**
@@ -22,8 +21,6 @@ public class SymbolCellRenderer extends JPanel implements ListCellRenderer<Trade
     private final LogoCache logoCache;
     private final ModelFacade model;
     private final int iconSize = 40;
-    private static final AtomicInteger requestCounter = new AtomicInteger(0);
-    private static final long REQUEST_DELAY_MS = 300; // 300ms between logo fetch requests
 
     /**
      * Constructs a new SymbolCellRenderer.
@@ -87,43 +84,24 @@ public class SymbolCellRenderer extends JPanel implements ListCellRenderer<Trade
             symbolLabel.setText(symbol);
             nameLabel.setText(value.getName());
 
-            // Load company logo with staggered timing to avoid rate limits
+            // Load company logo
             ImageIcon cached = logoCache.getIfCached(symbol);
             if (cached != null) {
                 logoLabel.setIcon(cached);
             } else {
                 logoLabel.setIcon(logoCache.getPlaceholder());
-
-                // Stagger logo fetch requests with a delay based on the index
-                int requestIndex = requestCounter.getAndIncrement();
-                long delay = requestIndex * REQUEST_DELAY_MS;
-
-                Timer timer = new Timer((int) delay, e -> {
-                    // Fetch logo URL only when needed
-                    String logoUrl = null;
-                    try {
-                        logoUrl = model != null ? model.getLogoForSymbol(symbol) : null;
-                    } catch (Exception ignored) {
-                    }
-
-                    // Start async load (callback runs on EDT)
-                    if (logoUrl != null && !logoUrl.isBlank()) {
-                        logoCache.load(symbol, logoUrl, iconSize, iconSize, icon -> {
-                            // Repaint the specific row once icon arrives
-                            if (list != null && list.getModel().getSize() > index) {
-                                Rectangle rect = list.getCellBounds(index, index);
-                                if (rect != null)
-                                    list.repaint(rect);
-                                else
-                                    list.repaint();
-                            } else if (list != null) {
-                                list.repaint();
-                            }
-                        });
+                logoCache.load(symbol, model::getLogoForSymbol, iconSize, iconSize, icon -> {
+                    // Repaint the specific row once icon arrives
+                    if (list != null && list.getModel().getSize() > index) {
+                        Rectangle rect = list.getCellBounds(index, index);
+                        if (rect != null)
+                            list.repaint(rect);
+                        else
+                            list.repaint();
+                    } else if (list != null) {
+                        list.repaint();
                     }
                 });
-                timer.setRepeats(false);
-                timer.start();
             }
 
             double px = value.getCurrentPrice();
