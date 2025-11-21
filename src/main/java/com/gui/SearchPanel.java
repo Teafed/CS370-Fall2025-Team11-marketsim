@@ -55,7 +55,7 @@ public class SearchPanel extends ContentPanel {
             item.addActionListener(e2 -> {
                 suggestionPopup.setVisible(false);
                 try {
-                    model.addToWatchlist(description, symbol);
+                    model.addToWatchlist(symbol);
                 } catch (Exception e) {
                     throw new RuntimeException(e);
                 }

@@ -33,19 +33,7 @@ public class CompanyProfile {
         this.setWeburl(weburl);
     }
 
-    public CompanyProfile(List<String> list) {
-        if (list.size() == 9) {
-            this.setCountry(list.get(0));
-            this.setCurrency(list.get(1));
-            this.setExchange(list.get(2));
-            this.setIpo(list.get(3));
-            this.setLogo(list.get(4));
-            this.setMarketCap(list.get(5));
-            this.setName(list.get(6));
-            this.setSharesOutstanding(list.get(7));
-            this.setWeburl(list.get(8));
-        }
-    }
+    public CompanyProfile() { }
 
     // Setters
     public void setCountry(String country) {

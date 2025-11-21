@@ -187,30 +187,47 @@ public class ModelFacade {
     private void ensureWatchlistPopulated(Account a) throws Exception {
         List<TradeItem> dbSymbols = a.getWatchlistItems();
         if (dbSymbols == null || dbSymbols.isEmpty()) {
-                // add defaults and persist
-                List<TradeItem> defaults = Watchlist.getDefaultWatchlist();
-                db.saveWatchlistSymbols(a.getId(), "Default", defaults);
-                a.getWatchlist().clearList();
-                for (TradeItem ti : defaults) a.getWatchlist().addWatchlistItem(ti);
-                System.out.println("[facade] Loaded default watchlist -> DB (" + defaults.size() + ")");
-            } else {
-                // hydrate in-memory list from DB
-                a.getWatchlist().clearList();
-                for (TradeItem ti : dbSymbols) a.getWatchlist().addWatchlistItem(ti);
-                db.saveWatchlistSymbols(a.getId(), "User List", dbSymbols);
-                System.out.println("[facade] Loaded watchlist from DB (" + dbSymbols.size() + ")");
+            // add defaults and persist
+            List<TradeItem> defaults = Watchlist.getDefaultWatchlist();
+
+            for (TradeItem ti : defaults) {
+                CompanyProfile cp = fetchAndCacheCompanyProfile(ti.getSymbol());
+                if (cp != null) ti.setCompanyProfile(cp); else ti.setNameLookup(ti);
             }
+            db.saveWatchlistSymbols(a.getId(), "Default", defaults);
+            a.getWatchlist().clearList();
+            for (TradeItem ti : defaults) a.getWatchlist().addWatchlistItem(ti);
+            System.out.println("[facade] Loaded default watchlist -> DB (" + defaults.size() + ")");
+        } else {
+            // hydrate in-memory list from DB
+            for (TradeItem ti : dbSymbols) {
+                if (ti.getCompanyProfile() == null) {
+                    CompanyProfile cp = fetchAndCacheCompanyProfile(ti.getSymbol());
+                    if (cp != null) ti.setCompanyProfile(cp); else ti.setNameLookup(ti);
+                }
+            }
+            a.getWatchlist().clearList();
+            for (TradeItem ti : dbSymbols) a.getWatchlist().addWatchlistItem(ti);
+            db.saveWatchlistSymbols(a.getId(), "User List", dbSymbols);
+            System.out.println("[facade] Loaded watchlist from DB (" + dbSymbols.size() + ")");
+        }
     }
 
-    public void addToWatchlist(String name, String symbol) throws Exception {
     /**
      * Adds a symbol to the active account's watchlist.
      *
      * @param symbol The stock symbol to add.
      * @throws Exception If an error occurs.
      */
+    public void addToWatchlist(String symbol) throws Exception {
         Account a = profile.getActiveAccount();
-        TradeItem ti = new TradeItem(name, symbol);
+        String sym = (symbol == null ? "" : symbol.trim().toUpperCase());
+        if (sym.isEmpty()) throw new IllegalArgumentException("Symbol required");
+
+        TradeItem ti = new TradeItem(sym);
+        CompanyProfile cp = fetchAndCacheCompanyProfile(sym);
+        if (cp != null) ti.setCompanyProfile(cp); else ti.setNameLookup(ti);
+
         market.add(ti);
         a.getWatchlist().addWatchlistItem(ti);
         db.saveWatchlistSymbols(a.getId(), "Default", a.getWatchlistItems());
@@ -229,6 +246,21 @@ public class ModelFacade {
         }
         //unsubscribe from client
         fireWatchlistChanged(getWatchlist());
+    }
+
+    private CompanyProfile fetchAndCacheCompanyProfile(String symbol) {
+        String key = symbol.trim().toUpperCase();
+        try {
+            CompanyProfile cp = db.getCompanyProfile(key);
+            if (cp != null) return cp;
+
+            // fetch from remote
+            CompanyProfile fetched = client.fetchInfo(key);
+            if (fetched != null) {
+                db.upsertCompanyProfile(key, fetched, System.currentTimeMillis());
+            }
+            return fetched;
+        } catch (Exception e) { return null; }
     }
 
     public void executeTrade(String symbol, boolean isBuy, int shares) {
@@ -402,36 +434,45 @@ public class ModelFacade {
         if (logoCache.containsKey(key)) {
             return logoCache.get(key);
         }
+        CompanyProfile cp = fetchAndCacheCompanyProfile(key);
 
-        // Check if we recently failed to fetch this logo
-        Long lastAttempt = logoFetchAttempts.get(key);
-        if (lastAttempt != null) {
-            long elapsed = System.currentTimeMillis() - lastAttempt;
-            if (elapsed < LOGO_RETRY_DELAY_MS) {
-                // Too soon to retry, return null
-                return null;
-            }
-        }
-
-        // Record this fetch attempt
-        logoFetchAttempts.put(key, System.currentTimeMillis());
-
-        try {
-            CompanyProfile profile = client.fetchInfo(key);
-            if (profile != null) {
-                String logo = profile.getLogo();
-                // Check if logo is valid (not null, not blank, not "unknown")
-                if (logo != null && !logo.isBlank() && !"unknown".equals(logo)) {
-                    logoCache.put(key, logo);
-                    return logo;
-                }
-            }
-            // Cache null result to avoid repeated failed lookups
-            logoCache.put(key, null);
-        } catch (Exception e) {
-            // Silently fail and cache null
+        String logo = (cp == null ? null : cp.getLogo());
+        if (logo != null && !logo.isBlank() && !"unknown".equals(logo)) {
+            logoCache.put(key, logo);
+        } else {
             logoCache.put(key, null);
         }
-        return null;
+        return logoCache.get(key);
+
+//         Check if we recently failed to fetch this logo
+//        Long lastAttempt = logoFetchAttempts.get(key);
+//        if (lastAttempt != null) {
+//            long elapsed = System.currentTimeMillis() - lastAttempt;
+//            if (elapsed < LOGO_RETRY_DELAY_MS) {
+//                // Too soon to retry, return null
+//                return null;
+//            }
+//        }
+//
+//         Record this fetch attempt
+//        logoFetchAttempts.put(key, System.currentTimeMillis());
+//
+//        try {
+//            CompanyProfile profile = client.fetchInfo(key);
+//            if (profile != null) {
+//                String logo = profile.getLogo();
+//                 Check if logo is valid (not null, not blank, not "unknown")
+//                if (logo != null && !logo.isBlank() && !"unknown".equals(logo)) {
+//                    logoCache.put(key, logo);
+//                    return logo;
+//                }
+//            }
+//             Cache null result to avoid repeated failed lookups
+//            logoCache.put(key, null);
+//        } catch (Exception e) {
+//            // Silently fail and cache null
+//            logoCache.put(key, null);
+//        }
+//        return null;
     }
 }

@@ -5,7 +5,7 @@ package com.models.market;
  * Holds current price, change, and other market data.
  */
 public class TradeItem {
-    private String name;
+    private String name; // DEPRECATED
     private final String symbol;
     private double price;
     private double changePercent;
@@ -15,12 +15,14 @@ public class TradeItem {
     private CompanyProfile companyProfile;
 
     public TradeItem(String symbol) {
-        this.symbol = symbol;
-        this.companyProfile = ;
+        if (symbol == null || symbol.isBlank()) {
+            throw new IllegalArgumentException("symbol required");
+        }
+        this.symbol = symbol.trim().toUpperCase();
     }
 
     /**
-     * Constructs a new TradeItem.
+     * DEPRECATED!
      *
      * @param name   The name of the company.
      * @param symbol The stock symbol.
@@ -31,54 +33,33 @@ public class TradeItem {
         price = 0;
     }
 
-    public TradeItem(String name, String symbol, double price, double changePercent) {
-    /**
-     * Constructs a new TradeItem with initial price data.
-     *
-     * @param name          The name of the company.
-     * @param symbol        The stock symbol.
-     * @param price         The current price.
-     * @param changePercent The percentage change.
-     */
-        this.name = name;
-        this.symbol = symbol;
-        this.price = price;
-        this.changePercent = changePercent;
-    }
-
     public String getName() {
-        return name;
+        if (companyProfile != null && companyProfile.getName() != null && !companyProfile.getName().isBlank()) {
+            return companyProfile.getName();
+        }
+        if (name != null && !name.isBlank()) return name;
+        return symbol;
     }
 
     public void setName(String n) { this.name = n; }
 
-    public String getSymbol() {
-        return symbol;
-    }
+    public String getSymbol() { return symbol; }
+
+    public CompanyProfile getCompanyProfile() { return companyProfile; }
+    public void setCompanyProfile(CompanyProfile cp) { this.companyProfile = cp; }
 
     /**
      * Gets the current price.
      *
      * @return The current price.
      */
-    public double getCurrentPrice() {
-        //updatePrice();
-        return price;
-    }
-
-    public double getChangePercent() {
-        return changePercent;
-    }
-
+    public double getCurrentPrice() { return price; }
+    public double getChangePercent() { return changePercent; }
     public void setValues(double[] openCurrent) {
         this.open = openCurrent[0];
         this.price = openCurrent[1];
         this.prevClose = openCurrent[2];
         calculateChange();
-    }
-
-    public double getChange() {
-        return change;
     }
 
     /**
@@ -98,8 +79,13 @@ public class TradeItem {
     }
 
     private void calculateChange() {
-        this.change = price-prevClose;
-        this.changePercent = change/prevClose * 100;
+        if (!Double.isNaN(prevClose) && prevClose > 0) {
+            this.change = price - prevClose;
+            this.changePercent = change / prevClose * 100;
+        } else {
+            this.change = Double.NaN;
+            this.changePercent = Double.NaN;
+        }
     }
 
     /**

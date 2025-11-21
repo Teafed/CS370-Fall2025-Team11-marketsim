@@ -63,8 +63,8 @@ public class Database implements AutoCloseable {
         ensurePricesSchema();
         ensureUserSchema();
         ensurePortfolioSchema();
+        ensureSymbolSchema();
     }
-
     private void ensurePricesSchema() throws SQLException {
         try (Statement st = conn.createStatement()) {
             st.execute("""
@@ -85,7 +85,6 @@ public class Database implements AutoCloseable {
                     """);
         }
     }
-
     private void ensureUserSchema() throws SQLException {
         try (Statement st = conn.createStatement()) {
             st.execute("""
@@ -129,7 +128,6 @@ public class Database implements AutoCloseable {
                     """);
         }
     }
-
     private void ensurePortfolioSchema() throws SQLException {
         try (Statement st = conn.createStatement()) {
             // trades
@@ -180,6 +178,28 @@ public class Database implements AutoCloseable {
             st.execute("CREATE INDEX IF NOT EXISTS idx_positions_acct ON positions(account_id)");
         }
     }
+    private void ensureSymbolSchema() throws SQLException {
+        try (Statement st = conn.createStatement()) {
+            // trades
+            st.execute("""
+                        CREATE TABLE IF NOT EXISTS company_profiles (
+                        symbol TEXT PRIMARY KEY,             -- uppercase
+                        country TEXT,
+                        currency TEXT,
+                        exchange TEXT,
+                        ipo TEXT,
+                        logo TEXT,
+                        market_cap TEXT,
+                        name TEXT,
+                        shares_outstanding TEXT,
+                        web_url TEXT,
+                        last_fetched_ms INTEGER NOT NULL DEFAULT 0,
+                        last_failed_ms  INTEGER NOT NULL DEFAULT 0
+                        )
+                    """);
+            st.execute("CREATE INDEX IF NOT EXISTS idx_company_profiles_lastfetch ON company_profiles(last_fetched_ms)");
+        }
+    }
 
     private boolean tableExists(String name) throws SQLException {
         String sql = "SELECT name FROM sqlite_master WHERE type='table' AND name=?";
@@ -209,18 +229,87 @@ public class Database implements AutoCloseable {
         }
     }
 
-    public void recordSymbolInfo(String symbol, CompanyProfile cp) {
-
+    public void upsertCompanyProfile(String symbol, CompanyProfile cp, long fetchedMs) throws SQLException {
+        String s = symbol.trim().toUpperCase();
+        try (PreparedStatement ps = conn.prepareStatement("""
+                INSERT INTO company_profiles(symbol, country, currency, exchange, ipo, logo, market_cap, name, shares_outstanding, web_url, last_fetched_ms, last_failed_ms)
+                VALUES(?,?,?,?,?,?,?,?,?,?,?,0)
+                ON CONFLICT(symbol) DO UPDATE SET
+                country=excluded.country,
+                currency=excluded.currency,
+                exchange=excluded.exchange,
+                ipo=excluded.ipo,
+                logo=excluded.logo,
+                market_cap=excluded.market_cap,
+                name=excluded.name,
+                shares_outstanding=excluded.shares_outstanding,
+                web_url=excluded.web_url,
+                last_fetched_ms=excluded.last_fetched_ms
+            """)) {
+            ps.setString(1, s);
+            ps.setString(2, cp.getCountry());
+            ps.setString(3, cp.getCurrency());
+            ps.setString(4, cp.getExchange());
+            ps.setString(5, cp.getIpo());
+            ps.setString(6, cp.getLogo());
+            ps.setString(7, cp.getMarketCap());
+            ps.setString(8, cp.getName());
+            ps.setString(9, cp.getSharesOutstanding());
+            ps.setString(10, cp.getWeburl());
+            ps.setLong(11, fetchedMs);
+            ps.executeUpdate();
+        }
     }
+    public CompanyProfile getCompanyProfile(String symbol) throws SQLException {
+        String sql = """
+                SELECT country, currency, exchange, ipo, logo, market_cap, name,
+                shares_outstanding, web_url, last_fetched_ms, last_failed_ms
+                FROM company_profiles
+                WHERE symbol = ?
+            """;
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, symbol.trim().toUpperCase());
+            try (ResultSet rs = ps.executeQuery()) {
+                if (!rs.next()) return null;
 
-    public CompanyProfile getSymbolInfo(String symbol) throws SQLException {
-        String sql = "SELECT something lol";
-        try (PreparedStatement ps = conn.prepareStatement(sql);
-                ResultSet rs = ps.executeQuery()) {
-            List<String> out = new ArrayList<>();
-            while (rs.next())
-                out.add(rs.getString(1));
-            return new CompanyProfile(out);
+                CompanyProfile cp = new CompanyProfile();
+                cp.setCountry(rs.getString("country"));
+                cp.setCurrency(rs.getString("currency"));
+                cp.setExchange(rs.getString("exchange"));
+                cp.setIpo(rs.getString("ipo"));
+                cp.setLogo(rs.getString("logo"));
+                cp.setMarketCap(rs.getString("market_cap"));
+                cp.setName(rs.getString("name"));
+                cp.setSharesOutstanding(rs.getString("shares_outstanding"));
+                cp.setWeburl(rs.getString("web_url"));
+                return cp;
+            }
+        }
+    }
+    public List<String> listSymbolsNeedingCompanyProfile(long staleAfterMs, long backoffMs, int limit) throws SQLException {
+        // symbols present in prices but either missing a profile, or profile is stale and not recently failed
+        String sql = """
+                WITH distinct_syms AS (
+                SELECT DISTINCT symbol FROM prices
+                )
+                SELECT s.symbol
+                FROM distinct_syms s
+                LEFT JOIN company_profiles cp ON cp.symbol = s.symbol
+                WHERE cp.symbol IS NULL
+                OR cp.last_fetched_ms < ?
+                AND (cp.last_failed_ms = 0 OR cp.last_failed_ms < ?)
+                LIMIT ?
+            """;
+        long now = System.currentTimeMillis();
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setLong(1, now - staleAfterMs);
+            ps.setLong(2, now - backoffMs);
+            ps.setInt(3, Math.max(1, limit));
+            try (ResultSet rs = ps.executeQuery()) {
+                ArrayList<String> out = new ArrayList<>();
+                while (rs.next()) out.add(rs.getString(1));
+                return out;
+            }
         }
     }
 
@@ -554,15 +643,48 @@ public class Database implements AutoCloseable {
         if (watchlistId == null)
             return java.util.Collections.emptyList();
 
-        try (PreparedStatement sel = conn.prepareStatement(
-                "SELECT symbol FROM watchlist_items WHERE watchlist_id=? ORDER BY position ASC")) {
+        // pull symbols and left join company_profiles to hydrate TradeItem
+        String sql = """
+            SELECT w.symbol,
+            cp.country, cp.currency, cp.exchange, cp.ipo, cp.logo,
+            cp.market_cap, cp.name, cp.shares_outstanding, cp.web_url,
+            cp.last_fetched_ms, cp.last_failed_ms
+            FROM watchlist_items w
+            LEFT JOIN company_profiles cp ON cp.symbol = w.symbol
+            WHERE w.watchlist_id = ?
+            ORDER BY w.position ASC
+        """;
+        try (PreparedStatement sel = conn.prepareStatement(sql)) {
             sel.setLong(1, watchlistId);
             try (ResultSet rs = sel.executeQuery()) {
                 ArrayList<TradeItem> out = new ArrayList<>();
                 while (rs.next()) {
-                    String symbol = rs.getString(1);
-                    TradeItem ti = new TradeItem("Unknown Name", symbol);
-                    ti.setNameLookup(ti);
+                    String sym = rs.getString("symbol");
+                    if (sym == null || sym.isBlank()) continue;
+
+                    // 1-arg ctor (new path)
+                    TradeItem ti = new TradeItem(sym.trim().toUpperCase());
+
+                    // If we have a company profile in DB, hydrate the TradeItem
+                    String name = rs.getString("name");
+                    if (name != null || rs.getObject("country") != null) {
+                        CompanyProfile cp = new CompanyProfile();
+                        cp.setCountry(rs.getString("country"));
+                        cp.setCurrency(rs.getString("currency"));
+                        cp.setExchange(rs.getString("exchange"));
+                        cp.setIpo(rs.getString("ipo"));
+                        cp.setLogo(rs.getString("logo"));
+                        cp.setMarketCap(rs.getString("market_cap"));
+                        cp.setName(name);
+                        cp.setSharesOutstanding(rs.getString("shares_outstanding"));
+                        cp.setWeburl(rs.getString("web_url"));
+
+                        ti.setCompanyProfile(cp);
+                    } else {
+                        // fallback (API should handle this)
+                        ti.setNameLookup(ti);
+                    }
+
                     out.add(ti);
                 }
                 return out;
@@ -1022,8 +1144,9 @@ public class Database implements AutoCloseable {
                         }
                     }
 
-                    // TODO: load up the portfolios for each account
-                    // a.setPortfolio(loadPositions(accountId));
+                    // portfolio
+                    var positions = getPositions(accountId); // symbol -> qty
+                    a.getPortfolio().setFromDb(positions);
 
                     accounts.add(a);
                 }
