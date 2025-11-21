@@ -29,12 +29,6 @@ public class Watchlist {
     }
 
     /**
-     * Adds a specified TradeItem to the watchlist.
-     * 
-     * @param tradeItem The TradeItem to add
-     * @return True if successful, False if list is full.
-     */
-    /**
      * Adds a TradeItem to the watchlist.
      *
      * @param tradeItem The TradeItem to add.
@@ -57,12 +51,6 @@ public class Watchlist {
             return false;
     }
 
-    /**
-     * Removes a specified TradeItem from the watchlist.
-     * 
-     * @param tradeItem The TradeItem to remove
-     * @return True if successful, False if the list did not contain that item.
-     */
     /**
      * Removes a TradeItem from the watchlist.
      *

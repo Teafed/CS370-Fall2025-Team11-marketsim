@@ -87,6 +87,11 @@ public class Profile {
         return null;
     }
 
+    /**
+     * Gets the list of all accounts in the profile.
+     *
+     * @return A list of Account objects.
+     */
     public List<Account> getAccounts() {
         return accounts;
     }

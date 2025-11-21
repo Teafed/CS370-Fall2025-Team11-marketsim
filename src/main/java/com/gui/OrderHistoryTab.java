@@ -49,6 +49,9 @@ public class OrderHistoryTab extends ContentPanel implements ModelListener {
         refresh();
     }
 
+    /**
+     * Initializes the UI components, including the table and scroll pane.
+     */
     private void initializeComponents() {
         // Table to display portfolio holdings
         String[] cols = { "Time", "Side", "Qty", "Price", "Cash Δ", "Pos" };

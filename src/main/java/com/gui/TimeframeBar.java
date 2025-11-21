@@ -88,6 +88,10 @@ public class TimeframeBar extends ContentPanel {
         return true;
     }
 
+    /**
+     * Applies the currently selected timeframe and notifies the listener.
+     * Calculates the start and end timestamps based on the selection.
+     */
     private void applySelection() {
         Instant now = Instant.now();
         ZoneId utc = ZoneOffset.UTC;
@@ -154,6 +158,12 @@ public class TimeframeBar extends ContentPanel {
         listener.onTimeframeChanged(startMs, endMs, multiplier, timespan);
     }
 
+    /**
+     * Creates a styled toggle button.
+     *
+     * @param text The button text.
+     * @return A configured JToggleButton.
+     */
     private JToggleButton makeToggle(String text) {
         JToggleButton b = new JToggleButton(text);
         b.setFont(new Font("Segoe UI", Font.BOLD, 12));

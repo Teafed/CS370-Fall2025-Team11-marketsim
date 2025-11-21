@@ -83,6 +83,11 @@ public class GUIComponents {
       return splitPane;
    }
 
+   /**
+    * Creates a corner component for scroll panes.
+    *
+    * @return A JPanel serving as a corner filler.
+    */
    private static JPanel createCorner() {
       JPanel corner = new JPanel();
       corner.setBackground(BG_MEDIUM);

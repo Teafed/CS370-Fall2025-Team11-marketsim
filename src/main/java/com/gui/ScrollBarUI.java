@@ -29,6 +29,11 @@ public class ScrollBarUI extends BasicScrollBarUI {
    }
 
    // invisible buttons to remove arrow buttons
+   /**
+    * Creates a zero-sized button to hide the default scrollbar arrows.
+    *
+    * @return A zero-sized JButton.
+    */
    private JButton createZeroButton() {
       JButton button = new JButton();
       button.setPreferredSize(new Dimension(0, 0));

@@ -160,7 +160,16 @@ public class HistoricalService {
         return hole;
     }
 
-    /* format url string for candles */
+    /**
+     * Builds the URL for fetching candle data from Polygon.io.
+     *
+     * @param symbol     The stock symbol.
+     * @param multiplier The time multiplier.
+     * @param timespan   The timespan unit.
+     * @param from       The start date.
+     * @param to         The end date.
+     * @return The constructed URL.
+     */
     private String buildCandlesUrl(String symbol, int multiplier, Timespan timespan,
             LocalDate from, LocalDate to) {
         return String.format(
@@ -345,6 +354,12 @@ public class HistoricalService {
         return totalInsertedAll;
     }
 
+    /**
+     * Acquires a token from the rate limiter.
+     * Blocks if no tokens are available.
+     *
+     * @throws InterruptedException If the thread is interrupted while waiting.
+     */
     private static void acquireToken() throws InterruptedException {
         // refill token every 12s (polygon free tier is 5 calls/minute)
         while (true) {
@@ -360,7 +375,14 @@ public class HistoricalService {
         }
     }
 
-    /* search for subrange in case there's an interior hole */
+    /**
+     * Finds a missing range (hole) within the requested range.
+     *
+     * @param symbol The stock symbol.
+     * @param req    The requested range.
+     * @return A Range object representing the hole, or null if no hole is found.
+     * @throws SQLException If a database error occurs.
+     */
     private Range findInteriorHole(String symbol, Range req) throws SQLException {
         long startMs = req.from.atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli();
         long endMs = req.to.atTime(23, 59, 59).toInstant(ZoneOffset.UTC).toEpochMilli();
@@ -397,7 +419,13 @@ public class HistoricalService {
         return null;
     }
 
-    /* count trading days (Mon–Fri) strictly between a and b, assuming a <= b. */
+    /**
+     * Calculates the number of business days strictly between two dates.
+     *
+     * @param a The start date.
+     * @param b The end date.
+     * @return The number of business days.
+     */
     private static int businessDaysBetween(LocalDate a, LocalDate b) {
         int days = 0;
         LocalDate d = a.plusDays(1);
@@ -409,27 +437,57 @@ public class HistoricalService {
         return Math.max(0, days);
     }
 
+    /**
+     * Checks if a date is a trading day (not weekend or holiday).
+     *
+     * @param d The date to check.
+     * @return True if it is a trading day, false otherwise.
+     */
     private static boolean isTradingDay(LocalDate d) {
         return !isWeekend(d) && !isHoliday(d);
     }
 
+    /**
+     * Checks if a date is a weekend.
+     *
+     * @param d The date to check.
+     * @return True if it is a weekend, false otherwise.
+     */
     private static boolean isWeekend(LocalDate d) {
         var w = d.getDayOfWeek();
         return w == DayOfWeek.SATURDAY || w == DayOfWeek.SUNDAY;
     }
 
+    /**
+     * Finds the previous trading day.
+     *
+     * @param d The starting date.
+     * @return The previous trading day.
+     */
     private static LocalDate prevTradingDay(LocalDate d) {
         while (!isTradingDay(d))
             d = d.minusDays(1);
         return d;
     }
 
+    /**
+     * Finds the next trading day.
+     *
+     * @param d The starting date.
+     * @return The next trading day.
+     */
     private static LocalDate nextTradingDay(LocalDate d) {
         while (!isTradingDay(d))
             d = d.plusDays(1);
         return d;
     }
 
+    /**
+     * Checks if a date is a market holiday.
+     *
+     * @param d The date to check.
+     * @return True if it is a holiday, false otherwise.
+     */
     private static boolean isHoliday(LocalDate d) {
         // fixed-date holidays
         final Set<MonthDay> FIXED_HOLIDAYS = Set.of(
@@ -470,18 +528,41 @@ public class HistoricalService {
         return false;
     }
 
+    /**
+     * Calculates the nth occurrence of a weekday in a month.
+     *
+     * @param y   The year.
+     * @param m   The month.
+     * @param dow The day of the week.
+     * @param n   The occurrence number (e.g., 1 for 1st, 3 for 3rd).
+     * @return The calculated date.
+     */
     private static LocalDate nthWeekdayOfMonth(int y, Month m, DayOfWeek dow, int n) {
         LocalDate d = LocalDate.of(y, m, 1);
         int shift = (dow.getValue() - d.getDayOfWeek().getValue() + 7) % 7;
         return d.plusDays(shift + (n - 1) * 7L);
     }
 
+    /**
+     * Calculates the last occurrence of a weekday in a month.
+     *
+     * @param y   The year.
+     * @param m   The month.
+     * @param dow The day of the week.
+     * @return The calculated date.
+     */
     private static LocalDate lastWeekdayOfMonth(int y, Month m, DayOfWeek dow) {
         LocalDate d = LocalDate.of(y, m, m.length(Year.isLeap(y)));
         int shiftBack = (d.getDayOfWeek().getValue() - dow.getValue() + 7) % 7;
         return d.minusDays(shiftBack);
     }
 
+    /**
+     * Calculates the date of Easter Sunday for a given year.
+     *
+     * @param y The year.
+     * @return The date of Easter Sunday.
+     */
     private static LocalDate easterSunday(int y) {
         int a = y % 19;
         int b = y / 100, c = y % 100;

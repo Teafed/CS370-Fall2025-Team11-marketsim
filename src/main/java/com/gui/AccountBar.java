@@ -116,6 +116,12 @@ public class AccountBar extends JPanel {
         this.onClick = onClick;
     }
 
+    /**
+     * Creates an icon displaying the user's initials.
+     *
+     * @param displayName The name to extract initials from.
+     * @return An Icon containing the initials.
+     */
     private static Icon createAvatarIcon(String displayName) {
         final int size = 28;
         final String initials = safeInitials(displayName);
@@ -148,6 +154,13 @@ public class AccountBar extends JPanel {
         };
     }
 
+    /**
+     * Extracts safe initials from a name string.
+     * Returns "A" if the name is null or empty.
+     *
+     * @param name The name to process.
+     * @return A string containing the initials (max 2 characters).
+     */
     private static String safeInitials(String name) {
         if (name == null || name.isBlank())
             return "A";

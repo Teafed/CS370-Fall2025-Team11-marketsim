@@ -160,10 +160,6 @@ public class MainWindow extends JFrame
     /**
      * Set the market open/closed indicator. true => OPEN (green), false => CLOSED
      * (red).
-     */
-    /**
-     * Set the market open/closed indicator. true => OPEN (green), false => CLOSED
-     * (red).
      *
      * @param open True if the market is open, false otherwise.
      */

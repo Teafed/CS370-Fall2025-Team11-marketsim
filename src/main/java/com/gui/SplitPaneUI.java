@@ -89,6 +89,11 @@ public class SplitPaneUI extends BasicSplitPaneUI {
          g2.dispose();
       }
 
+      /**
+       * Draws a grip pattern on the divider.
+       *
+       * @param g2 The Graphics2D context.
+       */
       private void drawGripPattern(Graphics2D g2) {
          g2.setColor(GUIComponents.BORDER_COLOR);
          int orientation = splitPaneUI.getSplitPane().getOrientation();

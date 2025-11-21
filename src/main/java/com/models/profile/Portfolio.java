@@ -21,13 +21,6 @@ public class Portfolio {
     }
 
     /**
-     * Add a share to the portfolio.
-     * 
-     * @param symbol
-     * @param n      The number of items to add, must be >0
-     * @return True if successfule, false if not
-     */
-    /**
      * Adds shares to the portfolio.
      *
      * @param symbol The stock symbol.
@@ -44,15 +37,6 @@ public class Portfolio {
         return true;
     }
 
-    /*
-     * Remove a symbol from a portfolio. Removes the entry if entire value is
-     * removed.
-     * Otherwise, subtracts from existing value.
-     * 
-     * @param symbol The item to be removed.
-     * 
-     * @param n The amount of the item to be removed. If -1 removes all that item.
-     */
     /**
      * Removes shares from the portfolio.
      *
@@ -93,7 +77,6 @@ public class Portfolio {
         }
     }
 
-    /** Compatibility: accept a generic TradeItem (from tests) */
     /**
      * Checks if the portfolio contains any shares of the given symbol.
      *
@@ -106,12 +89,6 @@ public class Portfolio {
         return positions.containsKey(symbol);
     }
 
-    /**
-     * Gets the number of shares held for a particular TradeItem
-     * 
-     * @param symbol The item queried.
-     * @return The number of shares held.
-     */
     /**
      * Gets the number of shares held for a particular symbol.
      *

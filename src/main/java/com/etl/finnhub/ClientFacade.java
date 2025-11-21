@@ -114,6 +114,11 @@ public class ClientFacade implements TradeListener, TradeSource {
         return searchClient.searchSymbol(symbol);
     }
 
+    /**
+     * Sets the Finnhub API key from the environment variable.
+     *
+     * @throws IllegalStateException If the API key is not found.
+     */
     private void setAPIKey() {
         Dotenv dotenv = Dotenv.configure().ignoreIfMissing().load();
         String k = (apiKey == null || apiKey.isBlank()) ? dotenv.get("FINNHUB_API_KEY") : apiKey;

@@ -64,6 +64,11 @@ public class Database implements AutoCloseable {
         ensurePortfolioSchema();
     }
 
+    /**
+     * Ensures the prices table and index exist.
+     *
+     * @throws SQLException If a database access error occurs.
+     */
     private void ensurePricesSchema() throws SQLException {
         try (Statement st = conn.createStatement()) {
             st.execute("""
@@ -85,6 +90,11 @@ public class Database implements AutoCloseable {
         }
     }
 
+    /**
+     * Ensures the user-related tables (profiles, accounts, watchlists) exist.
+     *
+     * @throws SQLException If a database access error occurs.
+     */
     private void ensureUserSchema() throws SQLException {
         try (Statement st = conn.createStatement()) {
             st.execute("""
@@ -129,6 +139,11 @@ public class Database implements AutoCloseable {
         }
     }
 
+    /**
+     * Ensures the portfolio-related tables (trades, cash_ledger, positions) exist.
+     *
+     * @throws SQLException If a database access error occurs.
+     */
     private void ensurePortfolioSchema() throws SQLException {
         try (Statement st = conn.createStatement()) {
             // trades
@@ -180,6 +195,13 @@ public class Database implements AutoCloseable {
         }
     }
 
+    /**
+     * Checks if a table exists in the database.
+     *
+     * @param name The table name.
+     * @return True if the table exists, false otherwise.
+     * @throws SQLException If a database access error occurs.
+     */
     private boolean tableExists(String name) throws SQLException {
         String sql = "SELECT name FROM sqlite_master WHERE type='table' AND name=?";
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
@@ -190,6 +212,11 @@ public class Database implements AutoCloseable {
         }
     }
 
+    /**
+     * Gets the underlying database connection.
+     *
+     * @return The Connection object.
+     */
     public Connection getConnection() {
         return conn;
     }
@@ -212,6 +239,16 @@ public class Database implements AutoCloseable {
     }
 
     /* old version */
+    /**
+     * Retrieves daily candle data for a specific symbol and range.
+     * Convenience method for 1-day candles.
+     *
+     * @param symbol  The stock symbol.
+     * @param startMs The start timestamp in milliseconds.
+     * @param endMs   The end timestamp in milliseconds.
+     * @return A ResultSet containing the candle data.
+     * @throws SQLException If a database access error occurs.
+     */
     public ResultSet getCandles(String symbol, long startMs, long endMs) throws SQLException {
         return getCandles(symbol, 1, "day", startMs, endMs);
     }
@@ -271,10 +308,26 @@ public class Database implements AutoCloseable {
     }
 
     /* old version */
+    /**
+     * Gets the latest timestamp for a symbol (1-day candles).
+     *
+     * @param symbol The stock symbol.
+     * @return The latest timestamp, or 0 if no data exists.
+     * @throws SQLException If a database access error occurs.
+     */
     public long getLatestTimestamp(String symbol) throws SQLException {
         return getLatestTimestamp(symbol, 1, "day");
     }
 
+    /**
+     * Gets the latest timestamp for a symbol and timespan.
+     *
+     * @param symbol     The stock symbol.
+     * @param multiplier The time multiplier.
+     * @param timespan   The timespan unit.
+     * @return The latest timestamp, or 0 if no data exists.
+     * @throws SQLException If a database access error occurs.
+     */
     public long getLatestTimestamp(String symbol, int multiplier, String timespan) throws SQLException {
         String sql = "SELECT MAX(timestamp) FROM prices WHERE symbol=? AND timespan=? AND multiplier=?";
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
@@ -287,6 +340,15 @@ public class Database implements AutoCloseable {
         }
     }
 
+    /**
+     * Gets the earliest timestamp for a symbol and timespan.
+     *
+     * @param symbol     The stock symbol.
+     * @param multiplier The time multiplier.
+     * @param timespan   The timespan unit.
+     * @return The earliest timestamp, or 0 if no data exists.
+     * @throws SQLException If a database access error occurs.
+     */
     public long getEarliestTimestamp(String symbol, int multiplier, String timespan) throws SQLException {
         String sql = "SELECT MIN(timestamp) FROM prices WHERE symbol=? AND timespan=? AND multiplier=?";
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
@@ -299,6 +361,17 @@ public class Database implements AutoCloseable {
         }
     }
 
+    /**
+     * Lists all timestamps for a symbol within a range.
+     *
+     * @param symbol     The stock symbol.
+     * @param multiplier The time multiplier.
+     * @param timespan   The timespan unit.
+     * @param startMs    The start timestamp.
+     * @param endMs      The end timestamp.
+     * @return A list of timestamps.
+     * @throws SQLException If a database access error occurs.
+     */
     public List<Long> listTimestamps(String symbol, int multiplier, String timespan,
             long startMs, long endMs) throws SQLException {
         String sql = """
@@ -323,10 +396,26 @@ public class Database implements AutoCloseable {
     }
 
     /* old voision */
+    /**
+     * Gets the latest and previous close prices for a symbol (1-day candles).
+     *
+     * @param symbol The stock symbol.
+     * @return An array containing [latestClose, previousClose]. Values may be NaN.
+     * @throws SQLException If a database access error occurs.
+     */
     public double[] latestAndPrevClose(String symbol) throws SQLException {
         return latestAndPrevClose(symbol, 1, "day");
     }
 
+    /**
+     * Gets the latest and previous close prices for a symbol and timespan.
+     *
+     * @param symbol     The stock symbol.
+     * @param multiplier The time multiplier.
+     * @param timespan   The timespan unit.
+     * @return An array containing [latestClose, previousClose]. Values may be NaN.
+     * @throws SQLException If a database access error occurs.
+     */
     public double[] latestAndPrevClose(String symbol, int multiplier, String timespan) throws SQLException {
         String sql = """
                     SELECT close FROM prices
@@ -352,6 +441,16 @@ public class Database implements AutoCloseable {
         }
     }
 
+    /**
+     * Gets the close price at or before a specific timestamp.
+     *
+     * @param symbol   The stock symbol.
+     * @param ts       The timestamp.
+     * @param mult     The time multiplier.
+     * @param timespan The timespan unit.
+     * @return The close price, or Double.NaN if not found.
+     * @throws SQLException If a database access error occurs.
+     */
     public double getCloseAtOrBefore(String symbol, long ts, int mult, String timespan) throws SQLException {
         String sql = """
                     SELECT close FROM prices
@@ -369,6 +468,15 @@ public class Database implements AutoCloseable {
         }
     }
 
+    /**
+     * Gets the first available close price for a symbol.
+     *
+     * @param symbol   The stock symbol.
+     * @param mult     The time multiplier.
+     * @param timespan The timespan unit.
+     * @return The first close price, or Double.NaN if not found.
+     * @throws SQLException If a database access error occurs.
+     */
     public double getFirstClose(String symbol, int mult, String timespan) throws SQLException {
         String sql = """
                     SELECT close FROM prices
@@ -632,6 +740,14 @@ public class Database implements AutoCloseable {
         }
     }
 
+    /**
+     * Retrieves the name of a profile by ID.
+     *
+     * @param profileId The profile ID.
+     * @return The profile name.
+     * @throws SQLException If a database access error occurs or the profile is not
+     *                      found.
+     */
     public String getProfileName(long profileId) throws SQLException {
         try (PreparedStatement ps = conn.prepareStatement(
                 "SELECT name FROM profiles WHERE id=?")) {
@@ -644,6 +760,13 @@ public class Database implements AutoCloseable {
         }
     }
 
+    /**
+     * Lists all accounts associated with a profile.
+     *
+     * @param profileId The profile ID.
+     * @return A list of Account objects.
+     * @throws SQLException If a database access error occurs.
+     */
     public List<Account> listAccounts(long profileId) throws SQLException {
         try (PreparedStatement ps = conn.prepareStatement(
                 "SELECT id, name FROM accounts WHERE profile_id=? ORDER BY name")) {
@@ -704,6 +827,17 @@ public class Database implements AutoCloseable {
         }
     }
 
+    /**
+     * Records a cash transaction in the ledger.
+     *
+     * @param accountId The account ID.
+     * @param ts        The timestamp in milliseconds.
+     * @param delta     The change in cash balance.
+     * @param reason    The reason for the transaction (DEPOSIT, WITHDRAWAL, TRADE).
+     * @param note      A note describing the transaction.
+     * @return The ID of the ledger entry.
+     * @throws SQLException If a database access error occurs.
+     */
     private long recordCash(long accountId, long ts, double delta, String reason, String note) throws SQLException {
         try (PreparedStatement ps = conn.prepareStatement("""
                     INSERT INTO cash_ledger(account_id, timestamp_ms, delta, reason, note)
@@ -721,6 +855,18 @@ public class Database implements AutoCloseable {
         }
     }
 
+    /**
+     * Updates the position for a symbol based on a trade.
+     * Calculates the new quantity and weighted average cost.
+     *
+     * @param accountId The account ID.
+     * @param symbol    The stock symbol.
+     * @param side      The trade side (BUY/SELL).
+     * @param qty       The trade quantity.
+     * @param price     The trade price.
+     * @param ts        The timestamp.
+     * @throws SQLException If a database access error occurs.
+     */
     private void upsertPositionFromTrade(long accountId, String symbol, String side,
             int qty, double price, long ts) throws SQLException {
         int curQty = 0;

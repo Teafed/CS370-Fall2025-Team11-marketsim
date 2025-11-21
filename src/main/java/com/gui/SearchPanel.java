@@ -41,6 +41,11 @@ public class SearchPanel extends ContentPanel {
         });
     }
 
+    /**
+     * Displays the suggestion popup with the given results.
+     *
+     * @param symbolDescriptions A 2D array of symbol and description pairs.
+     */
     private void showSuggestions(String[][] symbolDescriptions) {
         suggestionPopup.removeAll();
 

@@ -98,6 +98,12 @@ public class ChartPanel extends ContentPanel {
         });
     }
 
+    /**
+     * Adjusts the split pane divider location based on the collapsed state of the
+     * order panel.
+     *
+     * @param collapsed True if the order panel is collapsed, false otherwise.
+     */
     private void adjustDivider(boolean collapsed) {
         if (split == null)
             return;
@@ -130,6 +136,12 @@ public class ChartPanel extends ContentPanel {
         });
     }
 
+    /**
+     * Sets the divider location to leave a specific amount of space for the bottom
+     * panel.
+     *
+     * @param southHeightPx The desired height of the bottom panel in pixels.
+     */
     private void setDividerHeight(int southHeightPx) {
         if (split == null)
             return;
@@ -237,6 +249,13 @@ public class ChartPanel extends ContentPanel {
     // only one worker fetches historical data
     // TODO: if a backfill worker starts for a range and we switch to a new view,
     // we still keep backfilling for prev view but new view gets no worker
+    /**
+     * Starts a background worker to backfill historical data.
+     * Cancels any existing worker before starting a new one.
+     *
+     * @param task   The task to execute in the background.
+     * @param onDone The runnable to execute when the task completes.
+     */
     private void startBackfillWorker(java.util.concurrent.Callable<Integer> task,
             Runnable onDone) {
         if (currentWorker != null && !currentWorker.isDone())
@@ -258,6 +277,9 @@ public class ChartPanel extends ContentPanel {
     // ===========
     // ChartCanvas
     // ===========
+    /**
+     * Inner class responsible for painting the stock chart.
+     */
     private static final class ChartCanvas extends ContentPanel {
         private long[] times;
         private double[] prices;

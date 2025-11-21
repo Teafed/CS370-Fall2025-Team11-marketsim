@@ -66,22 +66,46 @@ public class ModelFacade {
     }
 
     // listeners
+    /**
+     * Adds a listener for model updates.
+     *
+     * @param l The listener to add.
+     */
     public void addListener(ModelListener l) {
         listeners.add(l);
     }
 
+    /**
+     * Removes a listener.
+     *
+     * @param l The listener to remove.
+     */
     public void removeListener(ModelListener l) {
         listeners.remove(l);
     }
 
+    /**
+     * Notifies listeners that market quotes have been updated.
+     * Runs on the Event Dispatch Thread.
+     */
     private void fireQuotesUpdated() {
         onEDT(() -> listeners.forEach(ModelListener::onQuotesUpdated));
     }
 
+    /**
+     * Notifies listeners that the watchlist has changed.
+     * Runs on the Event Dispatch Thread.
+     *
+     * @param items The updated watchlist items.
+     */
     private void fireWatchlistChanged(List<TradeItem> items) {
         onEDT(() -> listeners.forEach(l -> l.onWatchlistChanged(items)));
     }
 
+    /**
+     * Notifies listeners that the account state has changed.
+     * Runs on the Event Dispatch Thread.
+     */
     private void fireAccountChanged() {
         onEDT(() -> listeners.forEach(l -> {
             try {
@@ -92,10 +116,23 @@ public class ModelFacade {
         }));
     }
 
+    /**
+     * Notifies listeners of an error.
+     * Runs on the Event Dispatch Thread.
+     *
+     * @param msg The error message.
+     * @param t   The throwable associated with the error.
+     */
     private void fireError(String msg, Throwable t) {
         onEDT(() -> listeners.forEach(l -> l.onError(msg, t)));
     }
 
+    /**
+     * Executes a runnable on the Event Dispatch Thread.
+     * If already on the EDT, runs immediately. Otherwise, uses invokeLater.
+     *
+     * @param r The runnable to execute.
+     */
     private static void onEDT(Runnable r) {
         if (SwingUtilities.isEventDispatchThread())
             r.run();
@@ -113,6 +150,12 @@ public class ModelFacade {
         return client.getMarketStatus();
     }
 
+    /**
+     * Gets the current price of a symbol.
+     *
+     * @param symbol The stock symbol.
+     * @return The current price, or Double.NaN if unavailable.
+     */
     public double getPrice(String symbol) {
         return getPrice(symbol, System.currentTimeMillis());
     }
@@ -153,14 +196,29 @@ public class ModelFacade {
         }
     }
 
+    /**
+     * Gets the currently active account.
+     *
+     * @return The active Account object.
+     */
     public Account getActiveAccount() {
         return profile.getActiveAccount();
     }
 
+    /**
+     * Lists all accounts for the current profile.
+     *
+     * @return A list of Account objects.
+     */
     public List<Account> listAccounts() {
         return profile.getAccounts();
     }
 
+    /**
+     * Gets the watchlist for the active account.
+     *
+     * @return A list of TradeItems in the watchlist.
+     */
     public List<TradeItem> getWatchlist() {
         return profile.getActiveAccount().getWatchlist().getWatchlist();
     }
@@ -189,10 +247,24 @@ public class ModelFacade {
         return a.getCash() + portfolioValue;
     }
 
+    /**
+     * Gets the latest timestamp for a symbol from the database.
+     *
+     * @param symbol The stock symbol.
+     * @return The latest timestamp.
+     * @throws SQLException If a database access error occurs.
+     */
     public long getLatestTimestamp(String symbol) throws SQLException {
         return db.getLatestTimestamp(symbol);
     }
 
+    /**
+     * Retrieves recent trades for the active account.
+     *
+     * @param limit The maximum number of trades to retrieve.
+     * @return A list of TradeRow objects.
+     * @throws Exception If an error occurs.
+     */
     public List<TradeRow> getRecentTrades(int limit) throws Exception {
         Account a = profile.getActiveAccount();
         if (a == null)
@@ -201,6 +273,11 @@ public class ModelFacade {
     }
 
     // commands
+    /**
+     * Closes the database connection.
+     *
+     * @throws SQLException If a database access error occurs.
+     */
     public void close() throws SQLException {
         db.close();
     }
@@ -220,6 +297,13 @@ public class ModelFacade {
         fireAccountChanged();
     }
 
+    /**
+     * Ensures the watchlist is populated for an account.
+     * If empty, loads default symbols. If present in DB, loads from DB.
+     *
+     * @param a The account to populate.
+     * @throws Exception If an error occurs.
+     */
     private void ensureWatchlistPopulated(Account a) throws Exception {
         List<TradeItem> dbSymbols = a.getWatchlistItems();
         if (dbSymbols == null || dbSymbols.isEmpty()) {
@@ -254,6 +338,13 @@ public class ModelFacade {
         fireWatchlistChanged(getWatchlist());
     }
 
+    /**
+     * Executes a trade for the active account at the current time.
+     *
+     * @param symbol The stock symbol.
+     * @param isBuy  True for buy, false for sell.
+     * @param shares The number of shares.
+     */
     public void executeTrade(String symbol, boolean isBuy, int shares) {
         executeTrade(symbol, isBuy, shares, System.currentTimeMillis());
     }
@@ -414,6 +505,12 @@ public class ModelFacade {
         }
     }
 
+    /**
+     * Searches for symbols matching a query.
+     *
+     * @param symbol The search query.
+     * @return A 2D array of symbol and description pairs.
+     */
     public String[][] searchSymbol(String symbol) {
         return market.searchSymbol(symbol);
     }

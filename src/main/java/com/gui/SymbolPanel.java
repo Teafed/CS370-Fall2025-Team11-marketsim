@@ -55,11 +55,6 @@ public class SymbolPanel extends ContentPanel {
     /**
      * Constructs a new SymbolPanel.
      *
-     * @param model The ModelFacade instance.
-     */
-    /**
-     * Constructs a new SymbolPanel.
-     *
      * @param model     The ModelFacade instance.
      * @param logoCache The LogoCache instance.
      */

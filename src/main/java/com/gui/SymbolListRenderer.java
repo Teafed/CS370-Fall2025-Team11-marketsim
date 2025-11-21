@@ -62,7 +62,7 @@ public class SymbolListRenderer extends JPanel implements ListCellRenderer<Trade
         } catch (Exception ignored) {
         }
 
-        ImageIcon cached = logoCache.getIfCached(logoStr != null ? logoStr : symbol);
+        ImageIcon cached = logoCache.getIfCached(symbol);
         if (cached != null) {
             iconLabel.setIcon(cached);
         } else {

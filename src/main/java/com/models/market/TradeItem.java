@@ -40,14 +40,29 @@ public class TradeItem {
         this.changePercent = changePercent;
     }
 
+    /**
+     * Gets the company name.
+     *
+     * @return The company name.
+     */
     public java.lang.String getName() {
         return name;
     }
 
+    /**
+     * Sets the company name.
+     *
+     * @param n The new name.
+     */
     public void setName(java.lang.String n) {
         this.name = n;
     }
 
+    /**
+     * Gets the stock symbol.
+     *
+     * @return The stock symbol.
+     */
     public java.lang.String getSymbol() {
         return symbol;
     }
@@ -62,10 +77,20 @@ public class TradeItem {
         return price;
     }
 
+    /**
+     * Gets the percentage change.
+     *
+     * @return The percentage change.
+     */
     public double getChangePercent() {
         return changePercent;
     }
 
+    /**
+     * Gets the price change amount.
+     *
+     * @return The price change.
+     */
     public double getChange() {
         return change;
     }
@@ -101,10 +126,21 @@ public class TradeItem {
         }
     }
 
+    /**
+     * Sets the opening price.
+     *
+     * @param open The opening price.
+     */
     public void setOpen(double open) {
         this.open = open;
     }
 
+    /**
+     * Sets the change amount and percentage.
+     *
+     * @param change        The price change.
+     * @param changePercent The percentage change.
+     */
     public void setChange(double change, double changePercent) {
         this.change = change;
         this.changePercent = changePercent;

@@ -126,6 +126,12 @@ public class Market implements TradeListener {
         return clientFacade.searchSymbol(symbol);
     }
 
+    /**
+     * Normalizes a symbol string (trims and converts to uppercase).
+     *
+     * @param s The symbol string.
+     * @return The normalized symbol, or empty string if null.
+     */
     private static String normalize(String s) {
         return s == null ? "" : s.trim().toUpperCase(Locale.ROOT);
     }

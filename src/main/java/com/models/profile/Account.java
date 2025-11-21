@@ -80,6 +80,11 @@ public class Account {
     }
 
     // id
+    /**
+     * Sets the account ID.
+     *
+     * @param id The account ID.
+     */
     private void setId(long id) {
         this.id = id;
     }

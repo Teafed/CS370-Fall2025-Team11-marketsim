@@ -121,6 +121,9 @@ public class OrderTab extends ContentPanel {
         SwingUtilities.invokeLater(this::refreshReadouts);
     }
 
+    /**
+     * Refreshes the displayed values (price, cash, position, etc.).
+     */
     private void refreshReadouts() {
         String sym = symbol();
         lblSymbol.setText(sym == null ? "-" : sym);
@@ -165,6 +168,12 @@ public class OrderTab extends ContentPanel {
         sellButton.setEnabled(haveSym && havePrice && validShares);
     }
 
+    /**
+     * Creates a styled label.
+     *
+     * @param text The label text.
+     * @return A configured JLabel.
+     */
     private JLabel label(String text) {
         JLabel l = new JLabel(text);
         l.setForeground(GUIComponents.TEXT_SECONDARY);
@@ -172,12 +181,25 @@ public class OrderTab extends ContentPanel {
         return l;
     }
 
+    /**
+     * Styles a value label.
+     *
+     * @param l The label to style.
+     * @return The styled label.
+     */
     private JLabel value(JLabel l) {
         l.setForeground(GUIComponents.TEXT_PRIMARY);
         l.setFont(new Font("Segoe UI", Font.BOLD, 12));
         return l;
     }
 
+    /**
+     * Creates a styled action button (Buy/Sell).
+     *
+     * @param text        The button text.
+     * @param accentColor The hover accent color.
+     * @return A configured JButton.
+     */
     private JButton createActionButton(String text, Color accentColor) {
         JButton button = new JButton(text);
         button.setFont(new Font("Segoe UI", Font.BOLD, 14));
@@ -206,6 +228,11 @@ public class OrderTab extends ContentPanel {
         return button;
     }
 
+    /**
+     * Styles a stepper button (+/-).
+     *
+     * @param b The button to style.
+     */
     private void stylizeStepper(JButton b) {
         b.setMargin(new Insets(2, 8, 2, 8));
         b.setFocusPainted(false);
@@ -213,6 +240,11 @@ public class OrderTab extends ContentPanel {
         b.setForeground(GUIComponents.TEXT_PRIMARY);
     }
 
+    /**
+     * Creates a base GridBagConstraints object with default settings.
+     *
+     * @return A configured GridBagConstraints.
+     */
     private GridBagConstraints baseGbc() {
         GridBagConstraints gbc = new GridBagConstraints();
         gbc.insets = new Insets(6, 6, 6, 6);
@@ -222,6 +254,14 @@ public class OrderTab extends ContentPanel {
         return gbc;
     }
 
+    /**
+     * Creates GridBagConstraints for a specific cell.
+     *
+     * @param x The grid x position.
+     * @param y The grid y position.
+     * @param w The grid width.
+     * @return A configured GridBagConstraints.
+     */
     private GridBagConstraints gbc(int x, int y, int w) {
         GridBagConstraints g = baseGbc();
         g.gridx = x;
@@ -232,14 +272,25 @@ public class OrderTab extends ContentPanel {
         return g;
     }
 
+    /**
+     * Handles the buy action.
+     */
     private void handleBuy() {
         submit(true);
     }
 
+    /**
+     * Handles the sell action.
+     */
     private void handleSell() {
         submit(false);
     }
 
+    /**
+     * Adjusts the share count by a delta.
+     *
+     * @param delta The amount to change shares by.
+     */
     private void nudgeShares(int delta) {
         int n = parseShares();
         n = Math.max(1, n + delta);
@@ -247,6 +298,11 @@ public class OrderTab extends ContentPanel {
         refreshReadouts();
     }
 
+    /**
+     * Parses the current share count from the text field.
+     *
+     * @return The number of shares, or 0 if invalid.
+     */
     private int parseShares() {
         try {
             int n = Integer.parseInt(sharesField.getText().trim());
@@ -256,6 +312,11 @@ public class OrderTab extends ContentPanel {
         }
     }
 
+    /**
+     * Gets the currently selected symbol safely.
+     *
+     * @return The symbol string, or null.
+     */
     private String symbol() {
         try {
             return getSelectedSymbol.get();
@@ -264,6 +325,11 @@ public class OrderTab extends ContentPanel {
         }
     }
 
+    /**
+     * Submits a trade order.
+     *
+     * @param buy True for buy, false for sell.
+     */
     private void submit(boolean buy) {
         String symbol = symbol();
         if (symbol == null || symbol.isBlank()) {
@@ -303,10 +369,18 @@ public class OrderTab extends ContentPanel {
         refreshReadouts();
     }
 
+    /**
+     * Shows a warning message dialog.
+     *
+     * @param text The message text.
+     */
     private void msg(String text) {
         JOptionPane.showMessageDialog(this, text, "Order", JOptionPane.WARNING_MESSAGE);
     }
 
+    /**
+     * Functional interface for simplified DocumentListener.
+     */
     @FunctionalInterface
     interface SimpleDocListener extends javax.swing.event.DocumentListener {
         void changed();

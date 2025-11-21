@@ -74,6 +74,19 @@ public class SymbolCellRenderer extends JPanel implements ListCellRenderer<Trade
         add(rightPanel, BorderLayout.EAST);
     }
 
+    /**
+     * Returns the component used for drawing the cell.
+     * Configures the labels for symbol, name, price, and change percentage.
+     * Initiates asynchronous logo loading if the logo is not already cached.
+     *
+     * @param list         The JList we're painting.
+     * @param value        The value returned by
+     *                     list.getModel().getElementAt(index).
+     * @param index        The cells index.
+     * @param isSelected   True if the specified cell was selected.
+     * @param cellHasFocus True if the specified cell has the focus.
+     * @return The component used for drawing the cell.
+     */
     @Override
     public Component getListCellRendererComponent(
             JList<? extends TradeItem> list, TradeItem value, int index,

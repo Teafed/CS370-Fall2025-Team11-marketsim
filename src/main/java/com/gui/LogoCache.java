@@ -22,6 +22,7 @@ import java.util.function.Consumer;
  */
 public class LogoCache {
     private final ConcurrentMap<String, ImageIcon> cache = new ConcurrentHashMap<>();
+    private final ConcurrentMap<String, String> contentHashToKey = new ConcurrentHashMap<>();
     private final ExecutorService ex;
     private final ImageIcon placeholder;
     private final Path cacheDir;
@@ -75,11 +76,13 @@ public class LogoCache {
 
     /**
      * Preloads logos for a list of symbols.
+     * This method initiates asynchronous loading for all symbols in the list.
      *
      * @param symbols     The list of symbols to preload.
      * @param urlResolver A function that resolves a symbol to a logo URL (can be
      *                    blocking).
-     * @return A CompletableFuture that completes when all preloading is done.
+     * @return A CompletableFuture that completes when all preloading tasks (disk
+     *         checks and downloads) are finished.
      */
     public CompletableFuture<Void> preload(java.util.List<String> symbols,
             java.util.function.Function<String, String> urlResolver) {
@@ -106,6 +109,9 @@ public class LogoCache {
                                 BufferedImage resized = resizeImage(img, 40, 40);
                                 ImageIcon result = new ImageIcon(resized);
                                 cache.put(symbol, result);
+                                // Track content hash for deduplication
+                                String contentHash = computeImageHash(img);
+                                contentHashToKey.putIfAbsent(contentHash, symbol);
                                 return;
                             }
                         } catch (Exception e) {
@@ -165,6 +171,9 @@ public class LogoCache {
                             BufferedImage resized = resizeImage(img, w, h);
                             ImageIcon result = new ImageIcon(resized);
                             cache.put(symbol, result);
+                            // Track content hash for deduplication
+                            String contentHash = computeImageHash(img);
+                            contentHashToKey.putIfAbsent(contentHash, symbol);
                             SwingUtilities.invokeLater(() -> callback.accept(result));
                             return;
                         }
@@ -204,7 +213,10 @@ public class LogoCache {
      */
     public void load(String key, String logoStr, int w, int h, Consumer<ImageIcon> callback) {
         Objects.requireNonNull(callback);
-        String cacheKey = logoStr != null ? logoStr : key;
+        // FORCE usage of the symbol (key) as the cache key.
+        // We ignore logoStr for caching purposes to avoid duplicates.
+        String cacheKey = key;
+
         if (cacheKey == null) {
             SwingUtilities.invokeLater(() -> callback.accept(placeholder));
             return;
@@ -230,7 +242,9 @@ public class LogoCache {
                         ImageIcon result = new ImageIcon(resized);
                         // Store in memory cache for faster subsequent access
                         cache.put(cacheKey, result);
-                        cache.put(key, result);
+                        // Track content hash for deduplication
+                        String contentHash = computeImageHash(img);
+                        contentHashToKey.putIfAbsent(contentHash, cacheKey);
                         SwingUtilities.invokeLater(() -> callback.accept(result));
                         return;
                     }
@@ -266,8 +280,24 @@ public class LogoCache {
         try {
             img = loadImageFromString(logoStr);
             if (img != null) {
-                // Save to disk cache
+                // Check if we already have this exact image content
+                String contentHash = computeImageHash(img);
+                String existingKey = contentHashToKey.get(contentHash);
+                
+                if (existingKey != null && !existingKey.equals(cacheKey)) {
+                    // Reuse existing cached image instead of storing duplicate
+                    System.out.println("[LogoCache] Duplicate image detected for " + key + ", reusing " + existingKey);
+                    ImageIcon existingIcon = cache.get(existingKey);
+                    if (existingIcon != null) {
+                        cache.put(cacheKey, existingIcon);
+                        SwingUtilities.invokeLater(() -> callback.accept(existingIcon));
+                        return;
+                    }
+                }
+                
+                // Save to disk cache (only if not a duplicate)
                 saveToDisk(img, cachedFile);
+                contentHashToKey.put(contentHash, cacheKey);
             }
         } catch (Exception e) {
             System.err.println("Failed to download logo: " + e.getMessage());
@@ -279,9 +309,8 @@ public class LogoCache {
         } else {
             BufferedImage resized = resizeImage(img, w, h);
             result = new ImageIcon(resized);
-            // Cache in memory with BOTH the URL and the symbol key
+            // Cache in memory
             cache.put(cacheKey, result);
-            cache.put(key, result);
         }
         SwingUtilities.invokeLater(() -> callback.accept(result));
     }
@@ -378,6 +407,52 @@ public class LogoCache {
         g2.drawImage(tmp, 0, 0, null);
         g2.dispose();
         return dst;
+    }
+
+    /**
+     * Computes a hash of the image content for deduplication.
+     *
+     * @param img The image to hash.
+     * @return A hash string representing the image content.
+     */
+    private static String computeImageHash(BufferedImage img) {
+        try {
+            MessageDigest md = MessageDigest.getInstance("MD5");
+            int width = img.getWidth();
+            int height = img.getHeight();
+            
+            // Hash dimensions first
+            md.update((byte) (width >> 24));
+            md.update((byte) (width >> 16));
+            md.update((byte) (width >> 8));
+            md.update((byte) width);
+            md.update((byte) (height >> 24));
+            md.update((byte) (height >> 16));
+            md.update((byte) (height >> 8));
+            md.update((byte) height);
+            
+            // Sample pixels for hash (to avoid processing every pixel)
+            int step = Math.max(1, Math.min(width, height) / 20);
+            for (int y = 0; y < height; y += step) {
+                for (int x = 0; x < width; x += step) {
+                    int rgb = img.getRGB(x, y);
+                    md.update((byte) (rgb >> 24));
+                    md.update((byte) (rgb >> 16));
+                    md.update((byte) (rgb >> 8));
+                    md.update((byte) rgb);
+                }
+            }
+            
+            byte[] hash = md.digest();
+            StringBuilder sb = new StringBuilder();
+            for (byte b : hash) {
+                sb.append(String.format("%02x", b));
+            }
+            return sb.toString();
+        } catch (Exception e) {
+            // Fallback to simple identity
+            return String.valueOf(System.identityHashCode(img));
+        }
     }
 
     /**
