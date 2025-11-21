@@ -28,6 +28,8 @@ public class MainWindow extends JFrame
     private CardLayout cards;
     private JPanel rightContainer; // wrapper to hold top bar + cards
     private JLabel marketStatusLabel;
+    private JLabel countdownLabel;
+    private Timer countdownTimer;
 
     private static final String WINDOW_TITLE = "Marketsim";
     private static final String CARD_CHART = "chart";
@@ -138,8 +140,14 @@ public class MainWindow extends JFrame
                 BorderFactory.createEmptyBorder(6, 10, 6, 10)));
         marketStatusLabel.setFont(new Font("Segoe UI", Font.BOLD, 12));
 
+        countdownLabel = new JLabel("");
+        countdownLabel.setForeground(GUIComponents.TEXT_SECONDARY);
+        countdownLabel.setFont(new Font("Segoe UI", Font.PLAIN, 11));
+        countdownLabel.setVisible(false);
+
         topBar.add(statusPrefix);
         topBar.add(marketStatusLabel);
+        topBar.add(countdownLabel);
 
         rightContainer.add(topBar, BorderLayout.NORTH);
         rightContainer.add(rightCards, BorderLayout.CENTER);
@@ -149,6 +157,7 @@ public class MainWindow extends JFrame
         addWindowListener(new java.awt.event.WindowAdapter() {
             @Override
             public void windowClosing(java.awt.event.WindowEvent e) {
+                stopCountdown();
                 try {
                     model.close();
                 } catch (Exception ignored) {
@@ -169,9 +178,11 @@ public class MainWindow extends JFrame
         if (open) {
             marketStatusLabel.setText("OPEN");
             marketStatusLabel.setBackground(GUIComponents.ACCENT_GREEN.darker());
+            startCountdown(); // Show countdown to close
         } else {
             marketStatusLabel.setText("CLOSED");
             marketStatusLabel.setBackground(new Color(180, 0, 0));
+            startCountdown(); // Show countdown to open
         }
     }
 
@@ -239,5 +250,121 @@ public class MainWindow extends JFrame
     @Override
     public void onError(java.lang.String message, Throwable t) {
         JOptionPane.showMessageDialog(this, message, "Error", JOptionPane.ERROR_MESSAGE);
+    }
+
+    /**
+     * Starts the countdown timer for the next market opening.
+     */
+    private void startCountdown() {
+        if (countdownTimer != null) {
+            countdownTimer.stop();
+        }
+        if (countdownLabel == null)
+            return;
+
+        countdownLabel.setVisible(true);
+        countdownTimer = new Timer(1000, e -> updateCountdown());
+        countdownTimer.start();
+        updateCountdown(); // Initial update
+    }
+
+    /**
+     * Stops the countdown timer.
+     */
+    private void stopCountdown() {
+        if (countdownTimer != null) {
+            countdownTimer.stop();
+            countdownTimer = null;
+        }
+        if (countdownLabel != null) {
+            countdownLabel.setVisible(false);
+        }
+    }
+
+    /**
+     * Updates the countdown display with time remaining until next market open or close.
+     */
+    private void updateCountdown() {
+        if (countdownLabel == null)
+            return;
+
+        boolean isOpen = model.isMarketOpen();
+        long millisRemaining = isOpen ? getMillisUntilClose() : getMillisUntilNextOpen();
+        
+        if (millisRemaining <= 0) {
+            countdownLabel.setText(isOpen ? "Closing soon..." : "Opening soon...");
+            return;
+        }
+
+        long hours = millisRemaining / (1000 * 60 * 60);
+        long minutes = (millisRemaining / (1000 * 60)) % 60;
+        long seconds = (millisRemaining / 1000) % 60;
+
+        String action = isOpen ? "Closes" : "Opens";
+        
+        if (hours > 0) {
+            countdownLabel.setText(String.format(" • %s in %dh %dm", action, hours, minutes));
+        } else if (minutes > 0) {
+            countdownLabel.setText(String.format(" • %s in %dm %ds", action, minutes, seconds));
+        } else {
+            countdownLabel.setText(String.format(" • %s in %ds", action, seconds));
+        }
+    }
+
+    /**
+     * Calculates milliseconds until the next market opening.
+     * Market opens at 9:30 AM ET on weekdays.
+     *
+     * @return Milliseconds until next market open.
+     */
+    private long getMillisUntilNextOpen() {
+        java.time.ZoneId etZone = java.time.ZoneId.of("America/New_York");
+        java.time.ZonedDateTime now = java.time.ZonedDateTime.now(etZone);
+        
+        // Market opens at 9:30 AM ET
+        java.time.ZonedDateTime nextOpen = now
+                .withHour(9)
+                .withMinute(30)
+                .withSecond(0)
+                .withNano(0);
+
+        // If we're past 9:30 AM today, or it's a weekend, move to next weekday
+        if (now.isAfter(nextOpen) || now.getDayOfWeek() == java.time.DayOfWeek.SATURDAY
+                || now.getDayOfWeek() == java.time.DayOfWeek.SUNDAY) {
+            nextOpen = nextOpen.plusDays(1);
+        }
+
+        // Skip weekends
+        while (nextOpen.getDayOfWeek() == java.time.DayOfWeek.SATURDAY
+                || nextOpen.getDayOfWeek() == java.time.DayOfWeek.SUNDAY) {
+            nextOpen = nextOpen.plusDays(1);
+        }
+
+        return java.time.Duration.between(now, nextOpen).toMillis();
+    }
+
+    /**
+     * Calculates milliseconds until the market closes.
+     * Market closes at 4:00 PM ET on weekdays.
+     *
+     * @return Milliseconds until market close.
+     */
+    private long getMillisUntilClose() {
+        java.time.ZoneId etZone = java.time.ZoneId.of("America/New_York");
+        java.time.ZonedDateTime now = java.time.ZonedDateTime.now(etZone);
+        
+        // Market closes at 4:00 PM ET
+        java.time.ZonedDateTime closeTime = now
+                .withHour(16)
+                .withMinute(0)
+                .withSecond(0)
+                .withNano(0);
+
+        // If we're past 4:00 PM today, return 0 (market should be closed)
+        if (now.isAfter(closeTime)) {
+            return 0;
+        }
+
+        return java.time.Duration.between(now, closeTime).toMillis();
     }
 }
