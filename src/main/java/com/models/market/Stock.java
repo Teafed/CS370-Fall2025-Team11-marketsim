@@ -11,7 +11,7 @@ public class Stock extends TradeItem {
      * @param name   The name of the stock.
      * @param symbol The stock symbol.
      */
-    public Stock(java.lang.String name, java.lang.String symbol) {
+    public Stock(String name, String symbol) {
         super(name, symbol);
     }
 
@@ -23,7 +23,7 @@ public class Stock extends TradeItem {
      * @param price         The current price.
      * @param changePercent The percent change.
      */
-    public Stock(java.lang.String name, java.lang.String symbol, double price, double changePercent) {
+    public Stock(String name, String symbol, double price, double changePercent) {
         super(name, symbol, price, changePercent);
     }
 }

@@ -191,6 +191,7 @@ public class Database implements AutoCloseable {
         }
     }
 
+    // symbol & price
     /**
      * Lists all distinct symbols available in the prices table.
      *
@@ -205,6 +206,21 @@ public class Database implements AutoCloseable {
             while (rs.next())
                 out.add(rs.getString(1));
             return out;
+        }
+    }
+
+    public void recordSymbolInfo(String symbol, CompanyProfile cp) {
+
+    }
+
+    public CompanyProfile getSymbolInfo(String symbol) throws SQLException {
+        String sql = "SELECT something lol";
+        try (PreparedStatement ps = conn.prepareStatement(sql);
+                ResultSet rs = ps.executeQuery()) {
+            List<String> out = new ArrayList<>();
+            while (rs.next())
+                out.add(rs.getString(1));
+            return new CompanyProfile(out);
         }
     }
 

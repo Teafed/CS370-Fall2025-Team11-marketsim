@@ -99,22 +99,13 @@ public class InfoClient {
         String exchange = jsonObject.optString("exchange", "unknown");
         String ipo = jsonObject.optString("ipo", "unknown");
         String logo = jsonObject.optString("logo", "unknown");
-        String marketCapitalization = jsonObject.optString("marketCapitalization", "unknown");
+        String marketCap = jsonObject.optString("marketCap", "unknown");
         String name = jsonObject.optString("name", "unknown");
         String sharesOutstanding = jsonObject.optString("sharesOutstanding", "unknown");
         String weburl = jsonObject.optString("weburl", "unknown");
 
-        CompanyProfile companyProfile = new CompanyProfile();
-        companyProfile.setCountry(country);
-        companyProfile.setCurrency(currency);
-        companyProfile.setExchange(exchange);
-        companyProfile.setIpo(ipo);
-        companyProfile.setLogo(logo);
-        companyProfile.setMarketCapitalization(marketCapitalization);
-        companyProfile.setName(name);
-        companyProfile.setSharesOutstanding(sharesOutstanding);
-        companyProfile.setWeburl(weburl);
+        return new CompanyProfile(country, currency, exchange,
+                ipo, logo, marketCap, name, sharesOutstanding, weburl);
 
-        return companyProfile;
     }
 }

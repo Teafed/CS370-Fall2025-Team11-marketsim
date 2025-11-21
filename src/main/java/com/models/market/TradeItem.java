@@ -12,6 +12,12 @@ public class TradeItem {
     private double change;
     private double open;
     private double prevClose = Double.NaN; // for calculating % change
+    private CompanyProfile companyProfile;
+
+    public TradeItem(String symbol) {
+        this.symbol = symbol;
+        this.companyProfile = ;
+    }
 
     /**
      * Constructs a new TradeItem.

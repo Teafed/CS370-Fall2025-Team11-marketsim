@@ -1,5 +1,7 @@
 package com.models.market;
 
+import java.util.List;
+
 /**
  * Represents the company profile data returned by the Finnhub API.
  */
@@ -9,7 +11,7 @@ public class CompanyProfile {
     private String exchange;
     private String ipo;
     private String logo;
-    private String marketCapitalization;
+    private String marketCap;
     private String name;
     private String sharesOutstanding;
     private String weburl;
@@ -17,7 +19,32 @@ public class CompanyProfile {
     /**
      * Default constructor.
      */
-    public CompanyProfile() {
+    public CompanyProfile(String country, String currency, String exchange,
+                          String ipo, String logo, String marketCap, String name,
+                          String sharesOutstanding, String weburl) {
+        this.setCountry(country);
+        this.setCurrency(currency);
+        this.setExchange(exchange);
+        this.setIpo(ipo);
+        this.setLogo(logo);
+        this.setMarketCap(marketCap);
+        this.setName(name);
+        this.setSharesOutstanding(sharesOutstanding);
+        this.setWeburl(weburl);
+    }
+
+    public CompanyProfile(List<String> list) {
+        if (list.size() == 9) {
+            this.setCountry(list.get(0));
+            this.setCurrency(list.get(1));
+            this.setExchange(list.get(2));
+            this.setIpo(list.get(3));
+            this.setLogo(list.get(4));
+            this.setMarketCap(list.get(5));
+            this.setName(list.get(6));
+            this.setSharesOutstanding(list.get(7));
+            this.setWeburl(list.get(8));
+        }
     }
 
     // Setters
@@ -41,8 +68,8 @@ public class CompanyProfile {
         this.logo = logo;
     }
 
-    public void setMarketCapitalization(String marketCapitalization) {
-        this.marketCapitalization = marketCapitalization;
+    public void setMarketCap(String marketCap) {
+        this.marketCap = marketCap;
     }
 
     public void setName(String name) {
@@ -77,8 +104,8 @@ public class CompanyProfile {
         return logo;
     }
 
-    public String getMarketCapitalization() {
-        return marketCapitalization;
+    public String getMarketCap() {
+        return marketCap;
     }
 
     public String getName() {
@@ -102,7 +129,7 @@ public class CompanyProfile {
                 ",\n  exchange='" + exchange + '\'' +
                 ",\n  ipo='" + ipo + '\'' +
                 ",\n  logo='" + logo + '\'' +
-                ",\n  marketCapitalization='" + marketCapitalization + '\'' +
+                ",\n  marketCap='" + marketCap + '\'' +
                 ",\n  sharesOutstanding='" + sharesOutstanding + '\'' +
                 ",\n  weburl='" + weburl + '\'' +
                 "\n}";
