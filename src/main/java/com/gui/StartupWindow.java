@@ -201,7 +201,7 @@ public class StartupWindow extends ContentPanel {
     public static void runApp(Database db, Profile profile, Account account) {
         try {
             ModelFacade model = new ModelFacade(db, profile);
-            profile.setActiveAccount(account);
+            model.setActiveAccount(account);
             SwingUtilities.invokeLater(() -> new MainWindow(model));
         } catch (Exception e) {
             e.printStackTrace();

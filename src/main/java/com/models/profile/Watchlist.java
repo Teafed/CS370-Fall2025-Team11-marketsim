@@ -104,16 +104,16 @@ public class Watchlist {
     private void setDefaultWatchlist() {
         watchlist.clear();
         TradeItem[] initialSymbols = {
-                new TradeItem("Apple", "AAPL"),
-                new TradeItem("Microsoft", "MSFT"),
-                new TradeItem("Alphabet", "GOOGL"),
-                new TradeItem("NVIDIA", "NVDA"),
-                new TradeItem("Amazon", "AMZN"),
-                new TradeItem("Meta Platforms", "META"),
-                new TradeItem("Tesla", "TSLA"),
-                new TradeItem("Broadcom", "AVGO"),
-                new TradeItem("Taiwan Semiconductor Manufacturing Company", "TSM"),
-                new TradeItem("Berkshire Hathaway", "BRK.B")
+                new TradeItem("AAPL"),
+                new TradeItem("MSFT"),
+                new TradeItem("GOOGL"),
+                new TradeItem("NVDA"),
+                new TradeItem("AMZN"),
+                new TradeItem("META"),
+                new TradeItem("TSLA"),
+                new TradeItem("AVGO"),
+                new TradeItem("TSM"),
+                new TradeItem("BRK.B")
         };
         Collections.addAll(watchlist, initialSymbols);
     }
@@ -125,16 +125,16 @@ public class Watchlist {
      */
     public static List<TradeItem> getDefaultWatchlist() {
         TradeItem[] initialSymbols = {
-                new TradeItem("Apple", "AAPL"),
-                new TradeItem("Microsoft", "MSFT"),
-                new TradeItem("Alphabet", "GOOGL"),
-                new TradeItem("NVIDIA", "NVDA"),
-                new TradeItem("Amazon", "AMZN"),
-                new TradeItem("Meta Platforms", "META"),
-                new TradeItem("Tesla", "TSLA"),
-                new TradeItem("Broadcom", "AVGO"),
-                new TradeItem("Taiwan Semiconductor Manufacturing Company", "TSM"),
-                new TradeItem("Berkshire Hathaway", "BRK.B")
+                new TradeItem("AAPL"),
+                new TradeItem("MSFT"),
+                new TradeItem("GOOGL"),
+                new TradeItem("NVDA"),
+                new TradeItem("AMZN"),
+                new TradeItem("META"),
+                new TradeItem("TSLA"),
+                new TradeItem("AVGO"),
+                new TradeItem("TSM"),
+                new TradeItem("BRK.B")
         };
         List<TradeItem> wl = new java.util.ArrayList<>();
         wl.addAll(Arrays.asList(initialSymbols));

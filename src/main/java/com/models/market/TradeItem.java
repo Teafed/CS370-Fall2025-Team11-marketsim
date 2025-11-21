@@ -21,27 +21,13 @@ public class TradeItem {
         this.symbol = symbol.trim().toUpperCase();
     }
 
-    /**
-     * DEPRECATED!
-     *
-     * @param name   The name of the company.
-     * @param symbol The stock symbol.
-     */
-    public TradeItem(String name, String symbol) {
-        this.name = name;
-        this.symbol = symbol;
-        price = 0;
-    }
-
     public String getName() {
         if (companyProfile != null && companyProfile.getName() != null && !companyProfile.getName().isBlank()) {
             return companyProfile.getName();
         }
-        if (name != null && !name.isBlank()) return name;
+        System.out.println("No company name found for " + this.symbol);
         return symbol;
     }
-
-    public void setName(String n) { this.name = n; }
 
     public String getSymbol() { return symbol; }
 
@@ -131,25 +117,26 @@ public class TradeItem {
     }
 
     /**
-     * Sets a user-friendly name for known symbols if the current name is unknown.
+     * Local fallback for company name if live client cannot retrieve it
      *
      * @param ti The TradeItem to update.
      * @return The updated TradeItem.
      */
     public TradeItem setNameLookup(TradeItem ti) {
-        if (ti.getSymbol() == null) { ti.setName("Unknown Symbol"); return ti; }
+        if (ti.companyProfile == null)  { ti.companyProfile = new CompanyProfile(); }
+        if (ti.getSymbol() == null) { ti.companyProfile.setName("Unknown Symbol"); return ti; }
         switch (ti.getSymbol()) {
-            case "AAPL":  ti.setName("Apple"); break;
-            case "MSFT":  ti.setName("Microsoft"); break;
-            case "GOOGL": ti.setName("Alphabet"); break;
-            case "NVDA":  ti.setName("NVIDIA"); break;
-            case "AMZN":  ti.setName("Amazon"); break;
-            case "META":  ti.setName("Meta Platforms"); break;
-            case "TSLA":  ti.setName("Tesla"); break;
-            case "AVGO":  ti.setName("Broadcom"); break;
-            case "TSM":   ti.setName("Taiwan Semiconductor Manufacturing Company"); break;
-            case "BRK.B": ti.setName("Berkshire Hathaway"); break;
-            default:      ti.setName("Unknown Name");
+            case "AAPL":  ti.companyProfile.setName("Apple"); break;
+            case "MSFT":  ti.companyProfile.setName("Microsoft"); break;
+            case "GOOGL": ti.companyProfile.setName("Alphabet"); break;
+            case "NVDA":  ti.companyProfile.setName("NVIDIA"); break;
+            case "AMZN":  ti.companyProfile.setName("Amazon"); break;
+            case "META":  ti.companyProfile.setName("Meta Platforms"); break;
+            case "TSLA":  ti.companyProfile.setName("Tesla"); break;
+            case "AVGO":  ti.companyProfile.setName("Broadcom"); break;
+            case "TSM":   ti.companyProfile.setName("Taiwan Semiconductor Manufacturing Company"); break;
+            case "BRK.B": ti.companyProfile.setName("Berkshire Hathaway"); break;
+            default:      ti.companyProfile.setName("Unknown Name");
         }
         return ti;
     }

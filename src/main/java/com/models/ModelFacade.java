@@ -58,9 +58,6 @@ public class ModelFacade {
             }
         });
         this.hist = new HistoricalService(db);
-
-        ensureWatchlistPopulated(profile.getActiveAccount());
-        market.addFromWatchlist(profile.getActiveAccount().getWatchlist());
     }
 
     // listeners
@@ -300,7 +297,7 @@ public class ModelFacade {
             }
 
             // persist trade in db
-            Order order = new Order(a, new TradeItem(symbol, symbol),
+            Order order = new Order(a, symbol,
                     isBuy ? Order.side.BUY : Order.side.SELL, shares, price, ts);
             db.recordOrder(order);
             // update in-memory cash/positions and portfolio

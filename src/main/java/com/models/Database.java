@@ -931,7 +931,7 @@ public class Database implements AutoCloseable {
     public long recordOrder(com.models.market.Order order) throws SQLException {
         // single entry point for an executed order
         long accountId = order.account().getId();
-        String symbol = order.tradeItem().getSymbol();
+        String symbol = order.symbol();
         long ts = order.ts();
         String side = order.side().name(); // "BUY" or "SELL"
         int qty = order.shares();
