@@ -14,8 +14,10 @@
     import java.util.List;
 
     public class SymbolPanel extends ContentPanel {
-        private final DefaultListModel<TradeItem> symbolModel = new DefaultListModel<>();
-        private final JList<TradeItem> symbolList = new JList<>(symbolModel);
+        private final DefaultListModel<TradeItem> watchlistModel = new DefaultListModel<>();
+        private final JList<TradeItem> watchlistSymbols = new JList<>(watchlistModel);
+        private final DefaultListModel<TradeItem> portfolioModel = new DefaultListModel<>();
+        private final JList<TradeItem> portfolioSymbols = new JList<>(portfolioModel);
         private final List<SymbolSelectionListener> symbolListener;
         private Account account;
         private AccountSelectionListener accountListener;
@@ -44,18 +46,23 @@
             setBackground(GUIComponents.BG_MEDIUM);
             setBorder(GUIComponents.createBorder());
 
-            GUIComponents.createList(symbolModel);
+            GUIComponents.createList(watchlistModel);
+            GUIComponents.createList(portfolioModel);
 
-            symbolList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-            symbolList.setCellRenderer(new SymbolCellRenderer());
-            symbolList.setFixedCellHeight(50);
+            watchlistSymbols.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+            watchlistSymbols.setCellRenderer(new SymbolCellRenderer());
+            watchlistSymbols.setFixedCellHeight(50);
 
-            JScrollPane scrollPane = GUIComponents.createScrollPane(symbolList);
+            portfolioSymbols.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+            portfolioSymbols.setCellRenderer(new SymbolCellRenderer());
+            portfolioSymbols.setFixedCellHeight(50);
+
+            JScrollPane scrollPane = GUIComponents.createScrollPane(watchlistSymbols);
             scrollPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
             scrollPane.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
 
             JPanel listWrapper = new JPanel(new BorderLayout());
-            listWrapper.add(symbolList, BorderLayout.NORTH);
+            listWrapper.add(watchlistSymbols, BorderLayout.NORTH);
             listWrapper.setOpaque(true);
             listWrapper.setBackground(GUIComponents.BG_MEDIUM);
 
@@ -72,12 +79,20 @@
             add(scrollPane, BorderLayout.CENTER);
         }
 
-        public void setSymbols(List<TradeItem> symbols) {
-            symbolModel.clear();
-            symbols.forEach(symbolModel::addElement);
+        public void setWatchlistSymbols(List<TradeItem> symbols) {
+            watchlistModel.clear();
+            symbols.forEach(watchlistModel::addElement);
             lastNotifiedSymbol = null;
-            symbolList.revalidate();
-            symbolList.repaint();
+            watchlistSymbols.revalidate();
+            watchlistSymbols.repaint();
+        }
+
+        public void setPortfolioSymbols(List<TradeItem> symbols) {
+            portfolioModel.clear();
+            symbols.forEach(portfolioModel::addElement);
+            lastNotifiedSymbol = null;
+            portfolioSymbols.revalidate();
+            portfolioSymbols.repaint();
         }
 
         public void setAccount(Account account, AccountSelectionListener listener) {
@@ -96,9 +111,9 @@
         }
 
         private void setupListeners() {
-            symbolList.addListSelectionListener(e -> {
+            watchlistSymbols.addListSelectionListener(e -> {
                 if (!e.getValueIsAdjusting()) { // only fire when selection is final
-                    TradeItem selected = symbolList.getSelectedValue();
+                    TradeItem selected = watchlistSymbols.getSelectedValue();
                     if (selected != null) {
                         java.lang.String sym = selected.getSymbol();
                         if (!sym.equals(lastNotifiedSymbol)) { // guard against reloading same
@@ -108,7 +123,7 @@
                     }
                 }
             });
-            symbolList.addMouseListener(new MouseAdapter() {
+            watchlistSymbols.addMouseListener(new MouseAdapter() {
                 @Override
                 public void mousePressed(MouseEvent e) {
                     if (e.isPopupTrigger()) showContextMenu(e);
@@ -120,22 +135,22 @@
                 }
 
                 private void showContextMenu(MouseEvent e) {
-                    int index = symbolList.locationToIndex(e.getPoint());
+                    int index = watchlistSymbols.locationToIndex(e.getPoint());
                     if (index >= 0) {
-                        symbolList.setSelectedIndex(index);
-                        TradeItem item = symbolModel.getElementAt(index);
+                        watchlistSymbols.setSelectedIndex(index);
+                        TradeItem item = watchlistModel.getElementAt(index);
 
                         JPopupMenu menu = new JPopupMenu();
                         JMenuItem removeItem = new JMenuItem("Remove from Watchlist");
                         removeItem.addActionListener(ev -> {
-                            symbolModel.removeElementAt(index);
-                            symbolList.clearSelection();
+                            watchlistModel.removeElementAt(index);
+                            watchlistSymbols.clearSelection();
                             lastNotifiedSymbol = null;
                             model.removeFromWatchlist(item);
                         });
 
                         menu.add(removeItem);
-                        menu.show(symbolList, e.getX(), e.getY());
+                        menu.show(watchlistSymbols, e.getX(), e.getY());
                     }
                 }
             });
@@ -157,20 +172,20 @@
         }
 
         public java.lang.String getSelectedSymbol() {
-            TradeItem selected = symbolList.getSelectedValue();
+            TradeItem selected = watchlistSymbols.getSelectedValue();
             return selected != null ? selected.getSymbol() : null;
         }
 
         public void clearSelection() {
-            symbolList.clearSelection();
+            watchlistSymbols.clearSelection();
             lastNotifiedSymbol = null;
         }
 
         public void selectFirst() {
-            if (symbolModel.getSize() > 0) {
+            if (watchlistModel.getSize() > 0) {
                 SwingUtilities.invokeLater(() -> {
-                    symbolList.setSelectedIndex(0);
-                    symbolList.ensureIndexIsVisible(0);
+                    watchlistSymbols.setSelectedIndex(0);
+                    watchlistSymbols.ensureIndexIsVisible(0);
                 });
             }
         }

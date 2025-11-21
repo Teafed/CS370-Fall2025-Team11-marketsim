@@ -43,6 +43,10 @@ public class Market implements TradeListener {
         for (TradeItem ti : wl.getWatchlist()) add(ti);
     }
 
+    public TradeItem get(String symbol) {
+        return stocks.get(symbol);
+    }
+
     public synchronized void updateStock(String symbol, double price) {
         TradeItem ti = stocks.get(normalize(symbol));
         if (ti != null) ti.updatePrice(price);
@@ -75,4 +79,5 @@ public class Market implements TradeListener {
     private static String normalize(String s) {
         return s == null ? "" : s.trim().toUpperCase(Locale.ROOT);
     }
+
 }

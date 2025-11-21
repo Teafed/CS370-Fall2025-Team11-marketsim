@@ -9,6 +9,7 @@ import com.models.profile.*;
 import javax.swing.*;
 import java.awt.*;
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -83,6 +84,12 @@ public class ModelFacade {
     public Account getActiveAccount() { return profile.getActiveAccount(); }
     public List<Account> listAccounts() { return profile.getAccounts(); }
     public List<TradeItem> getWatchlist() { return profile.getActiveAccount().getWatchlist().getWatchlist(); }
+    public List<TradeItem> getPortfolioItems() {
+        List<String> symbols = profile.getActiveAccount().getPortfolio().getPortfolioItems();
+        List<TradeItem> items = new ArrayList<>();
+        symbols.forEach(symbol -> {items.add(market.get(symbol));});
+        return items;
+    }
     public AccountDTO getAccountDTO() throws SQLException {
         Account a = profile.getActiveAccount();
         Map<java.lang.String,Integer> positions = db.getPositions(a.getId());

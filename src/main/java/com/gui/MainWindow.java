@@ -93,7 +93,8 @@ public class MainWindow extends JFrame
         symbolPanel = new SymbolPanel(model);
         symbolPanel.addSymbolSelectionListener(this);
         symbolPanel.setAccount(model.getActiveAccount(), this);
-        symbolPanel.setSymbols(model.getWatchlist());
+        symbolPanel.setWatchlistSymbols(model.getWatchlist());
+        symbolPanel.setPortfolioSymbols(model.getPortfolioItems());
         symbolPanel.selectFirst();
 
         cards.show(rightCards, CARD_CHART);
@@ -171,7 +172,7 @@ public class MainWindow extends JFrame
         // accountPanel.refresh(snapshot);
     }
     @Override public void onWatchlistChanged(java.util.List<TradeItem> items) {
-        symbolPanel.setSymbols(items);
+        symbolPanel.setWatchlistSymbols(items);
     }
     @Override public void onError(java.lang.String message, Throwable t) {
         JOptionPane.showMessageDialog(this, message, "Error", JOptionPane.ERROR_MESSAGE);
