@@ -1,6 +1,6 @@
 package com.etl.finnhub;
 
-import com.etl.CompanyProfile;
+import com.models.market.CompanyProfile;
 import org.json.JSONObject;
 import com.models.Database;
 import com.models.market.TradeListener;

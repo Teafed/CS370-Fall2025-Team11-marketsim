@@ -7,7 +7,6 @@ import com.models.market.TradeItem;
 import com.models.profile.*;
 
 import javax.swing.*;
-import java.awt.*;
 import java.sql.SQLException;
 import java.util.List;
 import java.util.Map;
@@ -418,7 +417,7 @@ public class ModelFacade {
         logoFetchAttempts.put(key, System.currentTimeMillis());
 
         try {
-            com.etl.CompanyProfile profile = client.fetchInfo(key);
+            CompanyProfile profile = client.fetchInfo(key);
             if (profile != null) {
                 String logo = profile.getLogo();
                 // Check if logo is valid (not null, not blank, not "unknown")

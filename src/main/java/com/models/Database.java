@@ -1,5 +1,6 @@
 package com.models;
 
+import com.models.market.CompanyProfile;
 import com.models.market.TradeItem;
 import com.models.profile.Account;
 import com.models.profile.Profile;
@@ -188,10 +189,6 @@ public class Database implements AutoCloseable {
                 return rs.next();
             }
         }
-    }
-
-    public Connection getConnection() {
-        return conn;
     }
 
     /**

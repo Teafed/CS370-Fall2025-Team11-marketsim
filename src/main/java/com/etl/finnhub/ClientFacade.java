@@ -1,6 +1,6 @@
 package com.etl.finnhub;
 
-import com.etl.CompanyProfile;
+import com.models.market.CompanyProfile;
 import com.etl.TradeSource;
 import com.models.market.TradeListener;
 import com.tools.MockFinnhubClient;

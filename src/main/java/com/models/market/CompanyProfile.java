@@ -1,4 +1,4 @@
-package com.etl;
+package com.models.market;
 
 /**
  * Represents the company profile data returned by the Finnhub API.
