@@ -222,6 +222,7 @@ public class ModelFacade {
     public void removeFromWatchlist(TradeItem ti) {
         Account a = profile.getActiveAccount();
         a.getWatchlist().removeWatchlistItem(ti);
+        market.remove(ti.getSymbol());
         try {
             db.saveWatchlistSymbols(a.getId(), "Default", a.getWatchlistItems());
         } catch (SQLException e) {
