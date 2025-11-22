@@ -134,51 +134,55 @@ public class SymbolPanel extends ContentPanel {
         repaint();
     }
 
-        private void setupListeners() {
-            symbolList.addListSelectionListener(e -> {
-                if (!e.getValueIsAdjusting()) { // only fire when selection is final
-                    TradeItem selected = symbolList.getSelectedValue();
-                    if (selected != null) {
-                        java.lang.String sym = selected.getSymbol();
-                        if (!sym.equals(lastNotifiedSymbol)) { // guard against reloading same
-                            lastNotifiedSymbol = sym;
-                            notifyListeners(selected);
-                        }
+    private void setupListeners() {
+        symbolList.addListSelectionListener(e -> {
+            if (!e.getValueIsAdjusting()) { // only fire when selection is final
+                TradeItem selected = symbolList.getSelectedValue();
+                if (selected != null) {
+                    java.lang.String sym = selected.getSymbol();
+                    if (!sym.equals(lastNotifiedSymbol)) { // guard against reloading same
+                        lastNotifiedSymbol = sym;
+                        notifyListeners(selected);
                     }
                 }
-            });
-            symbolList.addMouseListener(new MouseAdapter() {
-                @Override
-                public void mousePressed(MouseEvent e) {
-                    if (e.isPopupTrigger()) showContextMenu(e);
-                }
+            }
+        });
+        symbolList.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mousePressed(MouseEvent e) {
+                if (e.isPopupTrigger()) showContextMenu(e);
+            }
 
-                @Override
-                public void mouseReleased(MouseEvent e) {
-                    if (e.isPopupTrigger()) showContextMenu(e);
-                }
+            @Override
+            public void mouseReleased(MouseEvent e) {
+                if (e.isPopupTrigger()) showContextMenu(e);
+            }
 
-                private void showContextMenu(MouseEvent e) {
-                    int index = symbolList.locationToIndex(e.getPoint());
-                    if (index >= 0) {
-                        symbolList.setSelectedIndex(index);
-                        TradeItem item = symbolModel.getElementAt(index);
+            private void showContextMenu(MouseEvent e) {
+                int index = symbolList.locationToIndex(e.getPoint());
+                if (index >= 0) {
+                    symbolList.setSelectedIndex(index);
+                    TradeItem item = symbolModel.getElementAt(index);
 
-                        JPopupMenu menu = new JPopupMenu();
-                        JMenuItem removeItem = new JMenuItem("Remove from Watchlist");
-                        removeItem.addActionListener(ev -> {
-                            symbolModel.removeElementAt(index);
-                            symbolList.clearSelection();
-                            lastNotifiedSymbol = null;
+                    JPopupMenu menu = new JPopupMenu();
+                    JMenuItem removeItem = new JMenuItem("Remove from Watchlist");
+                    removeItem.addActionListener(ev -> {
+                        symbolModel.removeElementAt(index);
+                        symbolList.clearSelection();
+                        lastNotifiedSymbol = null;
+                        try {
                             model.removeFromWatchlist(item);
-                        });
+                        } catch (Exception ex) {
+                            throw new RuntimeException(ex);
+                        }
+                    });
 
-                        menu.add(removeItem);
-                        menu.show(symbolList, e.getX(), e.getY());
-                    }
+                    menu.add(removeItem);
+                    menu.show(symbolList, e.getX(), e.getY());
                 }
-            });
-        }
+            }
+        });
+    }
 
     // methods for managing listeners
     /**

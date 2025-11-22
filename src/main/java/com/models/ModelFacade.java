@@ -8,6 +8,7 @@ import com.models.profile.*;
 
 import javax.swing.*;
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -27,6 +28,7 @@ public class ModelFacade {
     private final List<ModelListener> listeners = new CopyOnWriteArrayList<>();
     private final HistoricalService hist;
 
+    private final java.util.Set<String> subscribed = java.util.concurrent.ConcurrentHashMap.newKeySet();
     private final Map<String, String> logoCache = new ConcurrentHashMap<>();
     private final Map<String, Long> logoFetchAttempts = new ConcurrentHashMap<>();
     private static final long LOGO_RETRY_DELAY_MS = 60000; // 1 minute before retry
@@ -53,8 +55,8 @@ public class ModelFacade {
                 fireQuotesUpdated();
             }
             @Override
-            public void loadSymbols(List<TradeItem> items) {
-                fireWatchlistChanged(items);
+            public void loadSymbols(List<TradeItem> _ignored) {
+                getWatchlistView();
             }
         });
         this.hist = new HistoricalService(db);
@@ -74,11 +76,9 @@ public class ModelFacade {
             }
         }));
     }
-
     private void fireError(String msg, Throwable t) {
         onEDT(() -> listeners.forEach(l -> l.onError(msg, t)));
     }
-
     private static void onEDT(Runnable r) {
         if (SwingUtilities.isEventDispatchThread())
             r.run();
@@ -86,7 +86,7 @@ public class ModelFacade {
             SwingUtilities.invokeLater(r);
     }
 
-    // queries
+    // MARKET - queries
     /**
      * Checks if the market is currently open.
      *
@@ -95,11 +95,9 @@ public class ModelFacade {
     public boolean isMarketOpen() {
         return client.getMarketStatus();
     }
-
     public double getPrice(String symbol) {
         return getPrice(symbol, System.currentTimeMillis());
     }
-
     /**
      * Gets the price of a symbol at a specific timestamp.
      * Tries to get a live price first, then falls back to historical data from the
@@ -133,89 +131,157 @@ public class ModelFacade {
             return Double.NaN;
         }
     }
-    public Account getActiveAccount() { return profile.getActiveAccount(); }
-    public List<Account> listAccounts() { return profile.getAccounts(); }
-    public List<TradeItem> getWatchlist() { return profile.getActiveAccount().getWatchlist().getWatchlist(); }
+    public long getLatestTimestamp(String symbol) throws SQLException {
+        return db.getLatestTimestamp(symbol);
+    }
+    // MARKET - commands
+    public String[][] searchSymbol(String symbol) {
+        return market.searchSymbol(symbol);
+    }
+    /**
+     * Get the company logo URL for a symbol. Returns null on failure.
+     * Uses caching to avoid repeated API calls and rate limiting.
+     *
+     * @param symbol the stock symbol
+     * @return logo URL string or null
+     */
+    public String getLogoForSymbol(String symbol) {
+        if (symbol == null || symbol.isBlank()) {
+            return null;
+        }
+
+        String key = symbol.trim().toUpperCase();
+
+        // Check cache first
+        if (logoCache.containsKey(key)) {
+            return logoCache.get(key);
+        }
+        CompanyProfile cp = fetchAndCacheCompanyProfile(key);
+
+        String logo = (cp == null ? null : cp.getLogo());
+        if (logo != null && !logo.isBlank() && !"unknown".equals(logo)) {
+            logoCache.put(key, logo);
+        } else {
+            logoCache.put(key, null);
+        }
+        return logoCache.get(key);
+    }
+
+    // ACCOUNT - queries
     public AccountDTO getAccountDTO() throws SQLException {
         Account a = profile.getActiveAccount();
         Map<java.lang.String, Integer> positions = db.getPositions(a.getId());
         return new AccountDTO(a.getId(), a.getCash(), positions);
     }
-
-    /**
-     * Calculates the total value of the active account (cash + portfolio market
-     * value).
-     *
-     * @return The total account value.
-     */
+    public List<Account> listAccounts() { return profile.getAccounts(); }
+    public Account getActiveAccount() { return profile.getActiveAccount(); }
+    public String getProfileName() {
+        return profile == null ? "" : profile.getOwner();
+    }
+    public String getActiveAccountName() {
+        var a = profile.getActiveAccount();
+        return a == null ? "" : a.getName();
+    }
     public double getAccountTotalValue() {
         Account a = profile.getActiveAccount();
         double portfolioValue = a.getPortfolio().computeMarketValue(this::getPrice);
         return a.getCash() + portfolioValue;
     }
-    public long getLatestTimestamp(String symbol) throws SQLException {
-        return db.getLatestTimestamp(symbol);
+    public List<TradeItem> getWatchlistView() {
+        var wl = profile.getActiveAccount().getWatchlist().getWatchlist();
+        ArrayList<TradeItem> out = new ArrayList<>(wl.size());
+        for (var ti : wl) {
+            var canonical = market.get(ti.getSymbol());
+            if (canonical != null) out.add(canonical);
+        }
+        return out;
+    }
+    public List<TradeItem> getHoldingsView() {
+        try {
+            var a = profile.getActiveAccount();
+            if (a == null) return List.of();
+
+            var pos = db.getPositions(a.getId()); // Map<String, Integer>
+            java.util.Set<String> holdingSyms = pos.entrySet().stream()
+                    .filter(e -> e.getValue() != null && e.getValue() > 0)
+                    .map(e -> e.getKey().trim().toUpperCase())
+                    .collect(java.util.stream.Collectors.toCollection(java.util.LinkedHashSet::new));
+            java.util.Set<String> wlSyms = a.getWatchlist().getWatchlist().stream()
+                    .map(TradeItem::getSymbol)
+                    .filter(s -> s != null && !s.isBlank())
+                    .map(s -> s.trim().toUpperCase())
+                    .collect(java.util.stream.Collectors.toSet());
+            holdingSyms.removeAll(wlSyms);
+            if (holdingSyms.isEmpty()) return List.of();
+
+            java.util.ArrayList<TradeItem> out = new java.util.ArrayList<>(holdingSyms.size());
+            for (String s : holdingSyms) {
+                var canon = ensureCanonical(s);
+                if (canon != null) out.add(canon);
+            }
+            return out;
+        } catch (Exception e) {
+            return List.of();
+        }
     }
     public List<TradeRow> getRecentTrades(int limit) throws Exception {
         Account a = profile.getActiveAccount();
         if (a == null)
-            return java.util.List.of();
+            return List.of();
         return db.listRecentTrades(a.getId(), limit);
     }
+    // ACCOUNT - commands
+    public void createAccount(String accountName, double initialDeposit) throws Exception {
+        if (accountName == null || accountName.isBlank()) throw new IllegalArgumentException("Account name is required.");
+        if (initialDeposit < 0) throw new IllegalArgumentException("Initial deposit cannot be negative.");
 
-    // commands
-    public void close() throws SQLException { db.close(); }
+        long id = db.getOrCreateAccount(accountName.trim(), "USD");
+        Account a = new Account(id, accountName.trim());
 
-    /**
-     * Sets the active account and updates the model state.
-     * Loads the watchlist for the new account and notifies listeners.
-     *
-     * @param account The account to make active.
-     * @throws Exception If an error occurs.
-     */
+        if (initialDeposit > 0) {
+            db.depositCash(id, initialDeposit, System.currentTimeMillis(), "Initial deposit");
+        }
+        a.setCash(db.getAccountCash(id));
+
+        // make sure it's profile list if not already
+        boolean exists = profile.getAccounts().stream().anyMatch(acc -> acc.getId() == id);
+        if (!exists) {
+            profile.getAccounts().add(a);
+        }
+
+        ensureWatchlistPopulated(a);
+        try {
+            var positions = db.getPositions(id);
+            a.getPortfolio().setFromDb(positions);
+        } catch (Exception ignored) { }
+
+        setActiveAccount(a);
+    }
     public void setActiveAccount(Account account) throws Exception {
+        // don't reload if same account
+        var current = profile.getActiveAccount();
+        if (current != null && current.getId() == account.getId()) {
+            market.addFromWatchlist(account.getWatchlist());
+            fireWatchlistChanged(getWatchlistView());
+            fireAccountChanged();
+            return;
+        }
+
         profile.setActiveAccount(account);
         ensureWatchlistPopulated(account);
         market.addFromWatchlist(account.getWatchlist());
-        fireWatchlistChanged(getWatchlist());
+
+        fireWatchlistChanged(getWatchlistView());
         fireAccountChanged();
+        System.out.printf("[Model] Account set to %s (ID %d)%n", account.getName(), account.getId());
     }
-
-    private void ensureWatchlistPopulated(Account a) throws Exception {
-        List<TradeItem> dbSymbols = a.getWatchlistItems();
-        if (dbSymbols == null || dbSymbols.isEmpty()) {
-            // add defaults and persist
-            List<TradeItem> defaults = Watchlist.getDefaultWatchlist();
-
-            for (TradeItem ti : defaults) {
-                CompanyProfile cp = fetchAndCacheCompanyProfile(ti.getSymbol());
-                if (cp != null) ti.setCompanyProfile(cp); else ti.setNameLookup(ti);
-            }
-            db.saveWatchlistSymbols(a.getId(), "Default", defaults);
-            a.getWatchlist().clearList();
-            for (TradeItem ti : defaults) a.getWatchlist().addWatchlistItem(ti);
-            System.out.println("[facade] Loaded default watchlist -> DB (" + defaults.size() + ")");
-        } else {
-            // hydrate in-memory list from DB
-            for (TradeItem ti : dbSymbols) {
-                if (ti.getCompanyProfile() == null) {
-                    CompanyProfile cp = fetchAndCacheCompanyProfile(ti.getSymbol());
-                    if (cp != null) ti.setCompanyProfile(cp); else ti.setNameLookup(ti);
-                }
-            }
-            a.getWatchlist().clearList();
-            for (TradeItem ti : dbSymbols) a.getWatchlist().addWatchlistItem(ti);
-            db.saveWatchlistSymbols(a.getId(), "User List", dbSymbols);
-            System.out.println("[facade] Loaded watchlist from DB (" + dbSymbols.size() + ")");
-        }
+    public void switchAccount(long accountId) throws Exception {
+        Account target = profile.getAccounts().stream()
+                .filter(a -> a.getId() == accountId)
+                .findFirst()
+                .orElseThrow(() -> new IllegalArgumentException("Account not found: " + accountId));
+        setActiveAccount(target);
     }
-
-    /**
-     * Adds a symbol to the active account's watchlist.
-     *
-     * @param symbol The stock symbol to add.
-     * @throws Exception If an error occurs.
-     */
     public void addToWatchlist(String symbol) throws Exception {
         Account a = profile.getActiveAccount();
         String sym = (symbol == null ? "" : symbol.trim().toUpperCase());
@@ -225,59 +291,27 @@ public class ModelFacade {
         CompanyProfile cp = fetchAndCacheCompanyProfile(sym);
         if (cp != null) ti.setCompanyProfile(cp); else ti.setNameLookup(ti);
 
-        market.add(ti);
         a.getWatchlist().addWatchlistItem(ti);
         db.saveWatchlistSymbols(a.getId(), "Default", a.getWatchlistItems());
-        client.subscribe(symbol);
-        fireWatchlistChanged(getWatchlist());
-    }
+        market.add(ti);
 
-    public void removeFromWatchlist(TradeItem ti) {
+        fireWatchlistChanged(getWatchlistView());
+    }
+    public void removeFromWatchlist(TradeItem ti) throws Exception {
         Account a = profile.getActiveAccount();
         a.getWatchlist().removeWatchlistItem(ti);
+        db.saveWatchlistSymbols(a.getId(), "Default", a.getWatchlistItems());
+
         market.remove(ti.getSymbol());
-        try {
-            db.saveWatchlistSymbols(a.getId(), "Default", a.getWatchlistItems());
-        } catch (SQLException e) {
-            throw new RuntimeException(e);
-        }
-        //unsubscribe from client
-        fireWatchlistChanged(getWatchlist());
+        fireWatchlistChanged(getWatchlistView());
     }
-
-    private CompanyProfile fetchAndCacheCompanyProfile(String symbol) {
-        String key = symbol.trim().toUpperCase();
-        try {
-            CompanyProfile cp = db.getCompanyProfile(key);
-            if (cp != null) return cp;
-
-            // fetch from remote
-            CompanyProfile fetched = client.fetchInfo(key);
-            if (fetched != null) {
-                db.upsertCompanyProfile(key, fetched, System.currentTimeMillis());
-            }
-            return fetched;
-        } catch (Exception e) { return null; }
-    }
-
     public void executeTrade(String symbol, boolean isBuy, int shares) {
         executeTrade(symbol, isBuy, shares, System.currentTimeMillis());
     }
-
-    /**
-     * Executes a trade for the active account.
-     * Validates the trade, records it in the database, and updates the account
-     * state.
-     *
-     * @param symbol The stock symbol.
-     * @param isBuy  True for a buy order, false for sell.
-     * @param shares The number of shares.
-     * @param ts     The timestamp of the trade.
-     */
     public void executeTrade(String symbol, boolean isBuy, int shares, long ts) {
         // if ts is today and market is open get price from there
-            // otherwise price is gotten from db:
-            //    order times outside of range available in db should just get latest/earliest price
+        // otherwise price is gotten from db:
+        //    order times outside of range available in db should just get latest/earliest price
         try {
             Account a = profile.getActiveAccount();
             if (a == null) throw new IllegalStateException("No active account");
@@ -314,13 +348,6 @@ public class ModelFacade {
             fireError("Failed to place order", e);
         }
     }
-
-    /**
-     * Deposits cash into the active account.
-     *
-     * @param amount The amount to deposit.
-     * @param memo   A memo for the transaction.
-     */
     public void deposit(double amount, String memo) {
         try {
             Account a = profile.getActiveAccount();
@@ -332,10 +359,64 @@ public class ModelFacade {
         }
     }
 
+    // DATABASE - commands
+    public void close() throws SQLException { db.close(); }
+
+    // helpers
+    private CompanyProfile fetchAndCacheCompanyProfile(String symbol) {
+        String key = symbol.trim().toUpperCase();
+        try {
+            CompanyProfile cp = db.getCompanyProfile(key);
+            if (cp != null) return cp;
+
+            // fetch from remote
+            CompanyProfile fetched = client.fetchInfo(key);
+            if (fetched != null) {
+                db.upsertCompanyProfile(key, fetched, System.currentTimeMillis());
+            }
+            return fetched;
+        } catch (Exception e) { return null; }
+    }
+    private void ensureWatchlistPopulated(Account a) throws Exception {
+        List<TradeItem> dbSymbols = a.getWatchlistItems();
+        if (dbSymbols == null || dbSymbols.isEmpty()) {
+            // add defaults and persist
+            List<TradeItem> defaults = Watchlist.getDefaultWatchlist();
+
+            for (TradeItem ti : defaults) {
+                CompanyProfile cp = fetchAndCacheCompanyProfile(ti.getSymbol());
+                if (cp != null) ti.setCompanyProfile(cp); else ti.setNameLookup(ti);
+            }
+            db.saveWatchlistSymbols(a.getId(), "Default", defaults);
+            a.getWatchlist().clearList();
+            for (TradeItem ti : defaults) a.getWatchlist().addWatchlistItem(ti);
+            System.out.println("[Model] Loaded default watchlist -> DB (" + defaults.size() + ")");
+        } else {
+            // hydrate in-memory list from DB
+            for (TradeItem ti : dbSymbols) {
+                if (ti.getCompanyProfile() == null) {
+                    CompanyProfile cp = fetchAndCacheCompanyProfile(ti.getSymbol());
+                    if (cp != null) ti.setCompanyProfile(cp); else ti.setNameLookup(ti);
+                }
+            }
+            a.getWatchlist().clearList();
+            for (TradeItem ti : dbSymbols) a.getWatchlist().addWatchlistItem(ti);
+            db.saveWatchlistSymbols(a.getId(), "User List", dbSymbols);
+            System.out.println("[Model] Loaded watchlist from DB (" + dbSymbols.size() + ")");
+        }
+    }
+    private TradeItem ensureCanonical(String sym) {
+        var ti = market.get(sym);
+        if (ti != null) return ti;
+        try {
+            market.add(new com.models.market.TradeItem(sym));
+        } catch (Exception ignore) {}
+        return market.get(sym); // may still be null if add failed; callers should null-check
+    }
+
     // HistoricalService
     public record CandlePoint(long t, double close) { }
-    public static record Range(HistoricalService.Timespan timespan, int mult, long startMs, long endMs) { }
-
+    public record Range(HistoricalService.Timespan timespan, int mult, long startMs, long endMs) { }
     /**
      * Ensures that historical data exists for the requested range.
      * Checks the database and fetches missing data from the API if necessary.
@@ -359,7 +440,6 @@ public class ModelFacade {
         long endMs = missing.to.atStartOfDay(utc).toInstant().toEpochMilli();
         return new Range(missing.timespan, missing.multiplier, startMs, endMs);
     }
-
     /**
      * Backfills missing historical data for a range.
      *
@@ -375,7 +455,6 @@ public class ModelFacade {
         var r = new HistoricalService.Range(missing.timespan, missing.mult, from, to);
         return hist.backfillRange(symbol, r);
     }
-
     /**
      * Loads close prices for a symbol within a time range, downsampled to a maximum
      * number of points.
@@ -407,69 +486,5 @@ public class ModelFacade {
             }
             return out;
         }
-    }
-
-    public String[][] searchSymbol(String symbol) {
-        return market.searchSymbol(symbol);
-    }
-
-    /**
-     * Get the company logo URL for a symbol. Returns null on failure.
-     * Uses caching to avoid repeated API calls and rate limiting.
-     *
-     * @param symbol the stock symbol
-     * @return logo URL string or null
-     */
-    public String getLogoForSymbol(String symbol) {
-        if (symbol == null || symbol.isBlank()) {
-            return null;
-        }
-
-        String key = symbol.trim().toUpperCase();
-
-        // Check cache first
-        if (logoCache.containsKey(key)) {
-            return logoCache.get(key);
-        }
-        CompanyProfile cp = fetchAndCacheCompanyProfile(key);
-
-        String logo = (cp == null ? null : cp.getLogo());
-        if (logo != null && !logo.isBlank() && !"unknown".equals(logo)) {
-            logoCache.put(key, logo);
-        } else {
-            logoCache.put(key, null);
-        }
-        return logoCache.get(key);
-
-//         Check if we recently failed to fetch this logo
-//        Long lastAttempt = logoFetchAttempts.get(key);
-//        if (lastAttempt != null) {
-//            long elapsed = System.currentTimeMillis() - lastAttempt;
-//            if (elapsed < LOGO_RETRY_DELAY_MS) {
-//                // Too soon to retry, return null
-//                return null;
-//            }
-//        }
-//
-//         Record this fetch attempt
-//        logoFetchAttempts.put(key, System.currentTimeMillis());
-//
-//        try {
-//            CompanyProfile profile = client.fetchInfo(key);
-//            if (profile != null) {
-//                String logo = profile.getLogo();
-//                 Check if logo is valid (not null, not blank, not "unknown")
-//                if (logo != null && !logo.isBlank() && !"unknown".equals(logo)) {
-//                    logoCache.put(key, logo);
-//                    return logo;
-//                }
-//            }
-//             Cache null result to avoid repeated failed lookups
-//            logoCache.put(key, null);
-//        } catch (Exception e) {
-//            // Silently fail and cache null
-//            logoCache.put(key, null);
-//        }
-//        return null;
     }
 }

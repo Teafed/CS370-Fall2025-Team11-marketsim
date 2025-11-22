@@ -151,4 +151,10 @@ public class Profile {
     public void setOwner(String owner) {
         this.owner = owner;
     }
+    /**
+     * Gets the name of the owner of the profile.
+     *
+     * @return The owner's name.
+     */
+    public String getOwner() { return this.owner; }
 }

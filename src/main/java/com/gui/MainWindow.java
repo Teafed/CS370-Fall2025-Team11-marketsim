@@ -28,6 +28,7 @@ public class MainWindow extends JFrame
     private CardLayout cards;
     private JPanel rightContainer; // wrapper to hold top bar + cards
     private JLabel marketStatusLabel;
+    private AccountPanel accountPanel;
 
     private static final String WINDOW_TITLE = "Marketsim";
     private static final String CARD_CHART = "chart";
@@ -98,13 +99,13 @@ public class MainWindow extends JFrame
         rightCards.setBackground(GUIComponents.BG_DARK);
         rightCards.add(chartPanel, CARD_CHART);
 
-        AccountPanel accountPanel = new AccountPanel(model.getActiveAccount());
+        accountPanel = new AccountPanel(model);
         rightCards.add(accountPanel, CARD_ACCOUNT);
 
         symbolPanel = new SymbolPanel(model);
         symbolPanel.addSymbolSelectionListener(this);
         symbolPanel.setAccount(model.getActiveAccount(), this);
-        symbolPanel.setSymbols(model.getWatchlist());
+        symbolPanel.setSymbols(model.getWatchlistView());
         symbolPanel.selectFirst();
 
         cards.show(rightCards, CARD_CHART);
@@ -150,10 +151,6 @@ public class MainWindow extends JFrame
         });
     }
 
-    /**
-     * Set the market open/closed indicator. true => OPEN (green), false => CLOSED
-     * (red).
-     */
     /**
      * Set the market open/closed indicator. true => OPEN (green), false => CLOSED
      * (red).
@@ -212,9 +209,7 @@ public class MainWindow extends JFrame
      */
     @Override
     public void onAccountChanged(AccountDTO snapshot) {
-        // update right-side account panel, balances, etc
-        // if AccountPanel exposes a method to refresh with latest model:
-        // accountPanel.refresh(snapshot);
+        symbolPanel.setAccount(model.getActiveAccount(), this);
     }
 
     /**

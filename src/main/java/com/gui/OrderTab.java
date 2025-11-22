@@ -137,7 +137,7 @@ public class OrderTab extends ContentPanel {
         }
 
         try {
-            double cash = model.getAccountDTO().cash;
+            double cash = model.getAccountDTO().cash();
             lblCash.setText(money.format(cash));
         } catch (Exception e) {
             lblCash.setText("—");
@@ -147,7 +147,7 @@ public class OrderTab extends ContentPanel {
         int qty = 0;
         try {
             var dto = model.getAccountDTO();
-            var pos = dto.positions;
+            var pos = dto.positions();
             if (sym != null && pos != null) {
                 Integer q = pos.get(sym);
                 if (q != null)
@@ -285,7 +285,7 @@ public class OrderTab extends ContentPanel {
 
         if (buy) {
             try {
-                double cash = model.getAccountDTO().cash;
+                double cash = model.getAccountDTO().cash();
                 double need = shares * price;
                 if (cash + 1e-6 < need) {
                     msg("Insufficient cash. Need " + money.format(need) + " but have " + money.format(cash));

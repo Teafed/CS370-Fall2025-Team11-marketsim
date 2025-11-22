@@ -56,7 +56,7 @@ public class Market implements TradeListener {
         if (stocks.remove(sym) != null && listener != null) {
             listener.loadSymbols(new ArrayList<>(stocks.values()));
         }
-        // clientFacade.unsubscribe(sym);
+        try { clientFacade.unsubscribe(sym); } catch (Exception ignore) { }
     }
 
     /**
@@ -79,7 +79,7 @@ public class Market implements TradeListener {
      * @param price  The new price.
      */
     public synchronized void updateStock(String symbol, double price) {
-        TradeItem ti = stocks.get(normalize(symbol));
+        TradeItem ti = get(symbol);
         if (ti != null)
             ti.updatePrice(price);
     }
@@ -113,7 +113,7 @@ public class Market implements TradeListener {
      * Returns Double.NaN if symbol unknown.
      */
     public double getPrice(String symbol) {
-        TradeItem ti = stocks.get(normalize(symbol));
+        TradeItem ti = get(symbol);
         return ti == null ? Double.NaN : ti.getCurrentPrice();
     }
 
@@ -125,6 +125,10 @@ public class Market implements TradeListener {
      */
     public String[][] searchSymbol(String symbol) {
         return clientFacade.searchSymbol(symbol);
+    }
+
+    public TradeItem get(String symbol) {
+        return stocks.get(normalize(symbol));
     }
 
     private static String normalize(String s) {

@@ -18,7 +18,7 @@ import java.util.function.Consumer;
 public class StartupWindow extends ContentPanel {
     private JTextField profileNameField;
     private JTextField balanceField;
-    public static final boolean USE_ACCOUNT_PICKER = false; // settable from account select?
+    public static final boolean USE_ACCOUNT_PICKER = true; // settable from account select?
 
     // constructor for creating profile
     /**
