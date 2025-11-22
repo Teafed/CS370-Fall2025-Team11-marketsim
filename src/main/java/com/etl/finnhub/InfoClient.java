@@ -1,6 +1,6 @@
 package com.etl.finnhub;
 
-import com.etl.CompanyProfile;
+import com.models.market.CompanyProfile;
 import org.json.JSONObject;
 import com.models.Database;
 import com.models.market.TradeListener;
@@ -16,6 +16,9 @@ import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.function.Consumer;
 
+/**
+ * Client for fetching company profile information from Finnhub.
+ */
 public class InfoClient {
 
     private static final String LOG_PREFIX = "[InfoClient]";
@@ -30,14 +33,21 @@ public class InfoClient {
     private Consumer<Double> priceUpdateCallback;
     private volatile boolean running = false;
 
-
+    /**
+     * Constructs a new InfoClient.
+     *
+     * @param apiKey The Finnhub API key.
+     */
     public InfoClient(String apiKey) {
         this.apiKey = apiKey;
         this.httpClient = HttpClient.newHttpClient();
     }
 
     /**
-     * Fetch quote from Finnhub REST API
+     * Fetches company profile information for a given symbol.
+     *
+     * @param symbol The stock symbol.
+     * @return The CompanyProfile, or null if the request fails.
      */
     public CompanyProfile fetchInfo(String symbol) {
 
@@ -50,8 +60,7 @@ public class InfoClient {
                 .build();
 
         try {
-            HttpResponse<String> response =
-                    httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
 
             int sc = response.statusCode();
 
@@ -77,32 +86,26 @@ public class InfoClient {
     }
 
     /**
-     * Parse and store quote data
+     * Parses the JSON response and builds a CompanyProfile object.
+     *
+     * @param responseBody The JSON response string.
+     * @return The CompanyProfile object.
      */
     private CompanyProfile parseAndBuildProfile(String responseBody) {
         JSONObject jsonObject = new JSONObject(responseBody);
 
-        String country = jsonObject.optString("country","unknown");
-        String currency = jsonObject.optString("currency","unknown");
-        String exchange = jsonObject.optString("exchange","unknown");
-        String ipo = jsonObject.optString("ipo","unknown");
-        String logo = jsonObject.optString("logo","unknown");
-        String marketCapitalization = jsonObject.optString("marketCapitalization","unknown");
-        String name = jsonObject.optString("name","unknown");
-        String sharesOutstanding = jsonObject.optString("sharesOutstanding","unknown");
-        String weburl = jsonObject.optString("weburl","unknown");
+        String country = jsonObject.optString("country", "unknown");
+        String currency = jsonObject.optString("currency", "unknown");
+        String exchange = jsonObject.optString("exchange", "unknown");
+        String ipo = jsonObject.optString("ipo", "unknown");
+        String logo = jsonObject.optString("logo", "unknown");
+        String marketCap = jsonObject.optString("marketCap", "unknown");
+        String name = jsonObject.optString("name", "unknown");
+        String sharesOutstanding = jsonObject.optString("sharesOutstanding", "unknown");
+        String weburl = jsonObject.optString("weburl", "unknown");
 
-        CompanyProfile companyProfile = new CompanyProfile();
-        companyProfile.setCountry(country);
-        companyProfile.setCurrency(currency);
-        companyProfile.setExchange(exchange);
-        companyProfile.setIpo(ipo);
-        companyProfile.setLogo(logo);
-        companyProfile.setMarketCapitalization(marketCapitalization);
-        companyProfile.setName(name);
-        companyProfile.setSharesOutstanding(sharesOutstanding);
-        companyProfile.setWeburl(weburl);
+        return new CompanyProfile(country, currency, exchange,
+                ipo, logo, marketCap, name, sharesOutstanding, weburl);
 
-        return companyProfile;
     }
 }

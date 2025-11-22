@@ -1,50 +1,80 @@
-    // symbol list, each entry will display the symbol name, latest fetched price, and percent increase/decrease. clicking one will open a ChartPanel
+// symbol list, each entry will display the symbol name, latest fetched price, and percent increase/decrease. clicking one will open a ChartPanel
 
-    package com.gui;
+package com.gui;
 
-    import com.models.*;
-    import com.models.market.TradeItem;
-    import com.models.profile.Account;
+import com.models.*;
+import com.models.market.TradeItem;
+import com.models.profile.Account;
 
-    import javax.swing.*;
-    import java.awt.*;
-    import java.awt.event.MouseAdapter;
-    import java.awt.event.MouseEvent;
-    import java.util.ArrayList;
-    import java.util.List;
+import javax.swing.*;
+import java.awt.*;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
+import java.util.ArrayList;
+import java.util.List;
 
-    public class SymbolPanel extends ContentPanel {
-        private final DefaultListModel<TradeItem> watchlistModel = new DefaultListModel<>();
-        private final JList<TradeItem> watchlistSymbols = new JList<>(watchlistModel);
-        private final DefaultListModel<TradeItem> portfolioModel = new DefaultListModel<>();
-        private final JList<TradeItem> portfolioSymbols = new JList<>(portfolioModel);
-        private final List<SymbolSelectionListener> symbolListener;
-        private Account account;
-        private AccountSelectionListener accountListener;
-        private String lastNotifiedSymbol = null;
-        private AccountBar accountBar;
-        private ModelFacade model;
+/**
+ * A panel displaying a list of stock symbols.
+ * Allows selecting a symbol to view its chart and details.
+ * Also contains the account bar and search panel.
+ */
+public class SymbolPanel extends ContentPanel {
+    private final DefaultListModel<TradeItem> watchlistModel = new DefaultListModel<>();
+    private final JList<TradeItem> watchlistSymbols = new JList<>(watchlistModel);
+    private final DefaultListModel<TradeItem> portfolioModel = new DefaultListModel<>();
+    private final JList<TradeItem> portfolioSymbols = new JList<>(portfolioModel);
+    private final List<SymbolSelectionListener> symbolListener;
+    private Account account;
+    private AccountSelectionListener accountListener;
+    private String lastNotifiedSymbol = null;
+    private AccountBar accountBar;
+    private ModelFacade model;
+    private LogoCache logoCache;
 
-        // interface that listeners must implement
-        public interface SymbolSelectionListener {
-            void onSymbolSelected(TradeItem symbol);
-        }
-        public interface AccountSelectionListener {
-            void onAccountBarSelected(Account account);
-        }
 
-        public SymbolPanel(ModelFacade model) {
-            this.model = model;
-            this.symbolListener = new ArrayList<>();
-            initializeComponents();
+    // interface that listeners must implement
+    /**
+     * Listener interface for symbol selection events.
+     */
+    public interface SymbolSelectionListener {
+        /**
+         * Called when a symbol is selected.
+         *
+         * @param symbol The selected TradeItem.
+         */
+        void onSymbolSelected(TradeItem symbol);
+    }
 
-            setupListeners();
-        }
+    /**
+     * Listener interface for account bar selection events.
+     */
+    public interface AccountSelectionListener {
+        /**
+         * Called when the account bar is selected.
+         *
+         * @param account The selected Account.
+         */
+        void onAccountBarSelected(Account account);
+    }
 
-        private void initializeComponents() {
-            setLayout(new BorderLayout());
-            setBackground(GUIComponents.BG_MEDIUM);
-            setBorder(GUIComponents.createBorder());
+    /**
+     * Constructs a new SymbolPanel.
+     *
+     * @param model The ModelFacade instance.
+     */
+    public SymbolPanel(ModelFacade model) {
+        this.model = model;
+        this.symbolListener = new ArrayList<>();
+        this.logoCache = new LogoCache(40);
+        initializeComponents();
+
+        setupListeners();
+    }
+
+    private void initializeComponents() {
+        setLayout(new BorderLayout());
+        setBackground(GUIComponents.BG_MEDIUM);
+        setBorder(GUIComponents.createBorder());
 
             GUIComponents.createList(watchlistModel);
             GUIComponents.createList(portfolioModel);
@@ -66,18 +96,18 @@
             listWrapper.setOpaque(true);
             listWrapper.setBackground(GUIComponents.BG_MEDIUM);
 
-            scrollPane.setViewportView(listWrapper);
+        scrollPane.setViewportView(listWrapper);
 
-            accountBar = new AccountBar();
-            accountBar.setVisible(false); // setAccount() will make this visible
+        accountBar = new AccountBar();
+        accountBar.setVisible(false); // setAccount() will make this visible
 
-            SearchPanel searchBar = new SearchPanel(model);
-            searchBar.setVisible(true);
+        SearchPanel searchBar = new SearchPanel(model);
+        searchBar.setVisible(true);
 
-            add(searchBar, BorderLayout.NORTH);
-            add(accountBar, BorderLayout.SOUTH);
-            add(scrollPane, BorderLayout.CENTER);
-        }
+        add(searchBar, BorderLayout.NORTH);
+        add(accountBar, BorderLayout.SOUTH);
+        add(scrollPane, BorderLayout.CENTER);
+    }
 
         public void setWatchlistSymbols(List<TradeItem> symbols) {
             watchlistModel.clear();
@@ -95,20 +125,26 @@
             portfolioSymbols.repaint();
         }
 
-        public void setAccount(Account account, AccountSelectionListener listener) {
-            this.account = account;
-            this.accountListener = listener;
+    /**
+     * Sets the active account and listener for the account bar.
+     *
+     * @param account  The Account to display.
+     * @param listener The listener for account bar clicks.
+     */
+    public void setAccount(Account account, AccountSelectionListener listener) {
+        this.account = account;
+        this.accountListener = listener;
 
-            accountBar.setAccount(account);
-            accountBar.setOnClick(() -> {
-                if (this.accountListener != null) {
-                    this.accountListener.onAccountBarSelected(this.account);
-                }
-            });
-            accountBar.setVisible(true);
-            revalidate();
-            repaint();
-        }
+        accountBar.setAccount(account);
+        accountBar.setOnClick(() -> {
+            if (this.accountListener != null) {
+                this.accountListener.onAccountBarSelected(this.account);
+            }
+        });
+        accountBar.setVisible(true);
+        revalidate();
+        repaint();
+    }
 
         private void setupListeners() {
             watchlistSymbols.addListSelectionListener(e -> {
@@ -156,20 +192,30 @@
             });
         }
 
-        // methods for managing listeners
-        public void addSymbolSelectionListener(SymbolSelectionListener listener) {
-            symbolListener.add(listener);
-        }
+    // methods for managing listeners
+    /**
+     * Adds a listener for symbol selection events.
+     *
+     * @param listener The listener to add.
+     */
+    public void addSymbolSelectionListener(SymbolSelectionListener listener) {
+        symbolListener.add(listener);
+    }
 
-        public void removeSymbolSelectionListener(SymbolSelectionListener listener) {
-            symbolListener.remove(listener);
-        }
+    /**
+     * Removes a listener for symbol selection events.
+     *
+     * @param listener The listener to remove.
+     */
+    public void removeSymbolSelectionListener(SymbolSelectionListener listener) {
+        symbolListener.remove(listener);
+    }
 
-        private void notifyListeners(TradeItem symbol) {
-            for (SymbolSelectionListener listener : symbolListener) {
-                listener.onSymbolSelected(symbol);
-            }
+    private void notifyListeners(TradeItem symbol) {
+        for (SymbolSelectionListener listener : symbolListener) {
+            listener.onSymbolSelected(symbol);
         }
+    }
 
         public java.lang.String getSelectedSymbol() {
             TradeItem selected = watchlistSymbols.getSelectedValue();

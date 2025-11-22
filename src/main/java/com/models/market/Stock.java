@@ -1,12 +1,16 @@
 package com.models.market;
 
+/**
+ * Represents a stock trade item.
+ */
 public class Stock extends TradeItem {
 
-    public Stock(String name, String symbol) {
-        super(name, symbol);
-    }
-
-    public Stock(java.lang.String name, java.lang.String symbol, double price, double changePercent) {
-        super(name, symbol, price, changePercent);
+    /**
+     * Constructs a new Stock with name and symbol.
+     *
+     * @param symbol The stock symbol.
+     */
+    public Stock(String symbol) {
+        super(symbol);
     }
 }
