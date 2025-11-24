@@ -1,5 +1,7 @@
-package com.gui;
+package com.gui.navigation;
 
+import com.gui.GUIComponents;
+import com.gui.LogoCache;
 import com.models.ModelFacade;
 import com.models.market.TradeItem;
 import javax.swing.*;
@@ -13,7 +15,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  * Shows the symbol, company name, logo, current price, and percent change.
  * Handles asynchronous logo loading.
  */
-public class SymbolCellRenderer extends JPanel implements ListCellRenderer<TradeItem> {
+public class SymbolCellRenderer extends JPanel implements ListCellRenderer<SymbolListEntry> {
     private final JLabel logoLabel = new JLabel();
     private final JLabel symbolLabel = new JLabel();
     private final JLabel nameLabel = new JLabel();
@@ -79,13 +81,14 @@ public class SymbolCellRenderer extends JPanel implements ListCellRenderer<Trade
 
     @Override
     public Component getListCellRendererComponent(
-            JList<? extends TradeItem> list, TradeItem value, int index,
+            JList<? extends SymbolListEntry> list, SymbolListEntry value, int index,
             boolean isSelected, boolean cellHasFocus) {
 
         if (value != null) {
-            String symbol = value.getSymbol();
+            TradeItem ti = (TradeItem) value;
+            String symbol = ti.getSymbol();
             symbolLabel.setText(symbol);
-            nameLabel.setText(value.getName());
+            nameLabel.setText(ti.getName());
 
             // Load company logo with staggered timing to avoid rate limits
             ImageIcon cached = logoCache.getIfCached(symbol);
@@ -126,7 +129,7 @@ public class SymbolCellRenderer extends JPanel implements ListCellRenderer<Trade
                 timer.start();
             }
 
-            double px = value.getCurrentPrice();
+            double px = ti.getCurrentPrice();
             if (Double.isNaN(px) || px == 0) {
                 priceLabel.setText("—");
                 priceLabel.setForeground(GUIComponents.TEXT_TERTIARY);
@@ -135,7 +138,7 @@ public class SymbolCellRenderer extends JPanel implements ListCellRenderer<Trade
                 priceLabel.setForeground(isSelected ? GUIComponents.TEXT_TERTIARY : GUIComponents.TEXT_PRIMARY);
             }
 
-            double changePercent = value.getChangePercent();
+            double changePercent = ti.getChangePercent();
             boolean up = changePercent > 0, down = changePercent < 0;
             java.lang.String arrow = up ? "▲" : (down ? "▼" : "•");
             java.lang.String changeText = Double.isNaN(changePercent) ? "—"

@@ -1,5 +1,6 @@
-package com.gui;
+package com.gui.navigation;
 
+import com.gui.ContentPanel;
 import com.models.ModelFacade;
 
 import javax.swing.*;

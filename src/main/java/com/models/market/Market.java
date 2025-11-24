@@ -1,6 +1,7 @@
 package com.models.market;
 
 import com.etl.finnhub.ClientFacade;
+import com.models.profile.Portfolio;
 import com.models.profile.Watchlist;
 
 import java.util.*;
@@ -32,11 +33,14 @@ public class Market implements TradeListener {
      * @throws Exception If an error occurs during subscription.
      */
     public synchronized void add(TradeItem item) throws Exception {
-        if (item == null)
+        if (item == null) {
             return;
+        }
+
         String sym = normalize(item.getSymbol());
-        if (stocks.containsKey(sym))
+        if (stocks.containsKey(sym)) {
             return;
+        }
 
         clientFacade.subscribe(sym);
         item.setValues(clientFacade.fetchInitializingQuote(sym));
@@ -70,6 +74,14 @@ public class Market implements TradeListener {
             return;
         for (TradeItem ti : wl.getWatchlist())
             add(ti);
+    }
+
+    public void addFromPortfolio(Portfolio portfolio) throws Exception {
+        if (portfolio == null) return;
+        for (String symbol : portfolio.getPortfolioItems()) {
+            TradeItem ti = new TradeItem(symbol);
+            add(ti);
+        }
     }
 
     /**

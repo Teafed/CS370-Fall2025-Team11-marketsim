@@ -55,8 +55,8 @@ public class ModelFacade {
                 fireQuotesUpdated();
             }
             @Override
-            public void loadSymbols(List<TradeItem> _ignored) {
-                getWatchlistView();
+            public void loadSymbols(List<TradeItem> items) {
+                fireWatchlistChanged(items, getPortfolioItems());
             }
         });
         this.hist = new HistoricalService(db);
@@ -66,7 +66,7 @@ public class ModelFacade {
     public void addListener(ModelListener l) { listeners.add(l); }
     public void removeListener(ModelListener l) { listeners.remove(l); }
     private void fireQuotesUpdated() { onEDT(() -> listeners.forEach(ModelListener::onQuotesUpdated)); }
-    private void fireWatchlistChanged(List<TradeItem> items) { onEDT(() -> listeners.forEach(l -> l.onWatchlistChanged(items))); }
+    private void fireWatchlistChanged(List<TradeItem> watchlist, List<TradeItem> portfolio) { onEDT(() -> listeners.forEach(l -> l.onWatchlistChanged(watchlist, portfolio))); }
     private void fireAccountChanged() {
         onEDT(() -> listeners.forEach(l -> {
             try {
@@ -130,6 +130,14 @@ public class ModelFacade {
         } catch (Exception e) {
             return Double.NaN;
         }
+    }
+    public List<TradeItem> getWatchlist() {
+        return profile.getActiveAccount().getWatchlist().getWatchlist(); }
+    public List<TradeItem> getPortfolioItems() {
+        List<String> symbols = profile.getActiveAccount().getPortfolio().getPortfolioItems();
+        List<TradeItem> items = new ArrayList<>();
+        symbols.forEach(symbol -> {items.add(market.get(symbol));});
+        return items;
     }
     public long getLatestTimestamp(String symbol) throws SQLException {
         return db.getLatestTimestamp(symbol);
@@ -277,7 +285,7 @@ public class ModelFacade {
         var current = profile.getActiveAccount();
         if (current != null && current.getId() == account.getId()) {
             market.addFromWatchlist(account.getWatchlist());
-            fireWatchlistChanged(getWatchlistView());
+            fireWatchlistChanged(getWatchlistView(), getPortfolioItems());
             fireAccountChanged();
             return;
         }
@@ -285,8 +293,8 @@ public class ModelFacade {
         profile.setActiveAccount(account);
         ensureWatchlistPopulated(account);
         market.addFromWatchlist(account.getWatchlist());
-
-        fireWatchlistChanged(getWatchlistView());
+        market.addFromPortfolio(account.getPortfolio());
+        fireWatchlistChanged(getWatchlist(), getPortfolioItems());
         fireAccountChanged();
         System.out.printf("[Model] Account set to %s (ID %d)%n", account.getName(), account.getId());
     }
@@ -303,6 +311,9 @@ public class ModelFacade {
     }
     public void addToWatchlist(String symbol) throws Exception {
         Account a = profile.getActiveAccount();
+        if (a.getPortfolio().hasShare(symbol)) {
+            return;
+        }
         String sym = (symbol == null ? "" : symbol.trim().toUpperCase());
         if (sym.isEmpty()) throw new IllegalArgumentException("Symbol required");
 
@@ -314,7 +325,7 @@ public class ModelFacade {
         db.saveWatchlistSymbols(a.getId(), "Default", a.getWatchlistItems());
         market.add(ti);
 
-        fireWatchlistChanged(getWatchlistView());
+        fireWatchlistChanged(getWatchlistView(), getPortfolioItems());
     }
     public void removeFromWatchlist(TradeItem ti) throws Exception {
         Account a = profile.getActiveAccount();
@@ -322,7 +333,7 @@ public class ModelFacade {
         db.saveWatchlistSymbols(a.getId(), "Default", a.getWatchlistItems());
 
         market.remove(ti.getSymbol());
-        fireWatchlistChanged(getWatchlistView());
+        fireWatchlistChanged(getWatchlistView(), getPortfolioItems());
     }
     public void executeTrade(String symbol, boolean isBuy, int shares) {
         executeTrade(symbol, isBuy, shares, System.currentTimeMillis());
@@ -355,6 +366,14 @@ public class ModelFacade {
             db.recordOrder(order);
             // update in-memory cash/positions and portfolio
             a.setCash(db.getAccountCash(a.getId()));
+
+            // update watchlist
+            TradeItem ti = market.get(symbol);
+            if (isBuy) {
+                //removeFromWatchlist(ti);
+            } else {
+                addToWatchlist(symbol);
+            }
             try {
                 var positions = db.getPositions(a.getId()); // symbol -> qty
                 a.getPortfolio().setFromDb(positions);
@@ -363,6 +382,7 @@ public class ModelFacade {
             }
 
             fireAccountChanged();
+            fireWatchlistChanged(getWatchlist(), getPortfolioItems());
         } catch (Exception e) {
             fireError("Failed to place order", e);
         }

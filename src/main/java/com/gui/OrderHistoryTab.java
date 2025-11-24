@@ -178,10 +178,6 @@ public class OrderHistoryTab extends ContentPanel implements ModelListener {
         /* not needed */ }
 
     @Override
-    public void onWatchlistChanged(List<com.models.market.TradeItem> items) {
-        /* not needed */ }
-
-    @Override
     public void onError(String message, Throwable t) {
         /* optional */ }
 }

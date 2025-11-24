@@ -254,7 +254,6 @@ public class AccountPanel extends ContentPanel implements ModelListener {
     // listeners
     @Override public void onAccountChanged(AccountDTO snapshot) { refreshLabels(snapshot); }
     @Override public void onQuotesUpdated() { /* ignore */ }
-    @Override public void onWatchlistChanged(java.util.List<com.models.market.TradeItem> items) { /* ignore */ }
     @Override public void onError(String message, Throwable t) { /* optional */ }
 
     @Override public void addNotify() {

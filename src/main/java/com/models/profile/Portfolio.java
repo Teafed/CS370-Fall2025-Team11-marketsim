@@ -1,5 +1,7 @@
 package com.models.profile;
 
+import com.models.market.TradeItem;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -147,5 +149,9 @@ public class Portfolio {
                 total += px * e.getValue();
         }
         return total;
+    }
+
+    public ArrayList<String> getPortfolioItems() {
+        return new ArrayList<>(positions.keySet());
     }
 }

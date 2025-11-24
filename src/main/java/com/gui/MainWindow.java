@@ -2,6 +2,7 @@
 
 package com.gui;
 
+import com.gui.navigation.SymbolPanel;
 import com.models.*;
 import com.models.market.TradeItem;
 import com.models.profile.Account;
@@ -105,8 +106,10 @@ public class MainWindow extends JFrame
         symbolPanel = new SymbolPanel(model);
         symbolPanel.addSymbolSelectionListener(this);
         symbolPanel.setAccount(model.getActiveAccount(), this);
-        symbolPanel.setSymbols(model.getWatchlistView());
+        symbolPanel.buildList(model.getWatchlist(), model.getPortfolioItems());
+        //symbolPanel.setWatchlistSymbols(model.getWatchlist());
         symbolPanel.selectFirst();
+        symbolPanel.repaint();
 
         cards.show(rightCards, CARD_CHART);
         rightCards.setMinimumSize(new Dimension(MIN_RIGHT_WIDTH, 0));
@@ -217,9 +220,8 @@ public class MainWindow extends JFrame
      *
      * @param items The updated list of TradeItems.
      */
-    @Override
-    public void onWatchlistChanged(java.util.List<TradeItem> items) {
-        symbolPanel.setSymbols(items);
+    @Override public void onWatchlistChanged(java.util.List<TradeItem> items, java.util.List<TradeItem> portfolio) {
+        symbolPanel.buildList(items, portfolio);
     }
 
     /**
