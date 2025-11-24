@@ -13,6 +13,7 @@ public class Profile {
     private final ArrayList<Account> accounts = new ArrayList<>(); // list of accounts
     private Account activeAccount;
     private int maxNumberOfAccounts = 5; // maximum number of accounts
+    private long id; // database identifier
     private String owner;
 
     // Constructor
@@ -157,4 +158,8 @@ public class Profile {
      * @return The owner's name.
      */
     public String getOwner() { return this.owner; }
+
+    public void setId(long profileId) { this.id = profileId; }
+
+    public long getId() { return this.id; }
 }

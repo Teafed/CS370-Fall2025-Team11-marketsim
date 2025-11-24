@@ -304,7 +304,7 @@ public class ChartPanel extends ContentPanel {
         void loadFromDb(Database db, String symbol, long startMs, long endMs, int maxPoints) {
             this.symbol = symbol;
             // use daily getCandles bc smaller timeframes aren't supported on free polygon
-            try (ResultSet rs = db.getCandles(symbol, startMs, endMs)) {
+            try (ResultSet rs = db.getCandles(symbol, 1, "day", startMs, endMs)) {
                 TreeMap<Long, Double> sorted = new TreeMap<>();
                 while (rs.next()) {
                     long t = rs.getLong("timestamp");

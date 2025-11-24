@@ -88,42 +88,54 @@ public class Database implements AutoCloseable {
     private void ensureUserSchema() throws SQLException {
         try (Statement st = conn.createStatement()) {
             st.execute("""
-                    CREATE TABLE IF NOT EXISTS profiles (
-                        id INTEGER PRIMARY KEY AUTOINCREMENT,
-                        name TEXT NOT NULL UNIQUE,
-                        created_at INTEGER NOT NULL DEFAULT (strftime('%s','now')*1000)
+                        PRAGMA foreign_keys = ON;
+                    """);
+
+            st.execute("""
+                        CREATE TABLE IF NOT EXISTS profiles (
+                            id INTEGER PRIMARY KEY AUTOINCREMENT,
+                            name TEXT NOT NULL UNIQUE,
+                            created_at INTEGER NOT NULL DEFAULT (strftime('%s','now')*1000)
+                        )
+                    """);
+            st.execute("""
+                        CREATE TABLE IF NOT EXISTS profile_settings (
+                            profile_id INTEGER PRIMARY KEY,
+                            default_account_id INTEGER,
+                            FOREIGN KEY(default_account_id) REFERENCES accounts(id) ON DELETE SET NULL,
+                            FOREIGN KEY(profile_id) REFERENCES profiles(id) ON DELETE CASCADE
                         )
                     """);
 
             st.execute("""
-                    CREATE TABLE IF NOT EXISTS accounts (
-                        id INTEGER PRIMARY KEY AUTOINCREMENT,
-                        profile_id INTEGER NOT NULL,
-                        name TEXT NOT NULL,
-                        base_currency TEXT NOT NULL DEFAULT 'USD',
-                        UNIQUE(profile_id, name),
-                        FOREIGN KEY(profile_id) REFERENCES profiles(id) ON DELETE CASCADE
+                        CREATE TABLE IF NOT EXISTS accounts (
+                            id INTEGER PRIMARY KEY AUTOINCREMENT,
+                            profile_id INTEGER NOT NULL,
+                            name TEXT NOT NULL,
+                            base_currency TEXT NOT NULL DEFAULT 'USD',
+                            UNIQUE(profile_id, name),
+                            FOREIGN KEY(profile_id) REFERENCES profiles(id) ON DELETE CASCADE
                         )
                     """);
 
             st.execute("""
-                    CREATE TABLE IF NOT EXISTS watchlists (
-                        id INTEGER PRIMARY KEY AUTOINCREMENT,
-                        account_id INTEGER NOT NULL,
-                        name TEXT NOT NULL DEFAULT 'Default',
-                        UNIQUE(account_id, name),
-                        FOREIGN KEY(account_id) REFERENCES accounts(id) ON DELETE CASCADE
+                        CREATE TABLE IF NOT EXISTS watchlists (
+                            id INTEGER PRIMARY KEY AUTOINCREMENT,
+                            account_id INTEGER NOT NULL,
+                            name TEXT NOT NULL DEFAULT 'Default',
+                            UNIQUE(account_id, name),
+                            FOREIGN KEY(account_id) REFERENCES accounts(id) ON DELETE CASCADE
                         )
                     """);
 
             st.execute("""
-                    CREATE TABLE IF NOT EXISTS watchlist_items (
-                        watchlist_id INTEGER NOT NULL,
-                        symbol TEXT NOT NULL,
-                        position INTEGER NOT NULL,
-                        PRIMARY KEY (watchlist_id, symbol),
-                        UNIQUE (watchlist_id, position),
-                        FOREIGN KEY(watchlist_id) REFERENCES watchlists(id) ON DELETE CASCADE
+                        CREATE TABLE IF NOT EXISTS watchlist_items (
+                            watchlist_id INTEGER NOT NULL,
+                            symbol TEXT NOT NULL,
+                            position INTEGER NOT NULL,
+                            PRIMARY KEY (watchlist_id, symbol),
+                            UNIQUE (watchlist_id, position),
+                            FOREIGN KEY(watchlist_id) REFERENCES watchlists(id) ON DELETE CASCADE
                         )
                     """);
         }
@@ -211,7 +223,7 @@ public class Database implements AutoCloseable {
         }
     }
 
-    // symbol & price
+    // symbols
     /**
      * Lists all distinct symbols available in the prices table.
      *
@@ -228,7 +240,6 @@ public class Database implements AutoCloseable {
             return out;
         }
     }
-
     public void upsertCompanyProfile(String symbol, CompanyProfile cp, long fetchedMs) throws SQLException {
         String s = symbol.trim().toUpperCase();
         try (PreparedStatement ps = conn.prepareStatement("""
@@ -313,70 +324,10 @@ public class Database implements AutoCloseable {
         }
     }
 
-    /* old version */
-    public ResultSet getCandles(String symbol, long startMs, long endMs) throws SQLException {
-        return getCandles(symbol, 1, "day", startMs, endMs);
-    }
-
-    /**
-     * Retrieves candle data for a specific symbol and range.
-     *
-     * @param symbol     The stock symbol.
-     * @param multiplier The time multiplier (e.g., 1).
-     * @param timespan   The timespan unit (e.g., "day").
-     * @param startMs    The start timestamp in milliseconds.
-     * @param endMs      The end timestamp in milliseconds.
-     * @return A ResultSet containing the candle data.
-     * @throws SQLException If a database access error occurs.
-     */
-    public ResultSet getCandles(String symbol, int multiplier, String timespan,
-            long startMs, long endMs) throws SQLException {
-        PreparedStatement ps = conn.prepareStatement("""
-                    SELECT timestamp, open, high, low, close, volume
-                    FROM prices
-                    WHERE symbol = ? AND timespan = ? AND multiplier = ?
-                      AND timestamp BETWEEN ? AND ?
-                    ORDER BY timestamp ASC
-                """);
-        ps.setString(1, symbol);
-        ps.setString(2, timespan);
-        ps.setInt(3, multiplier);
-        ps.setLong(4, startMs);
-        ps.setLong(5, endMs);
-        return ps.executeQuery();
-    }
-
-    /**
-     * Gets a fallback price for a symbol at a specific timestamp.
-     * Tries to find the close price at or before the timestamp, or the first
-     * available close, or the latest.
-     *
-     * @param symbol The stock symbol.
-     * @param ts     The timestamp in milliseconds.
-     * @return The fallback price, or Double.NaN if not found.
-     */
-    public double getFallbackPrice(String symbol, long ts) {
-        try {
-            double px = getCloseAtOrBefore(symbol, ts, 1, "day");
-            if (!Double.isNaN(px))
-                return px;
-            // if ts predates all data, use earliest
-            px = getFirstClose(symbol, 1, "day");
-            if (!Double.isNaN(px))
-                return px;
-            // else just latest available
-            double[] lp = latestAndPrevClose(symbol, 1, "day");
-            return lp[0];
-        } catch (Exception e) {
-            return Double.NaN;
-        }
-    }
-
-    /* old version */
+    // price timestamps
     public long getLatestTimestamp(String symbol) throws SQLException {
         return getLatestTimestamp(symbol, 1, "day");
     }
-
     public long getLatestTimestamp(String symbol, int multiplier, String timespan) throws SQLException {
         String sql = "SELECT MAX(timestamp) FROM prices WHERE symbol=? AND timespan=? AND multiplier=?";
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
@@ -388,7 +339,6 @@ public class Database implements AutoCloseable {
             }
         }
     }
-
     public long getEarliestTimestamp(String symbol, int multiplier, String timespan) throws SQLException {
         String sql = "SELECT MIN(timestamp) FROM prices WHERE symbol=? AND timespan=? AND multiplier=?";
         try (PreparedStatement ps = conn.prepareStatement(sql)) {
@@ -400,7 +350,6 @@ public class Database implements AutoCloseable {
             }
         }
     }
-
     public List<Long> listTimestamps(String symbol, int multiplier, String timespan,
             long startMs, long endMs) throws SQLException {
         String sql = """
@@ -424,11 +373,39 @@ public class Database implements AutoCloseable {
         return out;
     }
 
-    /* old voision */
-    public double[] latestAndPrevClose(String symbol) throws SQLException {
-        return latestAndPrevClose(symbol, 1, "day");
+    // price candles
+    public ResultSet getCandles(String symbol, int multiplier, String timespan,
+                                long startMs, long endMs) throws SQLException {
+        PreparedStatement ps = conn.prepareStatement("""
+                    SELECT timestamp, open, high, low, close, volume
+                    FROM prices
+                    WHERE symbol = ? AND timespan = ? AND multiplier = ?
+                      AND timestamp BETWEEN ? AND ?
+                    ORDER BY timestamp ASC
+                """);
+        ps.setString(1, symbol);
+        ps.setString(2, timespan);
+        ps.setInt(3, multiplier);
+        ps.setLong(4, startMs);
+        ps.setLong(5, endMs);
+        return ps.executeQuery();
     }
-
+    public double getFallbackPrice(String symbol, long ts) {
+        try {
+            double px = getCloseAtOrBefore(symbol, ts, 1, "day");
+            if (!Double.isNaN(px))
+                return px;
+            // if ts predates all data, use earliest
+            px = getFirstClose(symbol, 1, "day");
+            if (!Double.isNaN(px))
+                return px;
+            // else just latest available
+            double[] lp = latestAndPrevClose(symbol, 1, "day");
+            return lp[0];
+        } catch (Exception e) {
+            return Double.NaN;
+        }
+    }
     public double[] latestAndPrevClose(String symbol, int multiplier, String timespan) throws SQLException {
         String sql = """
                     SELECT close FROM prices
@@ -453,7 +430,6 @@ public class Database implements AutoCloseable {
             }
         }
     }
-
     public double getCloseAtOrBefore(String symbol, long ts, int mult, String timespan) throws SQLException {
         String sql = """
                     SELECT close FROM prices
@@ -470,7 +446,6 @@ public class Database implements AutoCloseable {
             }
         }
     }
-
     public double getFirstClose(String symbol, int mult, String timespan) throws SQLException {
         String sql = """
                     SELECT close FROM prices
@@ -486,7 +461,6 @@ public class Database implements AutoCloseable {
             }
         }
     }
-
     /**
      * Inserts a single candle into the prices table.
      *
@@ -521,7 +495,6 @@ public class Database implements AutoCloseable {
             ps.executeUpdate();
         }
     }
-
     /**
      * Inserts a batch of candles into the prices table.
      *
@@ -559,7 +532,7 @@ public class Database implements AutoCloseable {
         }
     }
 
-    // profile/account
+    // profile
     /**
      * Retrieves an existing profile ID or creates a new one.
      *
@@ -587,7 +560,19 @@ public class Database implements AutoCloseable {
         }
         throw new SQLException("Failed to create profile: " + name);
     }
+    public String getProfileName(long profileId) throws SQLException {
+        try (PreparedStatement ps = conn.prepareStatement(
+                "SELECT name FROM profiles WHERE id=?")) {
+            ps.setLong(1, profileId);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next())
+                    return rs.getString(1);
+                throw new SQLException("No profile found for id=" + profileId);
+            }
+        }
+    }
 
+    // accounts
     /**
      * Retrieves an existing account ID or creates a new one under the singleton
      * profile.
@@ -622,14 +607,112 @@ public class Database implements AutoCloseable {
         }
         throw new SQLException("Failed to create account: " + accountName);
     }
-
+    public List<Account> listAccounts(long profileId) throws SQLException {
+        try (PreparedStatement ps = conn.prepareStatement(
+                "SELECT id, name FROM accounts WHERE profile_id=? ORDER BY name")) {
+            ps.setLong(1, profileId);
+            try (ResultSet rs = ps.executeQuery()) {
+                ArrayList<Account> out = new ArrayList<>();
+                while (rs.next())
+                    out.add(new Account(rs.getLong(1), rs.getString(2)));
+                return out;
+            }
+        }
+    }
+    public Long getDefaultAccountId(long profileId) throws SQLException {
+        String sql = "SELECT default_account_id FROM profile_settings WHERE profile_id = ?";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setLong(1, profileId);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (!rs.next()) return null;
+                long id = rs.getLong(1);
+                if (rs.wasNull()) return null;
+                return id;
+            }
+        }
+    }
+    public void setDefaultAccountId(long profileId, long accountId) throws SQLException {
+        String sql = """
+                INSERT INTO profile_settings (profile_id, default_account_id)
+                VALUES (?, ?)
+                ON CONFLICT(profile_id) DO UPDATE SET default_account_id = excluded.default_account_id
+            """;
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setLong(1, profileId);
+            ps.setLong(2, accountId);
+            ps.executeUpdate();
+        }
+    }
+    public void clearDefaultAccount(long profileId) throws SQLException {
+        String sql = """
+                INSERT INTO profile_settings (profile_id, default_account_id)
+                VALUES (?, NULL)
+                ON CONFLICT(profile_id) DO UPDATE SET default_account_id = NULL
+            """;
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setLong(1, profileId);
+            ps.executeUpdate();
+        }
+    }
     /**
-     * Loads the watchlist symbols for a given account.
+     * Deposits cash into an account.
      *
      * @param accountId The account ID.
-     * @return A list of TradeItem objects representing the watchlist.
+     * @param amount    The amount to deposit.
+     * @param ts        The timestamp in milliseconds.
+     * @param note      A note describing the transaction.
+     * @return The ID of the cash ledger entry.
      * @throws SQLException If a database access error occurs.
      */
+    public long depositCash(long accountId, double amount, long ts, String note) throws SQLException {
+        return recordCash(accountId, ts, +Math.abs(amount), "DEPOSIT", note);
+    }
+    /**
+     * Withdraws cash from an account.
+     *
+     * @param accountId The account ID.
+     * @param amount    The amount to withdraw.
+     * @param ts        The timestamp in milliseconds.
+     * @param note      A note describing the transaction.
+     * @return The ID of the cash ledger entry.
+     * @throws SQLException If a database access error occurs.
+     */
+    public long withdrawCash(long accountId, double amount, long ts, String note) throws SQLException {
+        return recordCash(accountId, ts, -Math.abs(amount), "WITHDRAWAL", note);
+    }
+    /**
+     * Calculates the current cash balance for an account.
+     *
+     * @param accountId The account ID.
+     * @return The total cash balance.
+     * @throws SQLException If a database access error occurs.
+     */
+    public double getAccountCash(long accountId) throws SQLException {
+        try (PreparedStatement ps = conn.prepareStatement("""
+                    SELECT COALESCE(SUM(delta), 0.0) FROM cash_ledger WHERE account_id=?
+                """)) {
+            ps.setLong(1, accountId);
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next() ? rs.getDouble(1) : 0.0;
+            }
+        }
+    }
+    private long recordCash(long accountId, long ts, double delta, String reason, String note) throws SQLException {
+        try (PreparedStatement ps = conn.prepareStatement("""
+                    INSERT INTO cash_ledger(account_id, timestamp_ms, delta, reason, note)
+                    VALUES(?,?,?,?,?)
+                """, Statement.RETURN_GENERATED_KEYS)) {
+            ps.setLong(1, accountId);
+            ps.setLong(2, ts);
+            ps.setDouble(3, delta);
+            ps.setString(4, reason);
+            ps.setString(5, note);
+            ps.executeUpdate();
+            try (ResultSet ks = ps.getGeneratedKeys()) {
+                return ks.next() ? ks.getLong(1) : 0L;
+            }
+        }
+    }
     public List<TradeItem> loadWatchlistSymbols(long accountId) throws SQLException {
         Long watchlistId = null;
         try (PreparedStatement sel = conn.prepareStatement(
@@ -691,7 +774,6 @@ public class Database implements AutoCloseable {
             }
         }
     }
-
     /**
      * Saves the watchlist symbols for a given account.
      * Replaces the existing watchlist items.
@@ -767,95 +849,7 @@ public class Database implements AutoCloseable {
         }
     }
 
-    public String getProfileName(long profileId) throws SQLException {
-        try (PreparedStatement ps = conn.prepareStatement(
-                "SELECT name FROM profiles WHERE id=?")) {
-            ps.setLong(1, profileId);
-            try (ResultSet rs = ps.executeQuery()) {
-                if (rs.next())
-                    return rs.getString(1);
-                throw new SQLException("No profile found for id=" + profileId);
-            }
-        }
-    }
-
-    public List<Account> listAccounts(long profileId) throws SQLException {
-        try (PreparedStatement ps = conn.prepareStatement(
-                "SELECT id, name FROM accounts WHERE profile_id=? ORDER BY name")) {
-            ps.setLong(1, profileId);
-            try (ResultSet rs = ps.executeQuery()) {
-                ArrayList<Account> out = new ArrayList<>();
-                while (rs.next())
-                    out.add(new Account(rs.getLong(1), rs.getString(2)));
-                return out;
-            }
-        }
-    }
-
-    // portfolio helpers
-    /**
-     * Deposits cash into an account.
-     *
-     * @param accountId The account ID.
-     * @param amount    The amount to deposit.
-     * @param ts        The timestamp in milliseconds.
-     * @param note      A note describing the transaction.
-     * @return The ID of the cash ledger entry.
-     * @throws SQLException If a database access error occurs.
-     */
-    public long depositCash(long accountId, double amount, long ts, String note) throws SQLException {
-        return recordCash(accountId, ts, +Math.abs(amount), "DEPOSIT", note);
-    }
-
-    /**
-     * Withdraws cash from an account.
-     *
-     * @param accountId The account ID.
-     * @param amount    The amount to withdraw.
-     * @param ts        The timestamp in milliseconds.
-     * @param note      A note describing the transaction.
-     * @return The ID of the cash ledger entry.
-     * @throws SQLException If a database access error occurs.
-     */
-    public long withdrawCash(long accountId, double amount, long ts, String note) throws SQLException {
-        return recordCash(accountId, ts, -Math.abs(amount), "WITHDRAWAL", note);
-    }
-
-    /**
-     * Calculates the current cash balance for an account.
-     *
-     * @param accountId The account ID.
-     * @return The total cash balance.
-     * @throws SQLException If a database access error occurs.
-     */
-    public double getAccountCash(long accountId) throws SQLException {
-        try (PreparedStatement ps = conn.prepareStatement("""
-                    SELECT COALESCE(SUM(delta), 0.0) FROM cash_ledger WHERE account_id=?
-                """)) {
-            ps.setLong(1, accountId);
-            try (ResultSet rs = ps.executeQuery()) {
-                return rs.next() ? rs.getDouble(1) : 0.0;
-            }
-        }
-    }
-
-    private long recordCash(long accountId, long ts, double delta, String reason, String note) throws SQLException {
-        try (PreparedStatement ps = conn.prepareStatement("""
-                    INSERT INTO cash_ledger(account_id, timestamp_ms, delta, reason, note)
-                    VALUES(?,?,?,?,?)
-                """, Statement.RETURN_GENERATED_KEYS)) {
-            ps.setLong(1, accountId);
-            ps.setLong(2, ts);
-            ps.setDouble(3, delta);
-            ps.setString(4, reason);
-            ps.setString(5, note);
-            ps.executeUpdate();
-            try (ResultSet ks = ps.getGeneratedKeys()) {
-                return ks.next() ? ks.getLong(1) : 0L;
-            }
-        }
-    }
-
+    // portfolio
     private void upsertPositionFromTrade(long accountId, String symbol, String side,
             int qty, double price, long ts) throws SQLException {
         int curQty = 0;
@@ -919,7 +913,6 @@ public class Database implements AutoCloseable {
             }
         }
     }
-
     /**
      * Records an executed order in the database.
      * Updates trades, cash ledger, and positions.
@@ -938,7 +931,6 @@ public class Database implements AutoCloseable {
         double price = order.price();
         return recordTrade(accountId, symbol, ts, side, qty, price);
     }
-
     private long recordTrade(long accountId, String symbol, long ts, String side,
             int quantity, double price) throws SQLException {
         if (!"BUY".equals(side) && !"SELL".equals(side)) {
@@ -996,14 +988,6 @@ public class Database implements AutoCloseable {
             conn.setAutoCommit(prev);
         }
     }
-
-    /**
-     * Retrieves the current positions for an account.
-     *
-     * @param accountId The account ID.
-     * @return A map of symbol to quantity.
-     * @throws SQLException If a database access error occurs.
-     */
     public java.util.Map<String, Integer> getPositions(long accountId) throws SQLException {
         String sql = "SELECT symbol, quantity FROM positions WHERE account_id=? ORDER BY symbol";
         java.util.LinkedHashMap<String, Integer> out = new java.util.LinkedHashMap<>();
@@ -1017,15 +1001,6 @@ public class Database implements AutoCloseable {
         }
         return out;
     }
-
-    /**
-     * Lists the most recent trades for an account.
-     *
-     * @param accountId The account ID.
-     * @param limit     The maximum number of trades to return.
-     * @return A list of TradeRow objects.
-     * @throws SQLException If a database access error occurs.
-     */
     public List<ModelFacade.TradeRow> listRecentTrades(long accountId, int limit) throws SQLException {
         String sql = """
                     SELECT t.id, t.timestamp_ms, t.side, t.symbol, t.quantity, t.price,
@@ -1070,7 +1045,6 @@ public class Database implements AutoCloseable {
             return rs.next() ? rs.getLong(1) : 0L;
         }
     }
-
     public long ensureSingletonProfile(String name) throws SQLException {
         long existing = getExistingProfileIdOrZero();
         if (existing != 0L)
@@ -1088,14 +1062,12 @@ public class Database implements AutoCloseable {
             }
         }
     }
-
     public long getSingletonProfileId() throws SQLException {
         long id = getExistingProfileIdOrZero();
         if (id == 0L)
             throw new SQLException("No profile found");
         return id;
     }
-
     public boolean profileHasAccounts(long profileId) throws SQLException {
         try (PreparedStatement ps = conn.prepareStatement(
                 "SELECT EXISTS(SELECT 1 FROM accounts WHERE profile_id=?)")) {
@@ -1105,15 +1077,6 @@ public class Database implements AutoCloseable {
             }
         }
     }
-
-    /**
-     * Builds a full Profile object from the database, including accounts, balances,
-     * and watchlists.
-     *
-     * @param profileId The profile ID.
-     * @return The populated Profile object.
-     * @throws SQLException If a database access error occurs.
-     */
     public Profile buildProfile(long profileId) throws SQLException {
         String profileName = getProfileName(profileId);
 
@@ -1154,9 +1117,9 @@ public class Database implements AutoCloseable {
         }
         Profile p = new Profile(accounts);
         p.setOwner(profileName);
+        p.setId(profileId);
         return p;
     }
-
     public StartupState determineStartupState() throws SQLException {
         long profileId = getExistingProfileIdOrZero();
         if (profileId == 0L)

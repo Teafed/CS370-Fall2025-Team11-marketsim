@@ -9,7 +9,7 @@ import javax.swing.*;
 import java.awt.*;
 import java.sql.SQLException;
 import java.util.List;
-import java.util.function.Consumer;
+import java.util.function.BiConsumer;
 
 /**
  * Window for initial setup or account selection.
@@ -18,7 +18,6 @@ import java.util.function.Consumer;
 public class StartupWindow extends ContentPanel {
     private JTextField profileNameField;
     private JTextField balanceField;
-    public static final boolean USE_ACCOUNT_PICKER = true; // settable from account select?
 
     // constructor for creating profile
     /**
@@ -55,17 +54,36 @@ public class StartupWindow extends ContentPanel {
         add(startButton);
 
         startButton.addActionListener(e -> {
-            String profileName = profileNameField.getText();
-            String balanceText = balanceField.getText();
+            String profileName = profileNameField.getText().trim();
+            String balanceText = balanceField.getText().trim();
 
-            // TODO Add error checking and response
+            if (profileName.isEmpty()) {
+                JOptionPane.showMessageDialog(this, "Please enter a profile name.",
+                        "Missing info", JOptionPane.WARNING_MESSAGE);
+                profileNameField.requestFocusInWindow();
+                return;
+            }
 
-            double balance = Double.parseDouble(balanceText);
+            double balance;
+            try {
+                balance = Double.parseDouble(balanceText);
+                if (balance < 0) throw new NumberFormatException("negative");
+            } catch (NumberFormatException ex) {
+                JOptionPane.showMessageDialog(this,
+                        "Please enter a valid non-negative number for balance.",
+                        "Invalid balance", JOptionPane.WARNING_MESSAGE);
+                balanceField.requestFocusInWindow();
+                balanceField.selectAll();
+                return;
+            }
+
             startupListener.onStart(profileName, balance);
         });
     }
 
-    private static ContentPanel createAccountSelectPanel(List<Account> accounts, Consumer<Account> onPick) {
+    private static ContentPanel createAccountSelectPanel(
+            List<Account> accounts,
+            BiConsumer<Account, Boolean> onPick) {
         ContentPanel panel = new ContentPanel();
         panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
         panel.setBorder(BorderFactory.createEmptyBorder(40, 100, 40, 100));
@@ -92,6 +110,11 @@ public class StartupWindow extends ContentPanel {
             return lbl;
         });
         panel.add(combo);
+        panel.add(Box.createVerticalStrut(12));
+
+        JCheckBox alwaysUse = new JCheckBox("Always use this account on startup");
+        alwaysUse.setAlignmentX(Component.LEFT_ALIGNMENT);
+        panel.add(alwaysUse);
         panel.add(Box.createVerticalStrut(16));
 
         JButton startButton = new JButton("Start");
@@ -101,7 +124,7 @@ public class StartupWindow extends ContentPanel {
         startButton.addActionListener(e -> {
             Account selected = (Account) combo.getSelectedItem();
             if (selected != null)
-                onPick.accept(selected);
+                onPick.accept(selected, alwaysUse.isSelected());
         });
 
         return panel;
@@ -115,69 +138,107 @@ public class StartupWindow extends ContentPanel {
      * @throws SQLException If a database error occurs.
      */
     public static void getStartWindow(Database db) throws SQLException {
-        Database.StartupState state = db.determineStartupState();
-        final boolean firstRun = (state == Database.StartupState.FIRST_RUN);
-
-        if (!firstRun && !USE_ACCOUNT_PICKER) {
-            long profileId = db.getSingletonProfileId();
-            Profile profile = db.buildProfile(profileId);
-            runApp(db, profile);
-            return;
-        }
-
         SwingUtilities.invokeLater(() -> {
             JFrame frame = new JFrame("Marketsim Startup");
             frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
             frame.setSize(500, 400);
             frame.setLocationRelativeTo(null);
 
-            if (firstRun) {
-                frame.add(new StartupWindow((profileName, balance) -> {
-                    try {
-                        long profileId = db.ensureSingletonProfile(profileName);
-                        long accountId = db.getOrCreateAccount("Default", "USD");
-                        db.depositCash(accountId, balance, System.currentTimeMillis(), "Initial deposit");
-                        Profile profile = db.buildProfile(profileId);
-
-                        runApp(db, profile);
-                        frame.dispose();
-                    } catch (Exception ex) {
-                        ex.printStackTrace();
-                        JOptionPane.showMessageDialog(frame,
-                                "Failed to create profile/account:\n" + ex.getMessage(),
-                                "Error", JOptionPane.ERROR_MESSAGE);
-                    }
-                }));
-            } else {
-                 // show accounts and start with the chosen one
-                 try {
-                     long profileId = db.getSingletonProfileId();
-                     Profile profile = db.buildProfile(profileId);
-                     List<Account> accounts = profile.getAccounts();
-
-                    frame.getContentPane().removeAll();
-                    frame.add(createAccountSelectPanel(accounts, selected -> {
-                        try {
-                            runApp(db, profile, selected);
-                            frame.dispose();
-                        } catch (Exception ex) {
-                            ex.printStackTrace();
-                            JOptionPane.showMessageDialog(frame,
-                                    "Failed to launch Marketsim:\n" + ex.getMessage(),
-                                    "Error", JOptionPane.ERROR_MESSAGE);
-                        }
-                    }));
-                    frame.revalidate();
-                    frame.repaint();
-                } catch (Exception ex) {
-                    ex.printStackTrace();
-                    JOptionPane.showMessageDialog(frame,
-                            "Failed to load accounts:\n" + ex.getMessage(),
-                            "Error", JOptionPane.ERROR_MESSAGE);
-                }
-            }
-
+            JPanel placeholder = new JPanel(new BorderLayout());
+            placeholder.add(new JLabel("Welcome to Marketsim :)", SwingConstants.CENTER), BorderLayout.CENTER);
+            frame.setContentPane(placeholder);
             frame.setVisible(true);
+
+            new SwingWorker<Void, Void>() {
+                boolean firstRun = false;
+                Profile profile;
+                Account defaultAccount;
+                Exception error;
+
+                @Override
+                protected Void doInBackground() throws SQLException {
+                    try {
+                        Database.StartupState state = db.determineStartupState();
+                        this.firstRun = (state == Database.StartupState.FIRST_RUN);
+
+                        if (!firstRun) {
+                            long profileId = db.getSingletonProfileId();
+                            profile = db.buildProfile(profileId);
+                            Long defaultAccountId = db.getDefaultAccountId(profileId);
+                            if (defaultAccountId != null) {
+                                defaultAccount = profile.getAccounts().stream()
+                                        .filter(a -> a.getId() == defaultAccountId)
+                                        .findFirst().orElse(null);
+
+                                if (defaultAccount == null) {
+                                    db.clearDefaultAccount(profileId);
+                                }
+                            }
+                        }
+
+                    } catch (Exception e) {
+                        error = e;
+                    }
+                    return null;
+                }
+
+                @Override
+                protected void done() {
+                    if (error != null) {
+                        error.printStackTrace();
+                        JOptionPane.showMessageDialog(frame,
+                                "Startup failed:\n" + error.getMessage(),
+                                "Error", JOptionPane.ERROR_MESSAGE);
+                        return;
+                    }
+
+                    if (!firstRun && defaultAccount != null) {
+                        runApp(db, profile, defaultAccount);
+                        frame.dispose();
+                        return;
+                    }
+
+                    if (firstRun) {
+                        frame.setContentPane(new StartupWindow((profileName, balance) -> {
+                            try {
+                                long profileId = db.ensureSingletonProfile(profileName);
+                                long accountId = db.getOrCreateAccount("Default", "USD");
+                                db.depositCash(accountId, balance, System.currentTimeMillis(), "Initial deposit");
+                                Profile p = db.buildProfile(profileId);
+                                runApp(db, p);
+                                frame.dispose();
+                            } catch (Exception ex) {
+                                ex.printStackTrace();
+                                JOptionPane.showMessageDialog(frame,
+                                        "Failed to create profile/account:\n" + ex.getMessage(),
+                                        "Error", JOptionPane.ERROR_MESSAGE);
+                            }
+                        }));
+                        frame.revalidate();
+                        frame.repaint();
+                    } else {
+                        ContentPanel picker = createAccountSelectPanel(
+                                profile.getAccounts(),
+                                (selected, alwaysUse) -> {
+                                    try {
+                                        if (alwaysUse) {
+                                            db.setDefaultAccountId(profile.getId(), selected.getId());
+                                        }
+                                        runApp(db, profile, selected);
+                                        frame.dispose();
+                                    } catch (Exception ex) {
+                                        ex.printStackTrace();
+                                        JOptionPane.showMessageDialog(frame,
+                                                "Failed to launch Marketsim:\n" + ex.getMessage(),
+                                                "Error", JOptionPane.ERROR_MESSAGE);
+                                    }
+                                }
+                        );
+                        frame.setContentPane(picker);
+                        frame.revalidate(); frame.repaint();
+                    }
+                }
+            }.execute();
         });
     }
 
