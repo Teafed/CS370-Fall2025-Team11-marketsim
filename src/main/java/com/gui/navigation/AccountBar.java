@@ -1,5 +1,6 @@
-package com.gui;
+package com.gui.navigation;
 
+import com.gui.GUIComponents;
 import com.models.profile.Account;
 
 import javax.swing.*;

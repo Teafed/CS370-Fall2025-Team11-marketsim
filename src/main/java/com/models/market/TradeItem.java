@@ -1,10 +1,12 @@
 package com.models.market;
 
+import com.gui.navigation.SymbolListEntry;
+
 /**
  * Represents a stock or tradeable item in the market.
  * Holds current price, change, and other market data.
  */
-public class TradeItem {
+public class TradeItem implements SymbolListEntry {
     private String name; // DEPRECATED
     private final String symbol;
     private double price;
@@ -25,7 +27,7 @@ public class TradeItem {
         if (companyProfile != null && companyProfile.getName() != null && !companyProfile.getName().isBlank()) {
             return companyProfile.getName();
         }
-        System.out.println("No company name found for " + this.symbol);
+        //System.out.println("No company name found for " + this.symbol);
         return symbol;
     }
 

@@ -1,5 +1,7 @@
 package com.gui;
 
+import com.gui.navigation.ScrollBarUI;
+
 import javax.swing.*;
 import java.awt.*;
 import java.util.Objects;

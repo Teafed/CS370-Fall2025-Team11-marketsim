@@ -27,7 +27,7 @@ public interface ModelListener {
      *
      * @param items The updated list of TradeItems in the watchlist.
      */
-    default void onWatchlistChanged(java.util.List<TradeItem> items) {
+    default void onWatchlistChanged(java.util.List<TradeItem> items,  java.util.List<TradeItem> portfolio) {
     }
 
     /**

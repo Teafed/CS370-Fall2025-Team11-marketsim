@@ -1,5 +1,6 @@
 package com.gui;
 
+import com.gui.navigation.AccountBar;
 import org.junit.jupiter.api.Test;
 
 import java.util.concurrent.atomic.AtomicBoolean;

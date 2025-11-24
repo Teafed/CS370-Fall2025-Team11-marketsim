@@ -1,4 +1,4 @@
-package com.gui;
+package com.gui.navigation;
 
 import javax.swing.*;
 import javax.swing.plaf.basic.BasicScrollBarUI;

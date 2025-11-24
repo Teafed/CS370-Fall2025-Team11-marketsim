@@ -1,5 +1,6 @@
-package com.gui;
+package com.gui.navigation;
 
+import com.gui.ContentPanel;
 import com.models.ModelFacade;
 
 import javax.swing.*;
@@ -55,7 +56,7 @@ public class SearchPanel extends ContentPanel {
             item.addActionListener(e2 -> {
                 suggestionPopup.setVisible(false);
                 try {
-                    model.addToWatchlist(symbol, description);
+                    model.addToWatchlist(symbol);
                 } catch (Exception e) {
                     throw new RuntimeException(e);
                 }
