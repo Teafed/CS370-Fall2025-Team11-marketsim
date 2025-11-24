@@ -139,14 +139,19 @@ public class StartupWindow extends ContentPanel {
      */
     public static void getStartWindow(Database db) throws SQLException {
         SwingUtilities.invokeLater(() -> {
-            JFrame frame = new JFrame("Marketsim Startup");
-            frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-            frame.setSize(500, 400);
+            // splash screen
+            JFrame frame = new JFrame();
+            frame.setUndecorated(true);
+            frame.setSize(500, 250);
             frame.setLocationRelativeTo(null);
 
-            JPanel placeholder = new JPanel(new BorderLayout());
-            placeholder.add(new JLabel("Welcome to Marketsim :)", SwingConstants.CENTER), BorderLayout.CENTER);
-            frame.setContentPane(placeholder);
+            JPanel message = new JPanel(new BorderLayout());
+            message.setBackground(new Color(30, 30, 30));
+            JLabel label = new JLabel("Welcome to Marketsim :)", SwingConstants.CENTER);
+            label.setForeground(Color.WHITE);
+            label.setFont(new Font("SansSerif", Font.BOLD, 20));
+            message.add(label, BorderLayout.CENTER);
+            frame.setContentPane(message);
             frame.setVisible(true);
 
             new SwingWorker<Void, Void>() {
