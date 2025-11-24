@@ -168,16 +168,31 @@ public class ModelFacade {
     }
 
     // ACCOUNT - queries
+    public long getProfileId() {
+        return profile.getId(); // you already use profile.getId() elsewhere
+    }
+    public String getProfileName() {
+        return profile == null ? "" : profile.getOwner();
+    }
     public AccountDTO getAccountDTO() throws SQLException {
         Account a = profile.getActiveAccount();
         Map<java.lang.String, Integer> positions = db.getPositions(a.getId());
         return new AccountDTO(a.getId(), a.getCash(), positions);
     }
+    public Long getDefaultAccountId() {
+        try {
+            return db.getDefaultAccountId(profile.getId());
+        } catch (Exception e) {
+            return null;
+        }
+    }
+    public boolean isDefaultAccount(Account a) {
+        if (a == null) return false;
+        Long d = getDefaultAccountId();
+        return d != null && d == a.getId();
+    }
     public List<Account> listAccounts() { return profile.getAccounts(); }
     public Account getActiveAccount() { return profile.getActiveAccount(); }
-    public String getProfileName() {
-        return profile == null ? "" : profile.getOwner();
-    }
     public String getActiveAccountName() {
         var a = profile.getActiveAccount();
         return a == null ? "" : a.getName();
@@ -274,6 +289,10 @@ public class ModelFacade {
         fireWatchlistChanged(getWatchlistView());
         fireAccountChanged();
         System.out.printf("[Model] Account set to %s (ID %d)%n", account.getName(), account.getId());
+    }
+    public void setDefaultAccount(Account a) throws Exception {
+        if (a == null) throw new IllegalArgumentException("Account required");
+        db.setDefaultAccountId(profile.getId(), a.getId());
     }
     public void switchAccount(long accountId) throws Exception {
         Account target = profile.getAccounts().stream()

@@ -20,6 +20,7 @@ public class AccountPanel extends ContentPanel implements ModelListener {
     private final JLabel profileLabel = new JLabel();
     private final JLabel accountLabel = new JLabel();
     private final JLabel totalLabel = new JLabel();
+    private final JButton btnMakeDefault = new JButton("Make default account");
 
     public AccountPanel(ModelFacade model) {
         this.model = model;
@@ -39,11 +40,13 @@ public class AccountPanel extends ContentPanel implements ModelListener {
         JButton btnSwitch = new JButton("Switch Account");
         btnNew.addActionListener(e -> onCreateAccount());
         btnSwitch.addActionListener(e -> onSwitchAccount());
+        btnMakeDefault.addActionListener(e -> onMakeDefault());
 
         actions.add(btnNew);
         actions.add(btnSwitch);
-        headerBar.add(actions, BorderLayout.EAST);
+        actions.add(btnMakeDefault);
 
+        headerBar.add(actions, BorderLayout.EAST);
         add(headerBar, BorderLayout.NORTH);
 
         JPanel content = new JPanel();
@@ -94,9 +97,21 @@ public class AccountPanel extends ContentPanel implements ModelListener {
     private void refreshLabels(AccountDTO dto) {
         String owner = model.getProfileName();
         String acctName = model.getActiveAccountName();
+        boolean isDefault = false;
+        try {
+            isDefault = model.isDefaultAccount(model.getActiveAccount());
+        } catch (Exception ignored) { }
 
         profileLabel.setText("Profile: " + (owner == null ? "—" : owner));
-        accountLabel.setText("Active account: " + (acctName == null ? "—" : acctName));
+
+        if (acctName == null) acctName = "—";
+        if (isDefault) {
+            accountLabel.setText("<html>Active account: "
+                    + acctName.replace("&","&amp;").replace("<","&lt;").replace(">","&gt;")
+                    + " <i><span style='color:#9aa0a6'>(default)</span></i></html>");
+        } else {
+            accountLabel.setText("Active account: " + acctName);
+        }
 
         if (dto != null) {
             NumberFormat currency = NumberFormat.getCurrencyInstance();
@@ -198,6 +213,42 @@ public class AccountPanel extends ContentPanel implements ModelListener {
                     "Failed to switch account:\n" + e.getMessage(),
                     "Error", JOptionPane.ERROR_MESSAGE);
         }
+    }
+
+    private void onMakeDefault() {
+        Account a = model.getActiveAccount();
+        if (a == null) return;
+
+        btnMakeDefault.setEnabled(false); // optimistic UI
+        new SwingWorker<Void, Void>() {
+            Exception err;
+            @Override protected Void doInBackground() {
+                try {
+                    model.setDefaultAccount(a);
+                } catch (Exception e) {
+                    err = e;
+                }
+                return null;
+            }
+            @Override protected void done() {
+                if (err != null) {
+                    JOptionPane.showMessageDialog(AccountPanel.this,
+                            "Failed to set startup account:\n" + err.getMessage(),
+                            "Error", JOptionPane.ERROR_MESSAGE);
+                    btnMakeDefault.setEnabled(true); // revert on error
+                } else {
+                    JOptionPane.showMessageDialog(AccountPanel.this,
+                            "Startup account set to \"" + a.getName() + "\".",
+                            "Success", JOptionPane.INFORMATION_MESSAGE);
+                    // Pull fresh snapshot so labels/button reflect default state
+                    try {
+                        onAccountChanged(model.getAccountDTO());
+                    } catch (SQLException ignored) {
+                        refreshLabels(null);
+                    }
+                }
+            }
+        }.execute();
     }
 
     // listeners

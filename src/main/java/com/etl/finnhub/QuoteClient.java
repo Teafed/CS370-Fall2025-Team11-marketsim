@@ -39,7 +39,6 @@ public class QuoteClient {
      * @return The open price of the stock (as per current implementation).
      */
     public String fetchQuote(String symbol) {
-
         String url = this.baseUrl + symbol + "&token=" + apiKey;
 
         HttpRequest request = HttpRequest.newBuilder()
@@ -54,15 +53,17 @@ public class QuoteClient {
             Thread.sleep(50);
 
             int sc = response.statusCode();
+
+
             if (sc < 200 || sc >= 300) {
                 System.err.println(LOG_PREFIX + " API request failed: " + sc);
-                return null;
+                throw new IOException("HTTP " + sc);
             }
 
             String body = response.body();
             if (body == null || body.isBlank()) {
                 System.err.println(LOG_PREFIX + " Empty response body received");
-                return null;
+                throw new IOException("Empty response body");
             }
 
             return body;
@@ -70,7 +71,7 @@ public class QuoteClient {
             System.err.println(LOG_PREFIX + " Error fetching quote: " + e.getMessage());
             Thread.currentThread().interrupt();
         }
-    return null;
+        return null;
     }
 
     public double fetchCurrentQuote(String symbol) {
@@ -81,7 +82,7 @@ public class QuoteClient {
     public double[] fetchInitializingQuote(String symbol) {
         String response = fetchQuote(symbol);
         double open = parseResponse(response, "o");
-        double current =  parseResponse(response, "c");
+        double current = parseResponse(response, "c");
         double previousClose = parseResponse(response, "pc");
         return new double[] {open, current, previousClose};
     }
