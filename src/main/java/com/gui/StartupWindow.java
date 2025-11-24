@@ -135,7 +135,7 @@ public class StartupWindow extends ContentPanel {
                 frame.add(new StartupWindow((profileName, balance) -> {
                     try {
                         long profileId = db.ensureSingletonProfile(profileName);
-                        long accountId = db.getOrCreateAccount(profileName, "USD");
+                        long accountId = db.getOrCreateAccount("Default", "USD");
                         db.depositCash(accountId, balance, System.currentTimeMillis(), "Initial deposit");
                         Profile profile = db.buildProfile(profileId);
 

@@ -191,7 +191,6 @@ public class ChartPanel extends ContentPanel {
             int multiplier,
             HistoricalService.Timespan timespan,
             long startMs, long endMs, int maxPoints) {
-        this.model = model;
         this.symbol = symbol;
         canvas.setLoading(true);
 
