@@ -62,7 +62,7 @@ public class TimeframeBar extends ContentPanel {
         add(btn1Y);
         add(btnYTD);
 
-        btn1M.setSelected(true); // default to week
+        btn3M.setSelected(true); // default to week
 
         ActionListener handler = e -> applySelection();
         // btn1D.addActionListener(handler);

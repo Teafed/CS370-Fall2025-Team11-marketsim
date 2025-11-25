@@ -466,52 +466,6 @@ public class ChartPanel extends ContentPanel {
             repaint();
         }
 
-        void loadFromDb(Database db, String symbol, long startMs, long endMs, int maxPoints) {
-            this.symbol = symbol;
-            // use daily getCandles bc smaller timeframes aren't supported on free polygon
-            try (ResultSet rs = db.getCandles(symbol, 1, "day", startMs, endMs)) {
-                TreeMap<Long, Double> sorted = new TreeMap<>();
-                while (rs.next()) {
-                    long t = rs.getLong("timestamp");
-                    double c = rs.getDouble("close");
-                    sorted.put(t, c);
-                }
-
-                if (sorted.isEmpty()) {
-                    times = null;
-                    prices = null;
-                    repaint();
-                    return;
-                }
-
-                int dataSize = sorted.size();
-                int step = Math.max(1, dataSize / Math.max(1, maxPoints));
-                int finalSize = (dataSize + step - 1) / step;
-
-                times = new long[finalSize];
-                prices = new double[finalSize];
-
-                minTime = Long.MAX_VALUE; maxTime = Long.MIN_VALUE;
-                minPrice = Double.MAX_VALUE; maxPrice = Double.MIN_VALUE;
-
-                int i = 0, k = 0;
-                for (Map.Entry<Long, Double> e : sorted.entrySet()) {
-                    if (k++ % step != 0) continue;
-                    if (i >= finalSize) break;
-                    long t = e.getKey();
-                    double p = e.getValue();
-                    times[i] = t; prices[i] = p;
-                    if (t < minTime) minTime = t; if (t > maxTime) maxTime = t;
-                    if (p < minPrice) minPrice = p; if (p > maxPrice) maxPrice = p;
-                    i++;
-                }
-            } catch (Exception ex) {
-                times = null;
-                prices = null;
-            }
-            repaint();
-        }
-
         @Override
         protected void paintComponent(Graphics g) {
             super.paintComponent(g);
