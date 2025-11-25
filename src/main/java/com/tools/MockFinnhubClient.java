@@ -16,15 +16,25 @@ import java.util.Random;
  * Generates random trade events for subscribed symbols.
  */
 public class MockFinnhubClient implements TradeSource {
-    ;
     private TradeListener listener;
     private static final List<String> subscribedSymbols = new ArrayList<>();
     private static final Random rand = new Random();
 
+    // for getting the starting price
+    @FunctionalInterface
+    public interface PriceSeedProvider {
+        double getSeedPrice(String symbol);
+    }
+
+    private final PriceSeedProvider seedProvider;
+    private final java.util.concurrent.ConcurrentMap<String, Double> lastPrices =
+            new java.util.concurrent.ConcurrentHashMap<>();
+
     /**
      * Constructs a new MockFinnhubClient and starts the simulation thread.
      */
-    public MockFinnhubClient() {
+    public MockFinnhubClient(PriceSeedProvider seedProvider) {
+        this.seedProvider = seedProvider != null ? seedProvider : s -> Double.NaN;
         new Thread(() -> {
             try {
                 Thread.sleep(5000);
@@ -37,7 +47,7 @@ public class MockFinnhubClient implements TradeSource {
 
                 List<String> symbols = returnRandomSymbolList();
                 for (String symbol : symbols) {
-                    double price = 100 + rand.nextDouble() * 50;
+                    double price = nextPrice(symbol);
                     long timestamp = baseTimestamp + rand.nextInt(5); // slight jitter
                     long volume = rand.nextInt(500) + 50;
 
@@ -120,12 +130,34 @@ public class MockFinnhubClient implements TradeSource {
         return copy.subList(0, count);
     }
 
+    private double nextPrice(String symbol) {
+        // try to seed from database if first time
+        double prev = lastPrices.computeIfAbsent(symbol, sym -> {
+            double seed = seedProvider.getSeedPrice(sym);
+            if (Double.isNaN(seed) || seed <= 0.0) {
+                // fallback
+                seed = 100 + rand.nextDouble() * 50;
+            }
+            return seed;
+        });
+
+        double pctMove = rand.nextGaussian() * 0.002;
+        double newPrice = prev * (1.0 + pctMove);
+
+        if (newPrice <= 0.01) {
+            newPrice = 0.01;
+        }
+
+        lastPrices.put(symbol, newPrice);
+        return newPrice;
+    }
+
     /**
      * Factory method to start a new MockFinnhubClient.
      *
      * @return A new instance of MockFinnhubClient.
      */
-    public static TradeSource start() {
-        return new MockFinnhubClient();
+    public static TradeSource start(PriceSeedProvider seedProvider) {
+        return new MockFinnhubClient(seedProvider);
     }
 }

@@ -37,7 +37,13 @@ public class ClientFacade implements TradeListener, TradeSource {
         if (getMarketStatus()) {
             webSocketClient = WebSocketClient.start(apiKey);
         } else {
-            webSocketClient = MockFinnhubClient.start();
+            webSocketClient = MockFinnhubClient.start(symbol -> {
+                try {
+                    return quoteClient.fetchCurrentQuote(symbol);
+                } catch (Exception e) {
+                    return Double.NaN;
+                }
+            });
         }
         webSocketClient.setTradeListener(this);
 
