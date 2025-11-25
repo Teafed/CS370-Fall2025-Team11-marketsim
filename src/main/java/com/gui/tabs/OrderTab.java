@@ -1,5 +1,7 @@
-package com.gui;
+package com.gui.tabs;
 
+import com.gui.ContentPanel;
+import com.gui.GUIComponents;
 import com.models.ModelFacade;
 
 import javax.swing.*;

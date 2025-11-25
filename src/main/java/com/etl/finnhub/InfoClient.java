@@ -99,7 +99,7 @@ public class InfoClient {
         String exchange = jsonObject.optString("exchange", "unknown");
         String ipo = jsonObject.optString("ipo", "unknown");
         String logo = jsonObject.optString("logo", "unknown");
-        String marketCap = jsonObject.optString("marketCap", "unknown");
+        String marketCap = jsonObject.optString("marketCapitalization", "unknown");
         String name = jsonObject.optString("name", "unknown");
         String sharesOutstanding = jsonObject.optString("sharesOutstanding", "unknown");
         String weburl = jsonObject.optString("weburl", "unknown");
