@@ -118,7 +118,13 @@ public class AccountPanel extends ContentPanel implements ModelListener {
         styleButton(btnSwitchAccount);
 
         btnDeposit.addActionListener(e -> onDepositCash());
-        btnCustomize.addActionListener(e -> onCustomize());
+        btnCustomize.addActionListener(e -> {
+            try {
+                onCustomize();
+            } catch (SQLException ex) {
+                throw new RuntimeException(ex);
+            }
+        });
         btnSwitchAccount.addActionListener(e -> onSwitchAccount());
 
         buttonRow.add(btnDeposit);
@@ -462,7 +468,7 @@ public class AccountPanel extends ContentPanel implements ModelListener {
         }
     }
 
-    private void onCustomize() {
+    private void onCustomize() throws SQLException {
         Account activeAccount = model.getActiveAccount();
         if (activeAccount == null) {
             JOptionPane.showMessageDialog(this, "No active account.", "Error", JOptionPane.ERROR_MESSAGE);
@@ -517,11 +523,7 @@ public class AccountPanel extends ContentPanel implements ModelListener {
 
         String newName = nameField.getText().trim();
         if (!newName.isBlank() && !newName.equals(activeAccount.getName())) {
-            // For now, just show a message that rename isn't implemented
-            // You can implement this in ModelFacade if you want account renaming
-            JOptionPane.showMessageDialog(this,
-                    "Account renaming is not yet implemented.",
-                    "Info", JOptionPane.INFORMATION_MESSAGE);
+            model.setAccountName(newName);
         }
 
         try {

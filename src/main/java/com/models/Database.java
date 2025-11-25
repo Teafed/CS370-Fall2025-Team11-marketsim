@@ -654,6 +654,24 @@ public class Database implements AutoCloseable {
             ps.executeUpdate();
         }
     }
+    public void renameAccount(long accountId, String newName) throws SQLException {
+        if (newName == null || newName.isBlank()) {
+            throw new IllegalArgumentException("newName must be non-empty");
+        }
+
+        String trimmed = newName.trim();
+
+        try (PreparedStatement ps = conn.prepareStatement(
+                "UPDATE accounts SET name = ? WHERE id = ?")) {
+            ps.setString(1, trimmed);
+            ps.setLong(2, accountId);
+
+            int updated = ps.executeUpdate();
+            if (updated == 0) {
+                throw new SQLException("No account found with id=" + accountId);
+            }
+        }
+    }
     /**
      * Deposits cash into an account.
      *

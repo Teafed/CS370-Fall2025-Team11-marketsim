@@ -306,6 +306,17 @@ public class ModelFacade {
         if (a == null) throw new IllegalArgumentException("Account required");
         db.setDefaultAccountId(profile.getId(), a.getId());
     }
+    public void setAccountName(String name) throws SQLException {
+        if (name == null || name.isBlank()) throw new IllegalArgumentException("Account name must be non-empty");
+        Account a = getActiveAccount();
+        if (a == null) throw new IllegalStateException("No active account");
+
+        String trimmed = name.trim();
+
+        db.renameAccount(a.getId(), trimmed);
+        a.setName(trimmed);
+        fireAccountChanged();
+    }
     public void switchAccount(long accountId) throws Exception {
         Account target = profile.getAccounts().stream()
                 .filter(a -> a.getId() == accountId)
