@@ -31,15 +31,6 @@ public class OrderTab extends ContentPanel {
 
     private final Timer refreshTimer;
 
-    // Match SearchPanel and SymbolCellRenderer colors
-    private static final Color BG_DARK = new Color(30, 34, 45);
-    private static final Color BG_MEDIUM = new Color(45, 50, 65);
-    private static final Color TEXT_PRIMARY = new Color(240, 240, 245);
-    private static final Color TEXT_SECONDARY = new Color(120, 125, 140);
-    private static final Color GREEN = new Color(34, 197, 94);
-    private static final Color RED = new Color(239, 68, 68);
-    private static final Color BORDER_COLOR = new Color(60, 65, 80);
-
     /**
      * Constructs a new OrderTab.
      *
@@ -51,7 +42,7 @@ public class OrderTab extends ContentPanel {
         this.getSelectedSymbol = getSelectedSymbol;
 
         setLayout(new BorderLayout());
-        setBackground(BG_DARK);
+        setBackground(GUIComponents.BG_DARK);
 
         // Scrollable content
         JPanel contentPanel = new JPanel();
@@ -106,10 +97,10 @@ public class OrderTab extends ContentPanel {
         panel.setBorder(BorderFactory.createEmptyBorder(4, 0, 4, 0));
 
         lblSymbol.setFont(new Font("Arial", Font.BOLD, 16));
-        lblSymbol.setForeground(TEXT_PRIMARY);
+        lblSymbol.setForeground(GUIComponents.TEXT_PRIMARY);
 
         lblPrice.setFont(new Font("Arial", Font.BOLD, 16));
-        lblPrice.setForeground(TEXT_PRIMARY);
+        lblPrice.setForeground(GUIComponents.TEXT_PRIMARY);
 
         panel.add(lblSymbol, BorderLayout.WEST);
         panel.add(lblPrice, BorderLayout.EAST);
@@ -122,8 +113,8 @@ public class OrderTab extends ContentPanel {
         panel.setOpaque(false);
         panel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 36));
 
-        buyButton = createActionButton("Buy", GREEN);
-        sellButton = createActionButton("Sell", RED);
+        buyButton = createActionButton("Buy", GUIComponents.GREEN);
+        sellButton = createActionButton("Sell", GUIComponents.RED);
 
         buyButton.addActionListener(e -> submit(true));
         sellButton.addActionListener(e -> submit(false));
@@ -157,15 +148,15 @@ public class OrderTab extends ContentPanel {
 
         JLabel label = new JLabel("Number of Shares");
         label.setFont(new Font("Arial", Font.PLAIN, 12));
-        label.setForeground(TEXT_SECONDARY);
+        label.setForeground(GUIComponents.TEXT_SECONDARY);
         label.setBorder(BorderFactory.createEmptyBorder(0, 0, 4, 0));
 
         sharesField.setFont(new Font("Arial", Font.PLAIN, 13));
-        sharesField.setBackground(BG_MEDIUM);
-        sharesField.setForeground(TEXT_PRIMARY);
-        sharesField.setCaretColor(TEXT_PRIMARY);
+        sharesField.setBackground(GUIComponents.BG_MEDIUM);
+        sharesField.setForeground(GUIComponents.TEXT_PRIMARY);
+        sharesField.setCaretColor(GUIComponents.TEXT_PRIMARY);
         sharesField.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(BORDER_COLOR, 1),
+                BorderFactory.createLineBorder(GUIComponents.BORDER_COLOR, 1),
                 BorderFactory.createEmptyBorder(8, 10, 8, 10)
         ));
         sharesField.setHorizontalAlignment(SwingConstants.LEFT);
@@ -181,18 +172,18 @@ public class OrderTab extends ContentPanel {
     private JPanel createTotalPricePanel() {
         JPanel panel = new JPanel(new BorderLayout());
         panel.setOpaque(true);
-        panel.setBackground(BG_MEDIUM);
+        panel.setBackground(GUIComponents.BG_MEDIUM);
         panel.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(BORDER_COLOR, 1),
+                BorderFactory.createLineBorder(GUIComponents.BORDER_COLOR, 1),
                 BorderFactory.createEmptyBorder(8, 10, 8, 10)
         ));
 
         JLabel label = new JLabel("Total Price");
         label.setFont(new Font("Arial", Font.PLAIN, 12));
-        label.setForeground(TEXT_SECONDARY);
+        label.setForeground(GUIComponents.TEXT_SECONDARY);
 
         lblTotalPrice.setFont(new Font("Arial", Font.BOLD, 14));
-        lblTotalPrice.setForeground(TEXT_PRIMARY);
+        lblTotalPrice.setForeground(GUIComponents.TEXT_PRIMARY);
 
         panel.add(label, BorderLayout.WEST);
         panel.add(lblTotalPrice, BorderLayout.EAST);

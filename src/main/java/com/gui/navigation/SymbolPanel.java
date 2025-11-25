@@ -256,8 +256,8 @@ public class SymbolPanel extends ContentPanel {
     public void selectFirst() {
         if (listModel.getSize() > 0) {
             SwingUtilities.invokeLater(() -> {
-                listSymbols.setSelectedIndex(0);
-                listSymbols.ensureIndexIsVisible(0);
+                listSymbols.setSelectedIndex(1);
+                listSymbols.ensureIndexIsVisible(1);
             });
         }
     }

@@ -57,7 +57,7 @@ public class SymbolCellRenderer extends JPanel implements ListCellRenderer<Trade
         rightPanel.setOpaque(false);
         rightPanel.add(priceLabel);
         rightPanel.add(changeLabel);
-        rightPanel.setPreferredSize(new Dimension(120, 70));
+        rightPanel.setPreferredSize(new Dimension(120, 50));
 
         add(leftStack, BorderLayout.CENTER);
         add(rightPanel, BorderLayout.EAST);
