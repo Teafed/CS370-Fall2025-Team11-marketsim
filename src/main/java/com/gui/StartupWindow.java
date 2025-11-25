@@ -491,16 +491,16 @@ public class StartupWindow extends ContentPanel {
             frame.setUndecorated(true);
             frame.setSize(500, 250);
             frame.setLocationRelativeTo(null);
+            frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 
             JPanel message = new JPanel(new BorderLayout());
             message.setBackground(new Color(30, 30, 30));
-            JLabel label = new JLabel("Welcome to Marketsim :)", SwingConstants.CENTER);
+            JLabel label = new JLabel("Welcome to MarketSim :)", SwingConstants.CENTER);
             label.setForeground(Color.WHITE);
             label.setFont(new Font("SansSerif", Font.BOLD, 20));
             message.add(label, BorderLayout.CENTER);
             frame.setContentPane(message);
             frame.setVisible(true);
-
             new SwingWorker<Void, Void>() {
                 boolean firstRun = false;
                 Profile profile;
@@ -551,23 +551,32 @@ public class StartupWindow extends ContentPanel {
                     }
 
                     if (firstRun) {
-                        frame.setContentPane(new StartupWindow((profileName, balance) -> {
+                        frame.dispose();
+
+                        final JFrame setupFrame = new JFrame("MarketSim - Setup");
+                        setupFrame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+
+                        StartupWindow startupPanel = new StartupWindow((profileName, balance) -> {
                             try {
                                 long profileId = db.ensureSingletonProfile(profileName);
                                 long accountId = db.getOrCreateAccount("Default", "USD");
                                 db.depositCash(accountId, balance, System.currentTimeMillis(), "Initial deposit");
                                 Profile p = db.buildProfile(profileId);
+
                                 runApp(db, p);
-                                frame.dispose();
+                                setupFrame.dispose();
                             } catch (Exception ex) {
                                 ex.printStackTrace();
-                                JOptionPane.showMessageDialog(frame,
+                                JOptionPane.showMessageDialog(setupFrame,
                                         "Failed to create profile/account:\n" + ex.getMessage(),
                                         "Error", JOptionPane.ERROR_MESSAGE);
                             }
-                        }));
-                        frame.revalidate();
-                        frame.repaint();
+                        });
+
+                        setupFrame.setContentPane(startupPanel);
+                        setupFrame.pack();
+                        setupFrame.setLocationRelativeTo(null);
+                        setupFrame.setVisible(true);
                     } else {
                         ContentPanel picker = createAccountSelectPanel(
                                 profile.getAccounts(),
@@ -601,9 +610,15 @@ public class StartupWindow extends ContentPanel {
      * @param profile The user Profile.
      */
     public static void runApp(Database db, Profile profile) {
-        runApp(db, profile, profile.getFirstAccount());
+        Account first = profile.getFirstAccount();
+        if (first == null) {
+            JOptionPane.showMessageDialog(null,
+                    "Profile has no accounts",
+                    "Error", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+        runApp(db, profile, first);
     }
-
 
     /**
      * Launches the main application window with a specific account.
@@ -619,7 +634,8 @@ public class StartupWindow extends ContentPanel {
             SwingUtilities.invokeLater(() -> new MainWindow(model));
         } catch (Exception e) {
             e.printStackTrace();
-            JOptionPane.showMessageDialog(null, "Failed to start: " + e.getMessage(),
+            JOptionPane.showMessageDialog(
+                    null, "Failed to start: " + e.getMessage(),
                     "Error", JOptionPane.ERROR_MESSAGE);
         }
     }

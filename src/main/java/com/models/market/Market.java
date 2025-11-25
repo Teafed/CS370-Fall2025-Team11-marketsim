@@ -72,16 +72,31 @@ public class Market implements TradeListener {
     public void addFromWatchlist(Watchlist wl) throws Exception {
         if (wl == null)
             return;
-        for (TradeItem ti : wl.getWatchlist())
-            add(ti);
+
+        new Thread(() -> {
+            for (TradeItem ti : wl.getWatchlist()) {
+                try {
+                    add(ti);
+                } catch (Exception e) {
+                    System.err.println("Failed to add from watchlist: " + e.getMessage());
+                }
+            }
+        }, "WatchlistInit").start();
     }
 
     public void addFromPortfolio(Portfolio portfolio) throws Exception {
         if (portfolio == null) return;
-        for (String symbol : portfolio.getPortfolioItems()) {
-            TradeItem ti = new TradeItem(symbol);
-            add(ti);
-        }
+
+        new Thread(() -> {
+            for (String symbol : portfolio.getPortfolioItems()) {
+                try {
+                    TradeItem ti = new TradeItem(symbol);
+                    add(ti);
+                } catch (Exception e) {
+                    System.err.println("Failed to add from portfolio: " + e.getMessage());
+                }
+            }
+        }, "PortfolioInit").start();
     }
 
     /**

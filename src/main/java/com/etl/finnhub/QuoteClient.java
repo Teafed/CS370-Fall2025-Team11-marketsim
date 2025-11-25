@@ -50,7 +50,6 @@ public class QuoteClient {
         try {
             HttpResponse<String> response =
                     httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-            Thread.sleep(50);
 
             int sc = response.statusCode();
 

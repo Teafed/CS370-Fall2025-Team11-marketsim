@@ -19,24 +19,12 @@ public class Main {
     public static void main(String[] args) throws SQLException {
         String dbFile = "data/marketsim-sample.db";
 
-        // Initialize Database
-        Database db;
         try {
-            db = new Database(dbFile);
+            Database db = new Database(dbFile);
+            StartupWindow.getStartWindow(db);
         } catch (Exception e) {
             throw new SQLException("Failed to open database: " + dbFile, e);
         }
-
-        StartupWindow.getStartWindow(db);
-
-        // runTestCase();
-    }
-
-    /**
-     * Runs test cases (currently unused).
-     */
-    public static void runTestCase() {
-        // Add new testing data
 
     }
 }

@@ -421,14 +421,12 @@ public class ModelFacade {
         if (dbSymbols == null || dbSymbols.isEmpty()) {
             // add defaults and persist
             List<TradeItem> defaults = Watchlist.getDefaultWatchlist();
-
+            a.getWatchlist().clearList();
             for (TradeItem ti : defaults) {
-                CompanyProfile cp = fetchAndCacheCompanyProfile(ti.getSymbol());
-                if (cp != null) ti.setCompanyProfile(cp); else ti.setNameLookup(ti);
+                a.getWatchlist().addWatchlistItem(ti);
             }
             db.saveWatchlistSymbols(a.getId(), "Default", defaults);
-            a.getWatchlist().clearList();
-            for (TradeItem ti : defaults) a.getWatchlist().addWatchlistItem(ti);
+            hydrateWatchlist(a.getWatchlist().getWatchlist());
             System.out.println("[Model] Loaded default watchlist -> DB (" + defaults.size() + ")");
         } else {
             // hydrate in-memory list from DB
@@ -443,6 +441,20 @@ public class ModelFacade {
             db.saveWatchlistSymbols(a.getId(), "User List", dbSymbols);
             System.out.println("[Model] Loaded watchlist from DB (" + dbSymbols.size() + ")");
         }
+    }
+    private void hydrateWatchlist(List<TradeItem> items) {
+        new Thread(() -> {
+            for (TradeItem ti : items) {
+                if (ti.getCompanyProfile() == null) {
+                    CompanyProfile cp = fetchAndCacheCompanyProfile(ti.getSymbol());
+                    if (cp != null) {
+                        ti.setCompanyProfile(cp);
+                        ModelFacade.onEDT(() ->
+                                fireWatchlistChanged(getWatchlistView(), getPortfolioItems()));
+                    }
+                }
+            }
+        }, "WatchlistHydrator").start();
     }
     private TradeItem ensureCanonical(String sym) {
         var ti = market.get(sym);
