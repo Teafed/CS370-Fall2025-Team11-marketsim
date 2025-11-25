@@ -4,21 +4,21 @@ package com.gui;
 
 import com.etl.HistoricalService;
 import com.gui.tabs.OrderPanel;
-import com.models.Database;
 import com.models.ModelFacade;
 
 import java.awt.geom.Path2D;
 import java.sql.Date;
-import java.sql.ResultSet;
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseMotionAdapter;
 import java.text.*;
-import java.util.Map;
+import java.time.*;
+import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
+import java.util.Locale;
 import java.util.TimeZone;
-import java.util.TreeMap;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -344,12 +344,42 @@ public class ChartPanel extends ContentPanel {
         private double hoveredPrice = 0;
         private long interpolatedTime = 0;
 
+        // cached bounds
+        private long minTime, maxTime;
+        private double minPrice, maxPrice;
+
+        // axis helpers
+
+        private static final class TimeTick {
+            final long time;
+            final boolean major;        // for grid intensity
+            final String majorLabel;    // bold
+            final String minorLabel;    // normal
+
+            TimeTick(long time, boolean major, String majorLabel, String minorLabel) {
+                this.time = time;
+                this.major = major;
+                this.majorLabel = majorLabel;
+                this.minorLabel = minorLabel;
+            }
+        }
+
+        private static final class PriceTick {
+            final double value;
+            final boolean major;
+
+            PriceTick(double value, boolean major) {
+                this.value = value;
+                this.major = major;
+            }
+        }
+
         ChartCanvas() {
             setPreferredSize(new Dimension(800, 400));
             setBackground(GUIComponents.BG_LIGHTER);
             setBorder(BorderFactory.createCompoundBorder(
                     BorderFactory.createLineBorder(GUIComponents.BORDER_COLOR, 1),
-                    BorderFactory.createEmptyBorder(20, 60, 20, 20)
+                    BorderFactory.createEmptyBorder(20, 60, 32, 20)
             ));
 
             addMouseMotionListener(new MouseMotionAdapter() {
@@ -369,6 +399,55 @@ public class ChartPanel extends ContentPanel {
                     repaint();
                 }
             });
+        }
+
+        long getMaxTime() {
+            return maxTime;
+        }
+
+        void loadPoints(String symbol, java.util.List<ModelFacade.CandlePoint> pts) {
+            this.symbol = symbol;
+            if (pts == null || pts.size() < 2) {
+                times = null; prices = null; repaint(); return;
+            }
+            times = new long[pts.size()];
+            prices = new double[pts.size()];
+            for (int i = 0; i < pts.size(); i++) {
+                times[i] = pts.get(i).t();
+                prices[i] = pts.get(i).close();
+            }
+            recomputeBounds();
+            repaint();
+        }
+
+        private void recomputeBounds() {
+            minTime = Long.MAX_VALUE; maxTime = Long.MIN_VALUE;
+            minPrice = Double.MAX_VALUE; maxPrice = Double.MIN_VALUE;
+            if (times == null || times.length == 0) return;
+            for (int i = 0; i < times.length; i++) {
+                long t = times[i]; double p = prices[i];
+                if (t < minTime) minTime = t; if (t > maxTime) maxTime = t;
+                if (p < minPrice) minPrice = p; if (p > maxPrice) maxPrice = p;
+            }
+
+            if (maxTime == minTime) {
+                maxTime += 1_000L * 60L * 60L; // +1h
+            }
+            if (maxPrice == minPrice) {
+                maxPrice = minPrice + 1.0;
+            }
+        }
+
+        void clear(String symbol) {
+            this.symbol = symbol;
+            this.times = null;
+            this.prices = null;
+            repaint();
+        }
+
+        void setLoading(boolean v) {
+            loading = v;
+            repaint();
         }
 
         /**
@@ -399,12 +478,10 @@ public class ChartPanel extends ContentPanel {
             hoveredIndex = -1;
             for (int i = 0; i < times.length - 1; i++) {
                 if (hoveredTime >= times[i] && hoveredTime <= times[i + 1]) {
-                    // Interpolate between points i and i+1
                     double t = (hoveredTime - times[i]) / (double)(times[i + 1] - times[i]);
                     hoveredPrice = prices[i] + t * (prices[i + 1] - prices[i]);
-                    hoveredTime = hoveredTime; // Use interpolated time
-                    hoveredIndex = i; // Store index for reference
                     this.interpolatedTime = hoveredTime;
+                    hoveredIndex = i;
                     break;
                 }
             }
@@ -421,49 +498,6 @@ public class ChartPanel extends ContentPanel {
                     this.interpolatedTime = times[times.length - 1];
                 }
             }
-        }
-
-        long getMaxTime() {
-            return maxTime;
-        }
-
-        void loadPoints(String symbol, java.util.List<ModelFacade.CandlePoint> pts) {
-            this.symbol = symbol;
-            if (pts == null || pts.size() < 2) {
-                times = null; prices = null; repaint(); return;
-            }
-            times = new long[pts.size()];
-            prices = new double[pts.size()];
-            for (int i = 0; i < pts.size(); i++) {
-                times[i] = pts.get(i).t();
-                prices[i] = pts.get(i).close();
-            }
-            recomputeBounds();
-            repaint();
-        }
-
-        private long minTime, maxTime;
-        private double minPrice, maxPrice;
-        private void recomputeBounds() {
-            minTime = Long.MAX_VALUE; maxTime = Long.MIN_VALUE;
-            minPrice = Double.MAX_VALUE; maxPrice = Double.MIN_VALUE;
-            for (int i = 0; i < times.length; i++) {
-                long t = times[i]; double p = prices[i];
-                if (t < minTime) minTime = t; if (t > maxTime) maxTime = t;
-                if (p < minPrice) minPrice = p; if (p > maxPrice) maxPrice = p;
-            }
-        }
-
-        void clear(String symbol) {
-            this.symbol = symbol;
-            this.times = null;
-            this.prices = null;
-            repaint();
-        }
-
-        void setLoading(boolean v) {
-            loading = v;
-            repaint();
         }
 
         @Override
@@ -486,8 +520,11 @@ public class ChartPanel extends ContentPanel {
             Color lineColor = isPositive ? GUIComponents.GREEN : GUIComponents.RED;
             Color gradientStart = new Color(lineColor.getRed(), lineColor.getGreen(), lineColor.getBlue(), 100);
             Color gradientEnd = new Color(lineColor.getRed(), lineColor.getGreen(), lineColor.getBlue(), 0);
-            Color labelColor = new Color(120, 120, 120);
+            Color labelColor = new Color(190, 190, 190);
+            Color gridMajor = new Color(255, 255, 255, 35);
+            Color gridMinor = new Color(255, 255, 255, 18);
             Font labelFont = new Font("Segoe UI", Font.PLAIN, 10);
+            Font labelFontBold = labelFont.deriveFont(Font.BOLD);
 
             int w = getWidth();
             int h = getHeight();
@@ -505,37 +542,71 @@ public class ChartPanel extends ContentPanel {
                 yPoints[i] = h - in.bottom - (int) ((prices[i] - minPrice) * drawHeight / (maxPrice - minPrice));
             }
 
+            // build time/price ticks for grid and axis
+            java.util.List<TimeTick> timeTicks = computeTimeTicks(drawWidth, in);
+            java.util.List<PriceTick> priceTicks = computePriceTicks(drawHeight);
+
+            g2.setStroke(new BasicStroke(1f));
+
+            // draw grid (price)
+            for (PriceTick pt : priceTicks) {
+                int y = h - in.bottom -
+                        (int) ((pt.value - minPrice) * drawHeight / (maxPrice - minPrice));
+                g2.setColor(pt.major ? gridMajor : gridMinor);
+                g2.drawLine(in.left, y, w - in.right, y);
+            }
+
+            // draw grid (time)
+            for (TimeTick tt : timeTicks) {
+                int x = in.left +
+                        (int) ((tt.time - minTime) * drawWidth / (double) (maxTime - minTime));
+                g2.setColor(tt.major ? gridMajor : gridMinor);
+                g2.drawLine(x, in.top, x, h - in.bottom);
+            }
+
+            // area under curve
             Path2D.Double path = new Path2D.Double();
             path.moveTo(xPoints[0], h - in.bottom);
             for (int i = 0; i < n; i++)
                 path.lineTo(xPoints[i], yPoints[i]);
             path.lineTo(xPoints[n - 1], h - in.bottom);
             path.closePath();
-
             GradientPaint gp = new GradientPaint(0, in.top, gradientStart, 0, h - in.bottom, gradientEnd);
             g2.setPaint(gp);
             g2.fill(path);
 
+            // price line
             g2.setColor(lineColor);
             g2.setStroke(new BasicStroke(2f));
             g2.drawPolyline(xPoints, yPoints, n);
 
-            // y-axis price labels
-            g2.setColor(labelColor);
+            // price axis labels
             g2.setFont(labelFont);
             FontMetrics fm = g2.getFontMetrics();
-            String maxPriceStr = String.format("$%.2f", maxPrice);
-            String minPriceStr = String.format("$%.2f", minPrice);
-            g2.drawString(maxPriceStr, 5, in.top + fm.getAscent());
-            g2.drawString(minPriceStr, 5, h - in.bottom);
+            g2.setColor(labelColor);
+            for (PriceTick pt : priceTicks) {
+                int y = h - in.bottom -
+                        (int) ((pt.value - minPrice) * drawHeight / (maxPrice - minPrice));
+                String text = String.format("$%.2f", pt.value);
+                int textY = y + fm.getAscent() / 2;
+                g2.drawString(text, 8, textY);
+            }
 
-            // x-axis time labels
-            SimpleDateFormat timeFormat = new SimpleDateFormat("MMM d, HH:mm");
-            timeFormat.setTimeZone(TimeZone.getTimeZone("UTC"));
-            String startLabel = timeFormat.format(new Date(minTime));
-            String endLabel = timeFormat.format(new Date(maxTime));
-            g2.drawString(startLabel, in.left, h - in.bottom + fm.getAscent() + 5);
-            g2.drawString(endLabel, w - in.right - fm.stringWidth(endLabel), h - in.bottom + fm.getAscent() + 5);
+            // time axis labels
+            int baseY = h - in.bottom + 2 + fm.getAscent();
+            for (TimeTick tt : timeTicks) {
+                int x = in.left +
+                        (int) ((tt.time - minTime) * drawWidth / (double) (maxTime - minTime));
+                String label = (tt.majorLabel != null) ? tt.majorLabel : tt.minorLabel;
+                if (label == null || label.isEmpty()) continue;
+
+                boolean isMajorLabel = (tt.majorLabel != null);
+                g2.setFont(isMajorLabel ? labelFontBold : labelFont);
+                FontMetrics fmLabel = g2.getFontMetrics();
+                int tw = fmLabel.stringWidth(label);
+                g2.setColor(labelColor);
+                g2.drawString(label, x - tw / 2, baseY);
+            }
 
             // draw hover tooltip
             if (hoveredIndex >= 0) {
@@ -556,6 +627,142 @@ public class ChartPanel extends ContentPanel {
                 g2.drawString(msg, (getWidth() - fm.stringWidth(msg)) / 2, (getHeight() + fm.getAscent()) / 2);
                 g2.dispose();
             }
+        }
+
+        private java.util.List<TimeTick> computeTimeTicks(int drawWidth, Insets in) {
+            java.util.List<TimeTick> out = new ArrayList<>();
+            if (maxTime <= minTime) return out;
+
+            ZoneId zone = ZoneId.of("UTC");
+            Instant minInst = Instant.ofEpochMilli(minTime);
+            Instant maxInst = Instant.ofEpochMilli(maxTime);
+
+            LocalDate startDate = minInst.atZone(zone).toLocalDate();
+            LocalDate endDate = maxInst.atZone(zone).toLocalDate();
+            long spanDays = ChronoUnit.DAYS.between(startDate, endDate) + 1;
+
+            int approxLabelCount = Math.max(2, drawWidth / 80);
+            int minPixelSpacing = 50;
+
+            // long span -> months as minors, years as majors (at January)
+            if (spanDays > 60) {
+                LocalDate cursor = startDate.withDayOfMonth(1);
+                if (cursor.isBefore(startDate)) cursor = cursor.plusMonths(1);
+
+                long lastLabelX = Long.MIN_VALUE;
+                while (!cursor.isAfter(endDate.plusMonths(1))) {
+                    long t = cursor.atStartOfDay(zone).toInstant().toEpochMilli();
+                    int x = in.left +
+                            (int) ((t - minTime) * drawWidth / (double) (maxTime - minTime));
+
+                    boolean isJanuary = cursor.getMonthValue() == 1;
+                    boolean major = isJanuary;
+                    String majorLabel = isJanuary ? String.valueOf(cursor.getYear()) : null;
+                    String minorLabel = isJanuary
+                            ? null
+                            : cursor.getMonth().getDisplayName(java.time.format.TextStyle.SHORT, Locale.US);
+
+                    if (lastLabelX != Long.MIN_VALUE &&
+                            x - lastLabelX < minPixelSpacing &&
+                            !major) {
+                        cursor = cursor.plusMonths(1);
+                        continue;
+                    }
+
+                    out.add(new TimeTick(t, major, majorLabel, minorLabel));
+                    lastLabelX = x;
+
+                    cursor = cursor.plusMonths(1);
+                    if (out.size() > approxLabelCount + 6) break; // safety
+                }
+            } else {
+                // short span -> days as minors, month names as majors at 1st-of-month
+                java.util.List<TimeTick> ticks = new ArrayList<>();
+
+                long lastLabelX = Long.MIN_VALUE;
+
+                // 1) month starts as majors
+                LocalDate m = startDate.withDayOfMonth(1);
+                if (m.isBefore(startDate)) m = m.plusMonths(1);
+                while (!m.isAfter(endDate)) {
+                    long t = m.atStartOfDay(zone).toInstant().toEpochMilli();
+                    int x = in.left +
+                            (int) ((t - minTime) * drawWidth / (double) (maxTime - minTime));
+
+                    String majorLabel = m.getMonth().getDisplayName(java.time.format.TextStyle.SHORT, Locale.US);
+                    // Always include major, but update spacing baseline
+                    if (lastLabelX == Long.MIN_VALUE || x - lastLabelX >= minPixelSpacing) {
+                        ticks.add(new TimeTick(t, true, majorLabel, null));
+                        lastLabelX = x;
+                    } else {
+                        // if it's very close, still include it but overwrite spacing baseline
+                        ticks.add(new TimeTick(t, true, majorLabel, null));
+                        lastLabelX = x;
+                    }
+
+                    m = m.plusMonths(1);
+                }
+
+                // 2) day-of-month numbers as minor labels using a step
+                int approxTicks = Math.max(3, drawWidth / 80);
+                int stepDays = (int) Math.max(1, Math.round((double) spanDays / approxTicks));
+
+                LocalDate d = startDate;
+                while (!d.isAfter(endDate)) {
+                    // skip 1st-of-month (already added as major)
+                    if (d.getDayOfMonth() != 1) {
+                        long t = d.atStartOfDay(zone).toInstant().toEpochMilli();
+                        int x = in.left +
+                                (int) ((t - minTime) * drawWidth / (double) (maxTime - minTime));
+
+                        if (lastLabelX == Long.MIN_VALUE || x - lastLabelX >= minPixelSpacing) {
+                            String minorLabel = String.valueOf(d.getDayOfMonth());
+                            ticks.add(new TimeTick(t, false, null, minorLabel));
+                            lastLabelX = x;
+                        }
+                    }
+                    d = d.plusDays(stepDays);
+                }
+
+                // sort combined majors + minors by time
+                ticks.sort(java.util.Comparator.comparingLong(tt -> tt.time));
+                out = ticks;
+            }
+
+            return out;
+        }
+
+        private java.util.List<PriceTick> computePriceTicks(int drawHeight) {
+            java.util.List<PriceTick> out = new ArrayList<>();
+            double range = maxPrice - minPrice;
+            if (range <= 0) return out;
+
+            int approxTicks = Math.max(3, drawHeight / 60);
+            double rawStep = range / approxTicks;
+            double step = niceStep(rawStep);
+
+            double start = Math.ceil(minPrice / step) * step;
+            for (double v = start; v <= maxPrice + 1e-9; v += step) {
+                boolean major = Math.abs(v / step - Math.round(v / step)) < 1e-6;
+                out.add(new PriceTick(v, major));
+            }
+            return out;
+        }
+
+        private static double niceStep(double rawStep) {
+            double exp = Math.floor(Math.log10(rawStep));
+            double frac = rawStep / Math.pow(10, exp);
+            double niceFrac;
+            if (frac < 1.5) {
+                niceFrac = 1.0;
+            } else if (frac < 3) {
+                niceFrac = 2.0;
+            } else if (frac < 7) {
+                niceFrac = 5.0;
+            } else {
+                niceFrac = 10.0;
+            }
+            return niceFrac * Math.pow(10, exp);
         }
 
         /**
