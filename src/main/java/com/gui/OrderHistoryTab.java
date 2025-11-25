@@ -6,13 +6,11 @@ import javax.swing.table.*;
 import java.text.DecimalFormat;
 import java.text.SimpleDateFormat;
 import java.util.List;
-import java.util.ArrayList;
 import java.util.function.Supplier;
 
 import com.models.AccountDTO;
 import com.models.ModelFacade;
 import com.models.ModelListener;
-import com.models.market.TradeItem;
 
 /**
  * A tab displaying the history of orders/trades.
@@ -101,9 +99,9 @@ public class OrderHistoryTab extends ContentPanel implements ModelListener {
                 setHorizontalAlignment(SwingConstants.CENTER);
                 String v = value == null ? "" : value.toString();
                 if ("BUY".equals(v)) {
-                    setForeground(GUIComponents.ACCENT_GREEN);
+                    setForeground(GUIComponents.GREEN);
                 } else if ("SELL".equals(v)) {
-                    setForeground(GUIComponents.ACCENT_RED);
+                    setForeground(GUIComponents.RED);
                 } else {
                     setForeground(GUIComponents.TEXT_PRIMARY);
                 }

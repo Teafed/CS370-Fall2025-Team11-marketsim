@@ -1,5 +1,7 @@
 package com.gui.navigation;
 
+import com.gui.GUIComponents;
+
 import javax.swing.*;
 import javax.swing.plaf.basic.BasicScrollBarUI;
 import java.awt.*;
@@ -11,21 +13,16 @@ import java.awt.event.MouseEvent;
  * Hides arrow buttons and provides a custom thumb design.
  */
 public class ScrollBarUI extends BasicScrollBarUI {
-   // TODO: move to GUIComponents
-   private static final Color TRACK_COLOR = new Color(40, 40, 40);
-   private static final Color THUMB_COLOR = new Color(80, 80, 80);
-   private static final Color THUMB_HOVER_COLOR = new Color(120, 120, 120);
-
    private boolean isThumbHover = false;
    private boolean isThumbPressed = false;
 
    @Override
    protected void configureScrollBarColors() {
-      this.thumbColor = THUMB_COLOR;
-      this.thumbHighlightColor = THUMB_HOVER_COLOR;
-      this.thumbDarkShadowColor = THUMB_COLOR;
-      this.trackColor = TRACK_COLOR;
-      this.trackHighlightColor = TRACK_COLOR;
+      this.thumbColor = GUIComponents.BG_LIGHT;
+      this.thumbHighlightColor = GUIComponents.BG_LIGHTER;
+      this.thumbDarkShadowColor = GUIComponents.BG_LIGHT;
+      this.trackColor = GUIComponents.BG_DARK;
+      this.trackHighlightColor = GUIComponents.BG_MEDIUM;
    }
 
    // invisible buttons to remove arrow buttons
@@ -49,7 +46,7 @@ public class ScrollBarUI extends BasicScrollBarUI {
 
    @Override
    protected void paintTrack(Graphics g, JComponent c, Rectangle trackBounds) {
-      g.setColor(TRACK_COLOR);
+      g.setColor(trackColor);
       g.fillRect(trackBounds.x, trackBounds.y, trackBounds.width, trackBounds.height);
    }
 
@@ -63,7 +60,7 @@ public class ScrollBarUI extends BasicScrollBarUI {
       g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 
       // very thin rounded thumb
-      g2.setColor(THUMB_COLOR);
+      g2.setColor(thumbColor);
       g2.fillRoundRect(thumbBounds.x + 3, thumbBounds.y + 1,
             thumbBounds.width - 6, thumbBounds.height - 2, 3, 3);
       g2.dispose();

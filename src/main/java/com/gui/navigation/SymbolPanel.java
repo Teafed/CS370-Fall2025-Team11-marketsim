@@ -38,11 +38,6 @@ public class SymbolPanel extends ContentPanel {
      * Listener interface for symbol selection events.
      */
     public interface SymbolSelectionListener {
-        /**
-         * Called when a symbol is selected.
-         *
-         * @param symbol The selected TradeItem.
-         */
         void onSymbolSelected(TradeItem symbol);
     }
 
@@ -50,11 +45,6 @@ public class SymbolPanel extends ContentPanel {
      * Listener interface for account bar selection events.
      */
     public interface AccountSelectionListener {
-        /**
-         * Called when the account bar is selected.
-         *
-         * @param account The selected Account.
-         */
         void onAccountBarSelected(Account account);
     }
 
@@ -80,7 +70,7 @@ public class SymbolPanel extends ContentPanel {
         GUIComponents.createList(listModel);
 
         listSymbols.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-        listSymbols.setCellRenderer(new CellRenderer(new SymbolCellRenderer(logoCache, model)));
+        listSymbols.setCellRenderer(new CellRenderer(new SymbolCellRenderer(model, logoCache)));
         listSymbols.setFixedCellHeight(-1);
 
 
@@ -132,15 +122,6 @@ public class SymbolPanel extends ContentPanel {
         }
     }
 
-//        public void setWatchlistSymbols(List<TradeItem> symbols) {
-//            listModel.clear();
-//            symbols.forEach(listModel::addElement);
-//            lastNotifiedSymbol = null;
-//
-//        }
-
-
-
     /**
      * Sets the active account and listener for the account bar.
      *
@@ -162,80 +143,80 @@ public class SymbolPanel extends ContentPanel {
         repaint();
     }
 
-        private void setupListeners() {
-            listSymbols.addListSelectionListener(e -> {
-                if (!e.getValueIsAdjusting()) {
-                    SymbolListEntry selected = listSymbols.getSelectedValue();
-                    if (selected instanceof TradeItem item) {
-                        String sym = item.getSymbol();
-                        if (!sym.equals(lastNotifiedSymbol)) {
-                            lastNotifiedSymbol = sym;
-                            notifyListeners(item);
+    private void setupListeners() {
+        listSymbols.addListSelectionListener(e -> {
+            if (!e.getValueIsAdjusting()) {
+                SymbolListEntry selected = listSymbols.getSelectedValue();
+                if (selected instanceof TradeItem item) {
+                    String sym = item.getSymbol();
+                    if (!sym.equals(lastNotifiedSymbol)) {
+                        lastNotifiedSymbol = sym;
+                        notifyListeners(item);
+                    }
+                }
+            }
+        });
+
+        listSymbols.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                int index = listSymbols.locationToIndex(e.getPoint());
+                if (index >= 0) {
+                    SymbolListEntry entry = listModel.getElementAt(index);
+                    if (entry instanceof SectionHeader header) {
+                        header.toggleCollapsed();
+                        buildList(model.getWatchlist(), model.getPortfolioItems());
+                    }
+                }
+            }
+        });
+
+
+        listSymbols.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mousePressed(MouseEvent e) {
+                if (e.isPopupTrigger()) showContextMenu(e);
+            }
+
+            @Override
+            public void mouseReleased(MouseEvent e) {
+                if (e.isPopupTrigger()) showContextMenu(e);
+            }
+
+            private void showContextMenu(MouseEvent e) {
+                int index = listSymbols.locationToIndex(e.getPoint());
+                if (index >= 0) {
+                    listSymbols.setSelectedIndex(index);
+                    SymbolListEntry entry = listModel.getElementAt(index);
+
+                    // Only allow context menu for watchlist TradeItems
+                    if (entry instanceof TradeItem item) {
+                        int portfolioHeaderIndex = listModel.indexOf(portfolioHeader);
+                        int watchlistHeaderIndex = listModel.indexOf(watchlistHeader);
+
+                        boolean inWatchlistSection = index > watchlistHeaderIndex;
+
+                        if (inWatchlistSection) {
+                            JPopupMenu menu = new JPopupMenu();
+                            JMenuItem removeItem = new JMenuItem("Remove from Watchlist");
+                            removeItem.addActionListener(ev -> {
+                                listSymbols.clearSelection();
+                                lastNotifiedSymbol = null;
+                                try {
+                                    model.removeFromWatchlist(item);
+                                } catch (Exception ex) {
+                                    throw new RuntimeException(ex);
+                                }
+                                buildList(model.getWatchlist(), model.getPortfolioItems());
+                            });
+                            menu.add(removeItem);
+                            menu.show(listSymbols, e.getX(), e.getY());
                         }
                     }
                 }
-            });
-
-            listSymbols.addMouseListener(new MouseAdapter() {
-                @Override
-                public void mouseClicked(MouseEvent e) {
-                    int index = listSymbols.locationToIndex(e.getPoint());
-                    if (index >= 0) {
-                        SymbolListEntry entry = listModel.getElementAt(index);
-                        if (entry instanceof SectionHeader header) {
-                            header.toggleCollapsed();
-                            buildList(model.getWatchlist(), model.getPortfolioItems());
-                        }
-                    }
-                }
-            });
-
-
-            listSymbols.addMouseListener(new MouseAdapter() {
-                @Override
-                public void mousePressed(MouseEvent e) {
-                    if (e.isPopupTrigger()) showContextMenu(e);
-                }
-
-                @Override
-                public void mouseReleased(MouseEvent e) {
-                    if (e.isPopupTrigger()) showContextMenu(e);
-                }
-
-                private void showContextMenu(MouseEvent e) {
-                    int index = listSymbols.locationToIndex(e.getPoint());
-                    if (index >= 0) {
-                        listSymbols.setSelectedIndex(index);
-                        SymbolListEntry entry = listModel.getElementAt(index);
-
-                        // Only allow context menu for watchlist TradeItems
-                        if (entry instanceof TradeItem item) {
-                            int portfolioHeaderIndex = listModel.indexOf(portfolioHeader);
-                            int watchlistHeaderIndex = listModel.indexOf(watchlistHeader);
-
-                            boolean inWatchlistSection = index > watchlistHeaderIndex;
-
-                            if (inWatchlistSection) {
-                                JPopupMenu menu = new JPopupMenu();
-                                JMenuItem removeItem = new JMenuItem("Remove from Watchlist");
-                                removeItem.addActionListener(ev -> {
-                                    listSymbols.clearSelection();
-                                    lastNotifiedSymbol = null;
-                                    try {
-                                        model.removeFromWatchlist(item);
-                                    } catch (Exception ex) {
-                                        throw new RuntimeException(ex);
-                                    }
-                                    buildList(model.getWatchlist(), model.getPortfolioItems());
-                                });
-                                menu.add(removeItem);
-                                menu.show(listSymbols, e.getX(), e.getY());
-                            }
-                        }
-                    }
-                }
-            });
-        }
+            }
+        });
+    }
 
     // methods for managing listeners
     /**
@@ -262,22 +243,22 @@ public class SymbolPanel extends ContentPanel {
         }
     }
 
-        public java.lang.String getSelectedSymbol() {
-            TradeItem selected = (TradeItem) listSymbols.getSelectedValue();
-            return selected != null ? selected.getSymbol() : null;
-        }
+    public String getSelectedSymbol() {
+        TradeItem selected = (TradeItem) listSymbols.getSelectedValue();
+        return selected != null ? selected.getSymbol() : null;
+    }
 
-        public void clearSelection() {
-            listSymbols.clearSelection();
-            lastNotifiedSymbol = null;
-        }
+    public void clearSelection() {
+        listSymbols.clearSelection();
+        lastNotifiedSymbol = null;
+    }
 
-        public void selectFirst() {
-            if (listModel.getSize() > 0) {
-                SwingUtilities.invokeLater(() -> {
-                    listSymbols.setSelectedIndex(0);
-                    listSymbols.ensureIndexIsVisible(0);
-                });
-            }
+    public void selectFirst() {
+        if (listModel.getSize() > 0) {
+            SwingUtilities.invokeLater(() -> {
+                listSymbols.setSelectedIndex(0);
+                listSymbols.ensureIndexIsVisible(0);
+            });
         }
     }
+}

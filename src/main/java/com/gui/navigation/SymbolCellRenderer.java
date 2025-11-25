@@ -10,15 +10,10 @@ import java.awt.*;
 import java.util.concurrent.atomic.AtomicInteger;
 
 // handles cell rendering in SymbolListPanel
-/**
- * Custom list cell renderer for displaying stock symbols.
- * Shows the symbol, company name, logo, current price, and percent change.
- * Handles asynchronous logo loading.
- */
-public class SymbolCellRenderer extends JPanel implements ListCellRenderer<SymbolListEntry> {
+public class SymbolCellRenderer extends JPanel implements ListCellRenderer<TradeItem> {
     private final JLabel logoLabel = new JLabel();
     private final JLabel symbolLabel = new JLabel();
-    private final JLabel nameLabel = new JLabel();
+    private final JLabel nameLabel   = new JLabel();
     private final JLabel priceLabel = new JLabel();
     private final JLabel changeLabel = new JLabel();
     private final LogoCache logoCache;
@@ -27,61 +22,50 @@ public class SymbolCellRenderer extends JPanel implements ListCellRenderer<Symbo
     private static final AtomicInteger requestCounter = new AtomicInteger(0);
     private static final long REQUEST_DELAY_MS = 300; // 300ms between logo fetch requests
 
-    /**
-     * Constructs a new SymbolCellRenderer.
-     *
-     * @param cache The LogoCache instance.
-     * @param model The ModelFacade instance.
-     */
-    public SymbolCellRenderer(LogoCache cache, ModelFacade model) {
-        this.logoCache = cache;
+    public SymbolCellRenderer(ModelFacade model, LogoCache logoCache) {
         this.model = model;
+        this.logoCache = logoCache;
         setLayout(new BorderLayout());
         setBorder(GUIComponents.createBorder());
 
-        // Configure logo label
-        logoLabel.setPreferredSize(new Dimension(iconSize, iconSize));
-        logoLabel.setHorizontalAlignment(SwingConstants.CENTER);
-        logoLabel.setVerticalAlignment(SwingConstants.CENTER);
-
-        symbolLabel.setFont(new Font("Segoe UI", Font.BOLD, 14));
+        symbolLabel.setFont(new Font("Arial", Font.BOLD, 18));
         symbolLabel.setForeground(GUIComponents.TEXT_PRIMARY);
 
-        nameLabel.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        nameLabel.setFont(new Font("Arial", Font.PLAIN, 14));
         nameLabel.setForeground(GUIComponents.TEXT_SECONDARY);
 
-        priceLabel.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        priceLabel.setFont(new Font("Arial", Font.BOLD, 18));
         priceLabel.setHorizontalAlignment(SwingConstants.RIGHT);
         priceLabel.setForeground(GUIComponents.TEXT_PRIMARY);
 
-        changeLabel.setFont(new Font("Segoe UI", Font.PLAIN, 11));
+        changeLabel.setFont(new Font("Arial", Font.PLAIN, 14));
         changeLabel.setHorizontalAlignment(SwingConstants.RIGHT);
+        changeLabel.setOpaque(false);
 
-        // layout
+        // Left side - symbol and name stacked
         JPanel leftStack = new JPanel();
         leftStack.setLayout(new BoxLayout(leftStack, BoxLayout.Y_AXIS));
         leftStack.setOpaque(false);
+        symbolLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
+        nameLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
         leftStack.add(symbolLabel);
+        leftStack.add(Box.createVerticalStrut(4));
         leftStack.add(nameLabel);
 
-        JPanel leftPanel = new JPanel(new BorderLayout(6, 0));
-        leftPanel.setOpaque(false);
-        leftPanel.add(logoLabel, BorderLayout.WEST);
-        leftPanel.add(leftStack, BorderLayout.CENTER);
-
-        JPanel rightPanel = new JPanel(new BorderLayout());
-        rightPanel.add(priceLabel, BorderLayout.NORTH);
-        rightPanel.add(changeLabel, BorderLayout.SOUTH);
-        rightPanel.setPreferredSize(new Dimension(100, 40));
+        // Right side - price and change stacked
+        JPanel rightPanel = new JPanel(new GridLayout(2, 1, 0, 1/2));
         rightPanel.setOpaque(false);
+        rightPanel.add(priceLabel);
+        rightPanel.add(changeLabel);
+        rightPanel.setPreferredSize(new Dimension(120, 70));
 
-        add(leftPanel, BorderLayout.CENTER);
+        add(leftStack, BorderLayout.CENTER);
         add(rightPanel, BorderLayout.EAST);
     }
 
     @Override
     public Component getListCellRendererComponent(
-            JList<? extends SymbolListEntry> list, SymbolListEntry value, int index,
+            JList<? extends TradeItem> list, TradeItem value, int index,
             boolean isSelected, boolean cellHasFocus) {
 
         if (value != null) {
@@ -128,28 +112,35 @@ public class SymbolCellRenderer extends JPanel implements ListCellRenderer<Symbo
                 timer.setRepeats(false);
                 timer.start();
             }
+            symbolLabel.setText(value.getSymbol());
+            nameLabel.setText(value.getName()); // Show ticker again as in the reference image
 
-            double px = ti.getCurrentPrice();
+            // Ensure labels are visible
+            symbolLabel.setVisible(true);
+            nameLabel.setVisible(true);
+            priceLabel.setVisible(true);
+            changeLabel.setVisible(true);
+
+            double px = value.getCurrentPrice();
             if (Double.isNaN(px) || px == 0) {
                 priceLabel.setText("—");
-                priceLabel.setForeground(GUIComponents.TEXT_TERTIARY);
+                priceLabel.setForeground(GUIComponents.TEXT_SECONDARY);
             } else {
-                priceLabel.setText(java.lang.String.format(java.util.Locale.US, "$%,.2f", px));
-                priceLabel.setForeground(isSelected ? GUIComponents.TEXT_TERTIARY : GUIComponents.TEXT_PRIMARY);
+                priceLabel.setText(java.lang.String.format(java.util.Locale.US, "$%.2f", px));
+                priceLabel.setForeground(GUIComponents.TEXT_PRIMARY);
             }
 
-            double changePercent = ti.getChangePercent();
+            double changePercent = value.getChangePercent();
             boolean up = changePercent > 0, down = changePercent < 0;
             java.lang.String arrow = up ? "▲" : (down ? "▼" : "•");
-            java.lang.String changeText = Double.isNaN(changePercent) ? "—"
-                    : java.lang.String.format(java.util.Locale.US, "%s %+.2f%%", arrow, changePercent);
+            java.lang.String changeText = Double.isNaN(changePercent) ? "—" : java.lang.String.format(java.util.Locale.US, "%s %+.2f%%", arrow, changePercent);
             changeLabel.setText(changeText);
 
             // color coding for change
             if (changePercent > 0) {
-                changeLabel.setForeground(GUIComponents.ACCENT_GREEN);
+                changeLabel.setForeground(GUIComponents.GREEN);
             } else if (changePercent < 0) {
-                changeLabel.setForeground(GUIComponents.ACCENT_RED);
+                changeLabel.setForeground(GUIComponents.RED);
             } else {
                 changeLabel.setForeground(GUIComponents.TEXT_SECONDARY);
             }
@@ -157,25 +148,25 @@ public class SymbolCellRenderer extends JPanel implements ListCellRenderer<Symbo
 
         // selection styling
         if (isSelected) {
-            setBackground(GUIComponents.ACCENT_BLUE);
-            symbolLabel.setForeground(Color.WHITE);
-            nameLabel.setForeground(Color.WHITE);
-            priceLabel.setForeground(Color.WHITE);
+            setBackground(GUIComponents.BG_SELECTED);
         } else {
             // alternating row colors
             if (index % 2 == 0) {
                 setBackground(GUIComponents.BG_DARK);
             } else {
-                setBackground(GUIComponents.BG_MEDIUM);
+                setBackground(GUIComponents.BG_DARK);
             }
             symbolLabel.setForeground(GUIComponents.TEXT_PRIMARY);
             priceLabel.setForeground(GUIComponents.TEXT_PRIMARY);
             nameLabel.setForeground(GUIComponents.TEXT_SECONDARY);
         }
 
-        Border padding = BorderFactory.createEmptyBorder(8, 12, 8, 12);
-        if (!isSelected && index > 0) {
-            Border sep = BorderFactory.createMatteBorder(1, 0, 0, 0, GUIComponents.BG_LIGHT);
+        symbolLabel.setForeground(GUIComponents.TEXT_PRIMARY);
+        nameLabel.setForeground(GUIComponents.TEXT_SECONDARY);
+
+        Border padding = BorderFactory.createEmptyBorder(12, 16, 12, 16);
+        if (index > 0) {
+            Border sep = BorderFactory.createMatteBorder(1, 0, 0, 0, GUIComponents.SEPARATOR);
             setBorder(BorderFactory.createCompoundBorder(sep, padding));
         } else {
             setBorder(padding);

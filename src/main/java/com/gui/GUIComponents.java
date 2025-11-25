@@ -14,21 +14,24 @@ public class GUIComponents {
    // hi
    // color palette
    public static final Color BG_DARKER = new Color(25, 25, 25);
-   public static final Color BG_DARK = new Color(35, 35, 35);
-   public static final Color BG_MEDIUM = new Color(45, 45, 45);
-   public static final Color BG_LIGHT = new Color(55, 55, 55);
-   public static final Color BG_LIGHTER = new Color(65, 65, 65);
+   public static final Color BG_DARK = new Color(30, 34, 45);
+   public static final Color BG_MEDIUM = new Color(45, 49, 60);
+   public static final Color BG_LIGHT = new Color(55, 59, 70);
+   public static final Color BG_LIGHTER = new Color(65, 69, 80);
+   public static final Color BG_SELECTED = new Color(45, 50, 65);
+   public static final Color SEPARATOR = new Color(40, 44, 55);
+   public static final Color SEARCH_BG = new Color(45, 50, 65);
 
-   public static final Color TEXT_PRIMARY = new Color(220, 220, 220);
-   public static final Color TEXT_SECONDARY = new Color(180, 180, 180);
+   public static final Color TEXT_PRIMARY = new Color(240, 240, 245);
+   public static final Color TEXT_SECONDARY = new Color(120, 125, 140);
    public static final Color TEXT_TERTIARY = new Color(140, 140, 140);
 
    public static final Color ACCENT_BLUE = new Color(64, 128, 255);
-   public static final Color ACCENT_GREEN = new Color(76, 175, 80);
-   public static final Color ACCENT_RED = new Color(244, 67, 54);
+   public static final Color GREEN = new Color(34, 197, 94);
+   public static final Color RED = new Color(239, 68, 68);
    public static final Color ACCENT_ORANGE = new Color(255, 152, 0);
 
-   public static final Color BORDER_COLOR = new Color(70, 70, 70);
+   public static final Color BORDER_COLOR = new Color(60, 65, 80);
    public static final Color BORDER_FOCUS = new Color(100, 150, 255);
 
    /**

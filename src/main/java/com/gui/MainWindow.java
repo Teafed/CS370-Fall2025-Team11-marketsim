@@ -34,8 +34,8 @@ public class MainWindow extends JFrame
     private static final String WINDOW_TITLE = "Marketsim";
     private static final String CARD_CHART = "chart";
     private static final String CARD_ACCOUNT = "account";
-    private static final int LEFT_PANEL_WIDTH = 250;
-    private static final int MIN_RIGHT_WIDTH = 300;
+    private static final int LEFT_PANEL_WIDTH = 320;
+    private static final int MIN_RIGHT_WIDTH = 320;
 
     /**
      * Constructs a new MainWindow.
@@ -165,7 +165,7 @@ public class MainWindow extends JFrame
             return;
         if (open) {
             marketStatusLabel.setText("OPEN");
-            marketStatusLabel.setBackground(GUIComponents.ACCENT_GREEN.darker());
+            marketStatusLabel.setBackground(GUIComponents.GREEN.darker());
         } else {
             marketStatusLabel.setText("CLOSED");
             marketStatusLabel.setBackground(new Color(180, 0, 0));
