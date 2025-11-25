@@ -52,6 +52,14 @@ public class SymbolCellRenderer extends JPanel implements ListCellRenderer<Trade
         leftStack.add(Box.createVerticalStrut(4));
         leftStack.add(nameLabel);
 
+        JPanel leftPanel = new JPanel(new BorderLayout(8, 0));
+        leftPanel.setOpaque(false);
+        logoLabel.setPreferredSize(new Dimension(iconSize, iconSize));
+        logoLabel.setHorizontalAlignment(SwingConstants.CENTER);
+        logoLabel.setVerticalAlignment(SwingConstants.CENTER);
+        leftPanel.add(logoLabel, BorderLayout.WEST);
+        leftPanel.add(leftStack, BorderLayout.CENTER);
+
         // Right side - price and change stacked
         JPanel rightPanel = new JPanel(new GridLayout(2, 1, 0, 1/2));
         rightPanel.setOpaque(false);
@@ -59,7 +67,7 @@ public class SymbolCellRenderer extends JPanel implements ListCellRenderer<Trade
         rightPanel.add(changeLabel);
         rightPanel.setPreferredSize(new Dimension(120, 50));
 
-        add(leftStack, BorderLayout.CENTER);
+        add(leftPanel, BorderLayout.CENTER);
         add(rightPanel, BorderLayout.EAST);
     }
 
