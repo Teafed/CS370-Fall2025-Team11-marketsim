@@ -10,6 +10,11 @@ import java.awt.*;
 import java.util.concurrent.atomic.AtomicInteger;
 
 // handles cell rendering in SymbolListPanel
+/**
+ * Custom list cell renderer for displaying stock symbols.
+ * Shows the symbol, company name, logo, current price, and percent change.
+ * Handles asynchronous logo loading.
+ */
 public class SymbolCellRenderer extends JPanel implements ListCellRenderer<TradeItem> {
     private final JLabel logoLabel = new JLabel();
     private final JLabel symbolLabel = new JLabel();
@@ -77,15 +82,14 @@ public class SymbolCellRenderer extends JPanel implements ListCellRenderer<Trade
             boolean isSelected, boolean cellHasFocus) {
 
         if (value != null) {
-            TradeItem ti = (TradeItem) value;
-            String symbol = ti.getSymbol();
+            String symbol = value.getSymbol();
             symbolLabel.setText(symbol);
-            nameLabel.setText(ti.getName());
+            nameLabel.setText(value.getName());
 
             // Load company logo with staggered timing to avoid rate limits
             ImageIcon cached = logoCache.getIfCached(symbol);
             if (cached != null) {
-                logoLabel.setIcon(cached);
+                logoLabel.setIcon(makeCircular(cached, iconSize));
             } else {
                 logoLabel.setIcon(logoCache.getPlaceholder());
 
@@ -104,6 +108,13 @@ public class SymbolCellRenderer extends JPanel implements ListCellRenderer<Trade
                     // Start async load (callback runs on EDT)
                     if (logoUrl != null && !logoUrl.isBlank()) {
                         logoCache.load(symbol, logoUrl, iconSize, iconSize, icon -> {
+                            // Apply circular clipping to loaded icon
+                            if (icon != null && !icon.equals(logoCache.getPlaceholder())) {
+                                // Update with circular version
+                                SwingUtilities.invokeLater(() -> {
+                                    logoLabel.setIcon(makeCircular(icon, iconSize));
+                                });
+                            }
                             // Repaint the specific row once icon arrives
                             if (list != null && list.getModel().getSize() > index) {
                                 Rectangle rect = list.getCellBounds(index, index);
@@ -182,5 +193,44 @@ public class SymbolCellRenderer extends JPanel implements ListCellRenderer<Trade
 
         setOpaque(true);
         return this;
+    }
+
+    /**
+     * Creates a circular icon from a square ImageIcon.
+     *
+     * @param icon The source ImageIcon.
+     * @param size The diameter of the circle.
+     * @return A circular Icon.
+     */
+    private static Icon makeCircular(ImageIcon icon, int size) {
+        if (icon == null) return null;
+
+        return new Icon() {
+            @Override
+            public void paintIcon(Component c, Graphics g, int x, int y) {
+                Graphics2D g2 = (Graphics2D) g.create();
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                g2.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
+
+                // Create circular clip
+                g2.setClip(new java.awt.geom.Ellipse2D.Float(x, y, size, size));
+
+                // Draw the image scaled to fit
+                Image img = icon.getImage();
+                g2.drawImage(img, x, y, size, size, null);
+
+                g2.dispose();
+            }
+
+            @Override
+            public int getIconWidth() {
+                return size;
+            }
+
+            @Override
+            public int getIconHeight() {
+                return size;
+            }
+        };
     }
 }
