@@ -16,14 +16,13 @@ import java.util.Objects;
 import java.util.concurrent.*;
 import java.util.function.Consumer;
 
-// move this somewhere to models package
-
 /**
  * Manages caching of logo images. Supports memory and disk caching, and
  * asynchronous loading from URLs, file paths, or Base64 strings.
  */
 public class LogoCache {
     private final ConcurrentMap<String, ImageIcon> cache = new ConcurrentHashMap<>();
+    private final ConcurrentMap<String, String> contentHashToKey = new ConcurrentHashMap<>();
     private final ExecutorService ex;
     private final ImageIcon placeholder;
     private final Path cacheDir;
@@ -76,6 +75,132 @@ public class LogoCache {
     }
 
     /**
+     * Preloads logos for a list of symbols.
+     * This method initiates asynchronous loading for all symbols in the list.
+     *
+     * @param symbols     The list of symbols to preload.
+     * @param urlResolver A function that resolves a symbol to a logo URL (can be
+     *                    blocking).
+     * @return A CompletableFuture that completes when all preloading tasks (disk
+     *         checks and downloads) are finished.
+     */
+    public CompletableFuture<Void> preload(java.util.List<String> symbols,
+                                           java.util.function.Function<String, String> urlResolver) {
+        if (symbols == null || symbols.isEmpty())
+            return CompletableFuture.completedFuture(null);
+
+        System.out.println("[LogoCache] Preloading " + symbols.size() + " logos...");
+        java.util.List<CompletableFuture<Void>> futures = new java.util.ArrayList<>();
+
+        for (String symbol : symbols) {
+            // Skip if already cached
+            if (getIfCached(symbol) != null)
+                continue;
+
+            CompletableFuture<Void> future = CompletableFuture.runAsync(() -> {
+                try {
+                    // 1. Check disk cache using SYMBOL key
+                    Path diskPath = getCachedFilePath(symbol);
+                    if (Files.exists(diskPath)) {
+                        try {
+                            BufferedImage img = ImageIO.read(diskPath.toFile());
+                            if (img != null) {
+                                System.out.println("[LogoCache] Hit disk cache for " + symbol);
+                                BufferedImage resized = resizeImage(img, 40, 40);
+                                ImageIcon result = new ImageIcon(resized);
+                                cache.put(symbol, result);
+                                // Track content hash for deduplication
+                                String contentHash = computeImageHash(img);
+                                contentHashToKey.putIfAbsent(contentHash, symbol);
+                                return;
+                            }
+                        } catch (Exception e) {
+                            System.err.println("Failed to load cached logo from disk: " + e.getMessage());
+                        }
+                    }
+
+                    // 2. Resolve URL (Network call)
+                    String url = urlResolver.apply(symbol);
+                    if (url != null && !url.isBlank()) {
+                        // 3. Download and cache using SYMBOL key
+                        System.out.println("[LogoCache] Downloading " + symbol);
+                        downloadAndCache(symbol, url, 40, 40, icon -> {
+                        }, symbol, diskPath);
+                    }
+                } catch (Exception e) {
+                    System.err.println("Failed to preload logo for " + symbol + ": " + e.getMessage());
+                }
+            }, ex);
+            futures.add(future);
+        }
+        return CompletableFuture.allOf(futures.toArray(new CompletableFuture[0]));
+    }
+
+    /**
+     * Loads a logo asynchronously, resolving the URL if necessary.
+     *
+     * @param symbol      The stock symbol.
+     * @param urlResolver A function that resolves a symbol to a logo URL (can be
+     *                    blocking).
+     * @param w           Desired width.
+     * @param h           Desired height.
+     * @param callback    Callback to be executed on the EDT with the loaded image.
+     */
+    public void load(String symbol, java.util.function.Function<String, String> urlResolver, int w, int h,
+                     Consumer<ImageIcon> callback) {
+        Objects.requireNonNull(callback);
+
+        // Check memory cache first (using symbol as key)
+        ImageIcon existing = cache.get(symbol);
+        if (existing != null) {
+            SwingUtilities.invokeLater(() -> callback.accept(existing));
+            return;
+        }
+
+        // If not in memory, we need to resolve URL and then load/download
+        // This entire process should happen off the EDT
+        ex.submit(() -> {
+            try {
+                // 1. Check disk cache using SYMBOL key
+                Path diskPath = getCachedFilePath(symbol);
+                if (Files.exists(diskPath)) {
+                    try {
+                        BufferedImage img = ImageIO.read(diskPath.toFile());
+                        if (img != null) {
+                            System.out.println("[LogoCache] Hit disk cache for " + symbol);
+                            BufferedImage resized = resizeImage(img, w, h);
+                            ImageIcon result = new ImageIcon(resized);
+                            cache.put(symbol, result);
+                            // Track content hash for deduplication
+                            String contentHash = computeImageHash(img);
+                            contentHashToKey.putIfAbsent(contentHash, symbol);
+                            SwingUtilities.invokeLater(() -> callback.accept(result));
+                            return;
+                        }
+                    } catch (Exception e) {
+                        System.err.println("Failed to load cached logo from disk: " + e.getMessage());
+                    }
+                }
+
+                // 2. Resolve URL
+                String url = urlResolver.apply(symbol);
+                if (url == null || url.isBlank()) {
+                    SwingUtilities.invokeLater(() -> callback.accept(placeholder));
+                    return;
+                }
+
+                // 3. Download and cache using SYMBOL key
+                System.out.println("[LogoCache] Downloading " + symbol);
+                downloadAndCache(symbol, url, w, h, callback, symbol, diskPath);
+
+            } catch (Exception e) {
+                System.err.println("Error loading logo for " + symbol + ": " + e.getMessage());
+                SwingUtilities.invokeLater(() -> callback.accept(placeholder));
+            }
+        });
+    }
+
+    /**
      * Loads a logo asynchronously. Checks memory cache, then disk cache, then
      * downloads if necessary.
      *
@@ -88,7 +213,10 @@ public class LogoCache {
      */
     public void load(String key, String logoStr, int w, int h, Consumer<ImageIcon> callback) {
         Objects.requireNonNull(callback);
-        String cacheKey = logoStr != null ? logoStr : key;
+        // FORCE usage of the symbol (key) as the cache key.
+        // We ignore logoStr for caching purposes to avoid duplicates.
+        String cacheKey = key;
+
         if (cacheKey == null) {
             SwingUtilities.invokeLater(() -> callback.accept(placeholder));
             return;
@@ -97,6 +225,7 @@ public class LogoCache {
         // Check memory cache first
         ImageIcon existing = cache.get(cacheKey);
         if (existing != null) {
+            // System.out.println("[LogoCache] Hit memory cache for " + key);
             SwingUtilities.invokeLater(() -> callback.accept(existing));
             return;
         }
@@ -108,11 +237,14 @@ public class LogoCache {
                 try {
                     BufferedImage img = ImageIO.read(cachedFile.toFile());
                     if (img != null) {
+                        System.out.println("[LogoCache] Hit disk cache for " + key);
                         BufferedImage resized = resizeImage(img, w, h);
                         ImageIcon result = new ImageIcon(resized);
                         // Store in memory cache for faster subsequent access
                         cache.put(cacheKey, result);
-                        cache.put(key, result);
+                        // Track content hash for deduplication
+                        String contentHash = computeImageHash(img);
+                        contentHashToKey.putIfAbsent(contentHash, cacheKey);
                         SwingUtilities.invokeLater(() -> callback.accept(result));
                         return;
                     }
@@ -120,12 +252,14 @@ public class LogoCache {
                     System.err.println("Failed to load cached logo from disk: " + e.getMessage());
                 }
                 // If disk cache failed, fall through to download
+                System.out.println("[LogoCache] Disk cache failed/missing, downloading " + key);
                 downloadAndCache(key, logoStr, w, h, callback, cacheKey, cachedFile);
             });
             return;
         }
 
         // Not in memory or disk cache - download it
+        System.out.println("[LogoCache] Downloading " + key);
         ex.submit(() -> downloadAndCache(key, logoStr, w, h, callback, cacheKey, cachedFile));
     }
 
@@ -141,13 +275,29 @@ public class LogoCache {
      * @param cachedFile The path to the cached file on disk.
      */
     private void downloadAndCache(String key, String logoStr, int w, int h,
-            Consumer<ImageIcon> callback, String cacheKey, Path cachedFile) {
+                                  Consumer<ImageIcon> callback, String cacheKey, Path cachedFile) {
         BufferedImage img = null;
         try {
             img = loadImageFromString(logoStr);
             if (img != null) {
-                // Save to disk cache
+                // Check if we already have this exact image content
+                String contentHash = computeImageHash(img);
+                String existingKey = contentHashToKey.get(contentHash);
+
+                if (existingKey != null && !existingKey.equals(cacheKey)) {
+                    // Reuse existing cached image instead of storing duplicate
+                    System.out.println("[LogoCache] Duplicate image detected for " + key + ", reusing " + existingKey);
+                    ImageIcon existingIcon = cache.get(existingKey);
+                    if (existingIcon != null) {
+                        cache.put(cacheKey, existingIcon);
+                        SwingUtilities.invokeLater(() -> callback.accept(existingIcon));
+                        return;
+                    }
+                }
+
+                // Save to disk cache (only if not a duplicate)
                 saveToDisk(img, cachedFile);
+                contentHashToKey.put(contentHash, cacheKey);
             }
         } catch (Exception e) {
             System.err.println("Failed to download logo: " + e.getMessage());
@@ -159,9 +309,8 @@ public class LogoCache {
         } else {
             BufferedImage resized = resizeImage(img, w, h);
             result = new ImageIcon(resized);
-            // Cache in memory with BOTH the URL and the symbol key
+            // Cache in memory
             cache.put(cacheKey, result);
-            cache.put(key, result);
         }
         SwingUtilities.invokeLater(() -> callback.accept(result));
     }
@@ -252,14 +401,58 @@ public class LogoCache {
      * @return The resized BufferedImage.
      */
     private static BufferedImage resizeImage(BufferedImage src, int w, int h) {
+        Image tmp = src.getScaledInstance(w, h, Image.SCALE_SMOOTH);
         BufferedImage dst = new BufferedImage(w, h, BufferedImage.TYPE_INT_ARGB);
         Graphics2D g2 = dst.createGraphics();
-        g2.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BICUBIC);
-        g2.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
-        g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-        g2.drawImage(src, 0, 0, w, h, null);
+        g2.drawImage(tmp, 0, 0, null);
         g2.dispose();
         return dst;
+    }
+
+    /**
+     * Computes a hash of the image content for deduplication.
+     *
+     * @param img The image to hash.
+     * @return A hash string representing the image content.
+     */
+    private static String computeImageHash(BufferedImage img) {
+        try {
+            MessageDigest md = MessageDigest.getInstance("MD5");
+            int width = img.getWidth();
+            int height = img.getHeight();
+
+            // Hash dimensions first
+            md.update((byte) (width >> 24));
+            md.update((byte) (width >> 16));
+            md.update((byte) (width >> 8));
+            md.update((byte) width);
+            md.update((byte) (height >> 24));
+            md.update((byte) (height >> 16));
+            md.update((byte) (height >> 8));
+            md.update((byte) height);
+
+            // Sample pixels for hash (to avoid processing every pixel)
+            int step = Math.max(1, Math.min(width, height) / 20);
+            for (int y = 0; y < height; y += step) {
+                for (int x = 0; x < width; x += step) {
+                    int rgb = img.getRGB(x, y);
+                    md.update((byte) (rgb >> 24));
+                    md.update((byte) (rgb >> 16));
+                    md.update((byte) (rgb >> 8));
+                    md.update((byte) rgb);
+                }
+            }
+
+            byte[] hash = md.digest();
+            StringBuilder sb = new StringBuilder();
+            for (byte b : hash) {
+                sb.append(String.format("%02x", b));
+            }
+            return sb.toString();
+        } catch (Exception e) {
+            // Fallback to simple identity
+            return String.valueOf(System.identityHashCode(img));
+        }
     }
 
     /**
