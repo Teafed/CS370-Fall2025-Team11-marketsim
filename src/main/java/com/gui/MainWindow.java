@@ -34,7 +34,7 @@ public class MainWindow extends JFrame
     private Timer countdownTimer;
     private boolean currentMarketOpen;
 
-    private static final String WINDOW_TITLE = "Marketsim";
+    private static final String WINDOW_TITLE = "MarketSim";
     private static final String CARD_CHART = "chart";
     private static final String CARD_ACCOUNT = "account";
     private static final int LEFT_PANEL_WIDTH = 320;

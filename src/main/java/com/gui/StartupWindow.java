@@ -433,7 +433,7 @@ public class StartupWindow extends ContentPanel {
         panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
         panel.setBorder(BorderFactory.createEmptyBorder(40, 100, 40, 100));
 
-        JLabel titleLabel = new JLabel("Marketsim", SwingConstants.CENTER);
+        JLabel titleLabel = new JLabel("MarketSim", SwingConstants.CENTER);
         titleLabel.setFont(new Font("Segoe UI", Font.BOLD, 24));
         titleLabel.setForeground(GUIComponents.TEXT_PRIMARY);
         titleLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
@@ -590,7 +590,7 @@ public class StartupWindow extends ContentPanel {
                                     } catch (Exception ex) {
                                         ex.printStackTrace();
                                         JOptionPane.showMessageDialog(frame,
-                                                "Failed to launch Marketsim:\n" + ex.getMessage(),
+                                                "Failed to launch MarketSim:\n" + ex.getMessage(),
                                                 "Error", JOptionPane.ERROR_MESSAGE);
                                     }
                                 }

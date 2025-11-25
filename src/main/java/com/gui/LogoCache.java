@@ -369,7 +369,7 @@ public class LogoCache {
             HttpURLConnection conn = (HttpURLConnection) url.openConnection();
             conn.setConnectTimeout(4000);
             conn.setReadTimeout(6000);
-            conn.setRequestProperty("User-Agent", "Marketsim/1.0");
+            conn.setRequestProperty("User-Agent", "MarketSim/1.0");
             try (InputStream in = conn.getInputStream()) {
                 return ImageIO.read(in);
             } finally {
