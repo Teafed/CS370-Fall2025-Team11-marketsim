@@ -3,7 +3,6 @@ package com.models;
 import com.etl.HistoricalService;
 import com.etl.finnhub.ClientFacade;
 import com.models.market.*;
-import com.models.market.TradeItem;
 import com.models.profile.*;
 
 import javax.swing.*;
@@ -541,5 +540,6 @@ public class ModelFacade {
             }
             return out;
         }
+
     }
 }
