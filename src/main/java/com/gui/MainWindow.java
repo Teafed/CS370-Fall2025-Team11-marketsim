@@ -32,6 +32,7 @@ public class MainWindow extends JFrame
     private AccountPanel accountPanel;
     private JLabel countdownLabel;
     private Timer countdownTimer;
+    private boolean currentMarketOpen;
 
     private static final String WINDOW_TITLE = "Marketsim";
     private static final String CARD_CHART = "chart";
@@ -172,6 +173,8 @@ public class MainWindow extends JFrame
     public void setMarketOpen(boolean open) {
         if (marketStatusLabel == null)
             return;
+
+        currentMarketOpen = open;
         if (open) {
             marketStatusLabel.setText("OPEN");
             marketStatusLabel.setBackground(GUIComponents.GREEN.darker());
@@ -179,7 +182,7 @@ public class MainWindow extends JFrame
 
         } else {
             marketStatusLabel.setText("CLOSED");
-            marketStatusLabel.setBackground(new Color(180, 0, 0));
+            marketStatusLabel.setBackground(GUIComponents.RED.darker());
             startCountdown(); // Show countdown to open
         }
     }
@@ -283,7 +286,7 @@ public class MainWindow extends JFrame
         if (countdownLabel == null)
             return;
 
-        boolean isOpen = model.isMarketOpen();
+        boolean isOpen = currentMarketOpen;
         long millisRemaining = isOpen ? getMillisUntilClose() : getMillisUntilNextOpen();
 
         if (millisRemaining <= 0) {

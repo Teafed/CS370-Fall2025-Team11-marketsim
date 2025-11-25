@@ -7,6 +7,7 @@ import com.models.market.TradeItem;
 import javax.swing.*;
 import javax.swing.border.Border;
 import java.awt.*;
+import java.awt.image.BufferedImage;
 import java.util.concurrent.atomic.AtomicInteger;
 
 // handles cell rendering in SymbolListPanel
@@ -86,36 +87,29 @@ public class SymbolCellRenderer extends JPanel implements ListCellRenderer<Trade
             symbolLabel.setText(symbol);
             nameLabel.setText(value.getName());
 
-            // Load company logo with staggered timing to avoid rate limits
             ImageIcon cached = logoCache.getIfCached(symbol);
             if (cached != null) {
                 logoLabel.setIcon(makeCircular(cached, iconSize));
             } else {
                 logoLabel.setIcon(logoCache.getPlaceholder());
 
-                // Stagger logo fetch requests with a delay based on the index
                 int requestIndex = requestCounter.getAndIncrement();
                 long delay = requestIndex * REQUEST_DELAY_MS;
 
                 Timer timer = new Timer((int) delay, e -> {
-                    // Fetch logo URL only when needed
                     String logoUrl = null;
                     try {
                         logoUrl = model != null ? model.getLogoForSymbol(symbol) : null;
                     } catch (Exception ignored) {
                     }
 
-                    // Start async load (callback runs on EDT)
                     if (logoUrl != null && !logoUrl.isBlank()) {
                         logoCache.load(symbol, logoUrl, iconSize, iconSize, icon -> {
-                            // Apply circular clipping to loaded icon
                             if (icon != null && !icon.equals(logoCache.getPlaceholder())) {
-                                // Update with circular version
                                 SwingUtilities.invokeLater(() -> {
                                     logoLabel.setIcon(makeCircular(icon, iconSize));
                                 });
                             }
-                            // Repaint the specific row once icon arrives
                             if (list != null && list.getModel().getSize() > index) {
                                 Rectangle rect = list.getCellBounds(index, index);
                                 if (rect != null)
@@ -132,9 +126,8 @@ public class SymbolCellRenderer extends JPanel implements ListCellRenderer<Trade
                 timer.start();
             }
             symbolLabel.setText(value.getSymbol());
-            nameLabel.setText(value.getName()); // Show ticker again as in the reference image
+            nameLabel.setText(value.getName());
 
-            // Ensure labels are visible
             symbolLabel.setVisible(true);
             nameLabel.setVisible(true);
             priceLabel.setVisible(true);
@@ -202,35 +195,56 @@ public class SymbolCellRenderer extends JPanel implements ListCellRenderer<Trade
      * @param size The diameter of the circle.
      * @return A circular Icon.
      */
-    private static Icon makeCircular(ImageIcon icon, int size) {
-        if (icon == null) return null;
+    private static ImageIcon makeCircular(ImageIcon icon, int size) {
+        if (icon == null || icon.getIconWidth() <= 0 || icon.getIconHeight() <= 0) {
+            return icon;
+        }
 
-        return new Icon() {
-            @Override
-            public void paintIcon(Component c, Graphics g, int x, int y) {
-                Graphics2D g2 = (Graphics2D) g.create();
-                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                g2.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
+        // Supersample at 2x resolution for smoother edges
+        int hiSize = size * 2;
 
-                // Create circular clip
-                g2.setClip(new java.awt.geom.Ellipse2D.Float(x, y, size, size));
+        // First, render the circular image at high resolution
+        BufferedImage hiRes = new BufferedImage(hiSize, hiSize, BufferedImage.TYPE_INT_ARGB);
+        Graphics2D g2 = hiRes.createGraphics();
 
-                // Draw the image scaled to fit
-                Image img = icon.getImage();
-                g2.drawImage(img, x, y, size, size, null);
+        g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+        g2.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
+        g2.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BICUBIC);
 
-                g2.dispose();
-            }
+        // Clear with full transparency
+        g2.setComposite(AlphaComposite.Clear);
+        g2.fillRect(0, 0, hiSize, hiSize);
+        g2.setComposite(AlphaComposite.SrcOver);
 
-            @Override
-            public int getIconWidth() {
-                return size;
-            }
+        // Clip to a circle
+        g2.setClip(new java.awt.geom.Ellipse2D.Float(0, 0, hiSize, hiSize));
 
-            @Override
-            public int getIconHeight() {
-                return size;
-            }
-        };
+        // Scale & center original image into hiRes
+        Image img = icon.getImage();
+        int iw = icon.getIconWidth();
+        int ih = icon.getIconHeight();
+        if (iw > 0 && ih > 0) {
+            double scale = (double) hiSize / Math.min(iw, ih);
+            int sw = (int) Math.round(iw * scale);
+            int sh = (int) Math.round(ih * scale);
+
+            int x = (hiSize - sw) / 2;
+            int y = (hiSize - sh) / 2;
+
+            g2.drawImage(img, x, y, sw, sh, null);
+        }
+
+        g2.dispose();
+
+        BufferedImage out = new BufferedImage(size, size, BufferedImage.TYPE_INT_ARGB);
+        Graphics2D gOut = out.createGraphics();
+        gOut.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+        gOut.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
+        gOut.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BICUBIC);
+
+        gOut.drawImage(hiRes, 0, 0, size, size, null);
+        gOut.dispose();
+
+        return new ImageIcon(out);
     }
 }
