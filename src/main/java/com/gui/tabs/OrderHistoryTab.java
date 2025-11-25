@@ -1,4 +1,4 @@
-package com.gui;
+package com.gui.tabs;
 
 import java.awt.*;
 import javax.swing.*;
@@ -8,6 +8,8 @@ import java.text.SimpleDateFormat;
 import java.util.List;
 import java.util.function.Supplier;
 
+import com.gui.ContentPanel;
+import com.gui.GUIComponents;
 import com.models.AccountDTO;
 import com.models.ModelFacade;
 import com.models.ModelListener;

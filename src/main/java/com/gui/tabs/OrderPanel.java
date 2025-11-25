@@ -1,5 +1,7 @@
-package com.gui;
+package com.gui.tabs;
 
+import com.gui.ContentPanel;
+import com.gui.GUIComponents;
 import com.models.ModelFacade;
 
 import javax.swing.*;
@@ -29,7 +31,7 @@ public class OrderPanel extends ContentPanel {
      * @param selectedSymbol    A supplier for the currently selected symbol.
      * @param onCollapseChanged Callback for when the panel is collapsed/expanded.
      */
-    OrderPanel(ModelFacade model, Supplier<String> selectedSymbol, Consumer<Boolean> onCollapseChanged) {
+    public OrderPanel(ModelFacade model, Supplier<String> selectedSymbol, Consumer<Boolean> onCollapseChanged) {
         this.model = model;
         this.selectedSymbol = selectedSymbol;
         this.onCollapseChanged = onCollapseChanged != null ? onCollapseChanged : (c) -> {
@@ -72,6 +74,7 @@ public class OrderPanel extends ContentPanel {
         tabs.addTab("Order", new OrderTab(model, selectedSymbol));
         historyTab = new OrderHistoryTab(model, selectedSymbol);
         tabs.addTab("Order History", historyTab);
+        tabs.addTab("Company Info", new CompanyProfileTab(model, selectedSymbol));
 
         add(header, BorderLayout.NORTH);
         add(tabs, BorderLayout.CENTER);
@@ -105,7 +108,7 @@ public class OrderPanel extends ContentPanel {
      *
      * @return The header height in pixels.
      */
-    int getHeaderHeight() {
+    public int getHeaderHeight() {
         return header.getPreferredSize().height + getInsets().top + getInsets().bottom;
     }
 

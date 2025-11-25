@@ -1,6 +1,7 @@
-package com.gui;
+package com.gui.tabs;
 
-import javax.swing.*;
+import com.gui.GUIComponents;
+
 import javax.swing.plaf.basic.BasicTabbedPaneUI;
 import java.awt.*;
 

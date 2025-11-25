@@ -142,6 +142,10 @@ public class ModelFacade {
     public long getLatestTimestamp(String symbol) throws SQLException {
         return db.getLatestTimestamp(symbol);
     }
+    public CompanyProfile getCompanyProfile(String symbol) {
+        return fetchAndCacheCompanyProfile(symbol);
+    }
+
     // MARKET - commands
     public String[][] searchSymbol(String symbol) {
         return market.searchSymbol(symbol);

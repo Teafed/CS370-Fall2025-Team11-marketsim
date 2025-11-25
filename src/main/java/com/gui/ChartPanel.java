@@ -3,6 +3,7 @@
 package com.gui;
 
 import com.etl.HistoricalService;
+import com.gui.tabs.OrderPanel;
 import com.models.Database;
 import com.models.ModelFacade;
 
