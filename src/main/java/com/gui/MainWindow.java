@@ -33,6 +33,7 @@ public class MainWindow extends JFrame
     private JLabel countdownLabel;
     private Timer countdownTimer;
     private boolean currentMarketOpen;
+    private String currentRightCard = CARD_CHART;
 
     private static final String WINDOW_TITLE = "MarketSim";
     private static final String CARD_CHART = "chart";
@@ -115,6 +116,7 @@ public class MainWindow extends JFrame
         symbolPanel.repaint();
 
         cards.show(rightCards, CARD_CHART);
+        currentRightCard = CARD_CHART; // initial state
         rightCards.setMinimumSize(new Dimension(MIN_RIGHT_WIDTH, 0));
 
         // Create a wrapper panel to hold a top bar (market status) and the card area.
@@ -196,7 +198,11 @@ public class MainWindow extends JFrame
      */
     @Override
     public void onSymbolSelected(TradeItem item) {
-        cards.show(rightCards, CARD_CHART);
+        // Always switch to the chart when a symbol is selected.
+        if (!CARD_CHART.equals(currentRightCard)) {
+            cards.show(rightCards, CARD_CHART);
+            currentRightCard = CARD_CHART;
+        }
         chartPanel.openChart(item.getSymbol());
     }
 
@@ -207,7 +213,14 @@ public class MainWindow extends JFrame
      */
     @Override
     public void onAccountBarSelected(Account account) {
-        cards.show(rightCards, CARD_ACCOUNT);
+        // Toggle: if account view is already showing, go back to last trading (chart) view.
+        if (CARD_ACCOUNT.equals(currentRightCard)) {
+            cards.show(rightCards, CARD_CHART);
+            currentRightCard = CARD_CHART;
+        } else {
+            cards.show(rightCards, CARD_ACCOUNT);
+            currentRightCard = CARD_ACCOUNT;
+        }
     }
 
     // ModelListener listeners
