@@ -27,6 +27,8 @@ public class OrderTab extends ContentPanel {
 
     private JButton buyButton;
     private JButton sellButton;
+    private final Color buyColor  = GUIComponents.GREEN;
+    private final Color sellColor = GUIComponents.RED;
 
     private final DecimalFormat money = new DecimalFormat("$#,##0.00");
     private final DecimalFormat sharesFmt = new DecimalFormat("#,##0");
@@ -115,8 +117,8 @@ public class OrderTab extends ContentPanel {
         panel.setOpaque(false);
         panel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 36));
 
-        buyButton = createActionButton("Buy", GUIComponents.GREEN);
-        sellButton = createActionButton("Sell", GUIComponents.RED);
+        buyButton = createActionButton("Buy", buyColor);
+        sellButton = createActionButton("Sell", sellColor);
 
         buyButton.addActionListener(e -> submit(true));
         sellButton.addActionListener(e -> submit(false));
@@ -129,31 +131,64 @@ public class OrderTab extends ContentPanel {
 
     private JButton createActionButton(String text, Color color) {
         JButton button = new JButton(text);
-        button.setFont(new Font("Arial", Font.BOLD, 13));
+        button.setFont(new Font("Segoe UI", Font.BOLD, 13));
         button.setFocusPainted(false);
         button.setCursor(new Cursor(Cursor.HAND_CURSOR));
         button.setPreferredSize(new Dimension(0, 36));
+        button.setOpaque(true);
+        button.setBorder(BorderFactory.createEmptyBorder(8, 12, 8, 12));
+
         button.setBackground(color);
         button.setForeground(Color.WHITE);
-        button.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(color.darker(), 1),
-                BorderFactory.createEmptyBorder(8, 12, 8, 12)
-        ));
-        button.setOpaque(true);
 
         return button;
+    }
+
+    private void updateButtonState(JButton button, boolean enabled, Color base) {
+        button.setEnabled(enabled);
+
+        if (enabled) {
+            button.setBackground(base);
+            button.setForeground(Color.WHITE);
+            button.setBorder(BorderFactory.createCompoundBorder(
+                    BorderFactory.createLineBorder(base.darker(), 1),
+                    BorderFactory.createEmptyBorder(8, 12, 8, 12)
+            ));
+        } else {
+            // Desaturate by mixing with panel background
+            Color bg = GUIComponents.BG_MEDIUM;
+            Color disabledBg = new Color(
+                    (base.getRed()   + bg.getRed())   / 2,
+                    (base.getGreen() + bg.getGreen()) / 2,
+                    (base.getBlue()  + bg.getBlue())  / 2
+            );
+            button.setBackground(disabledBg);
+            button.setForeground(GUIComponents.TEXT_SECONDARY);
+            button.setBorder(BorderFactory.createCompoundBorder(
+                    BorderFactory.createLineBorder(GUIComponents.BORDER_COLOR, 1),
+                    BorderFactory.createEmptyBorder(8, 12, 8, 12)
+            ));
+        }
     }
 
     private JPanel createSharesPanel() {
         JPanel panel = new JPanel(new BorderLayout());
         panel.setOpaque(false);
 
+        // Label
         JLabel label = new JLabel("Number of Shares");
-        label.setFont(new Font("Arial", Font.PLAIN, 12));
+        label.setFont(new Font("Segoe UI", Font.PLAIN, 12));
         label.setForeground(GUIComponents.TEXT_SECONDARY);
         label.setBorder(BorderFactory.createEmptyBorder(0, 0, 4, 0));
+        panel.add(label, BorderLayout.NORTH);
 
-        sharesField.setFont(new Font("Arial", Font.PLAIN, 13));
+        // --- ROW: shares field + quick buttons ---
+        JPanel row = new JPanel();
+        row.setLayout(new BoxLayout(row, BoxLayout.X_AXIS));
+        row.setOpaque(false);
+
+        // Shares field
+        sharesField.setFont(new Font("Segoe UI", Font.PLAIN, 13));
         sharesField.setBackground(GUIComponents.BG_MEDIUM);
         sharesField.setForeground(GUIComponents.TEXT_PRIMARY);
         sharesField.setCaretColor(GUIComponents.TEXT_PRIMARY);
@@ -161,15 +196,132 @@ public class OrderTab extends ContentPanel {
                 BorderFactory.createLineBorder(GUIComponents.BORDER_COLOR, 1),
                 BorderFactory.createEmptyBorder(8, 10, 8, 10)
         ));
-        sharesField.setHorizontalAlignment(SwingConstants.LEFT);
+        sharesField.setMaximumSize(new Dimension(120, 36));
 
-        JPanel wrapper = new JPanel(new BorderLayout());
-        wrapper.setOpaque(false);
-        wrapper.add(label, BorderLayout.NORTH);
-        wrapper.add(sharesField, BorderLayout.CENTER);
+        // Clear "0" on focus
+        sharesField.addFocusListener(new java.awt.event.FocusAdapter() {
+            @Override
+            public void focusGained(java.awt.event.FocusEvent e) {
+                if ("0".equals(sharesField.getText().trim())) {
+                    sharesField.setText("");
+                }
+            }
 
-        return wrapper;
+            @Override
+            public void focusLost(java.awt.event.FocusEvent e) {
+                if (sharesField.getText().trim().isEmpty()) {
+                    sharesField.setText("0");
+                }
+            }
+        });
+
+        row.add(sharesField);
+        row.add(Box.createHorizontalStrut(8));
+
+        // Add quick buttons
+        row.add(createSmallSharesButton("25%", () -> applyFraction(0.25)));
+        row.add(Box.createHorizontalStrut(4));
+        row.add(createSmallSharesButton("50%", () -> applyFraction(0.50)));
+        row.add(Box.createHorizontalStrut(4));
+        row.add(createSmallSharesButton("Buy Max", this::setBuyMax));
+        row.add(Box.createHorizontalStrut(4));
+        row.add(createSmallSharesButton("Sell All", this::setSellAll));
+
+        panel.add(row, BorderLayout.CENTER);
+
+        return panel;
     }
+
+    private JButton createSmallSharesButton(String text, Runnable action) {
+        JButton b = new JButton(text);
+        b.setFont(new Font("Segoe UI", Font.PLAIN, 11));
+        b.setFocusPainted(false);
+        b.setContentAreaFilled(false);
+        b.setOpaque(true);
+        b.setBackground(GUIComponents.BG_MEDIUM);
+        b.setForeground(GUIComponents.TEXT_PRIMARY);
+        b.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(GUIComponents.BORDER_COLOR, 1),
+                BorderFactory.createEmptyBorder(4, 8, 4, 8)
+        ));
+        b.addActionListener(e -> action.run());
+        return b;
+    }
+
+
+    private int getCurrentPosition(String sym) {
+        if (sym == null) return 0;
+        try {
+            var dto = model.getAccountDTO();
+            var pos = dto.positions();
+            if (pos != null) {
+                Integer q = pos.get(sym);
+                return q == null ? 0 : q;
+            }
+        } catch (Exception ignored) {}
+        return 0;
+    }
+
+    private double getCurrentCash() {
+        try {
+            return model.getAccountDTO().cash();
+        } catch (Exception ignored) {
+            return 0.0;
+        }
+    }
+
+    private void applyFraction(double fraction) {
+        String sym = symbol();
+        if (sym == null || sym.isBlank()) return;
+
+        double price = model.getPrice(sym);
+        if (Double.isNaN(price) || price <= 0.0) return;
+
+        int position = getCurrentPosition(sym);
+        int base;
+
+        if (position > 0) {
+            // If we own shares, 25/50% of current position
+            base = position;
+        } else {
+            // Otherwise, 25/50% of max affordable shares
+            double cash = getCurrentCash();
+            base = (int) Math.floor(cash / price);
+        }
+
+        int shares = (int) Math.floor(base * fraction);
+        if (shares < 0) shares = 0;
+
+        sharesField.setText(String.valueOf(shares));
+        refreshReadouts();
+    }
+
+    private void setBuyMax() {
+        String sym = symbol();
+        if (sym == null || sym.isBlank()) return;
+
+        double price = model.getPrice(sym);
+        if (Double.isNaN(price) || price <= 0.0) return;
+
+        double cash = getCurrentCash();
+        int max = (int) Math.floor(cash / price);
+        if (max < 0) max = 0;
+
+        sharesField.setText(String.valueOf(max));
+        refreshReadouts();
+    }
+
+    private void setSellAll() {
+        String sym = symbol();
+        if (sym == null || sym.isBlank()) return;
+
+        int position = getCurrentPosition(sym);
+        if (position <= 0) return;
+
+        sharesField.setText(String.valueOf(position));
+        refreshReadouts();
+    }
+
 
     private JPanel createTotalPricePanel() {
         JPanel panel = new JPanel(new BorderLayout());
@@ -224,8 +376,8 @@ public class OrderTab extends ContentPanel {
         boolean haveSym = (sym != null && !sym.isBlank());
         boolean havePrice = !Double.isNaN(price) && price > 0.0;
         boolean validShares = shares > 0;
-        buyButton.setEnabled(haveSym && havePrice && validShares);
-        sellButton.setEnabled(haveSym && havePrice && validShares);
+        updateButtonState(buyButton,  haveSym && havePrice && validShares, buyColor);
+        updateButtonState(sellButton, haveSym && havePrice && validShares, sellColor);
     }
 
     private int parseShares() {

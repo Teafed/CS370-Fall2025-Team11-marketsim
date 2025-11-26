@@ -40,9 +40,7 @@ public class OrderHistoryTab extends ContentPanel implements ModelListener {
 
         setLayout(new BorderLayout());
         setBackground(GUIComponents.BG_LIGHTER);
-        setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(GUIComponents.BORDER_COLOR, 1),
-                BorderFactory.createEmptyBorder(16, 16, 16, 16)));
+        setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
 
         initializeComponents();
         model.addListener(this);

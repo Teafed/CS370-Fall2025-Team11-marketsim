@@ -71,6 +71,7 @@ public class OrderPanel extends ContentPanel {
             }
         };
         tabs.updateUI();
+        tabs.setFont(new Font("Segoe UI", Font.BOLD, 12));
         tabs.addTab("Order", new OrderTab(model, selectedSymbol));
         historyTab = new OrderHistoryTab(model, selectedSymbol);
         tabs.addTab("Order History", historyTab);
