@@ -449,6 +449,14 @@ public class ModelFacade {
         if (dbSymbols == null || dbSymbols.isEmpty()) {
             // add defaults and persist
             List<TradeItem> defaults = Watchlist.getDefaultWatchlist();
+            for (TradeItem ti : defaults) {
+                CompanyProfile cp = fetchAndCacheCompanyProfile(ti.getSymbol());
+                if (cp != null) {
+                    ti.setCompanyProfile(cp);
+                } else {
+                    ti.setNameLookup(ti);
+                }
+            }
             a.getWatchlist().clearList();
             for (TradeItem ti : defaults) {
                 a.getWatchlist().addWatchlistItem(ti);

@@ -35,7 +35,6 @@ public class TradeItem implements SymbolListEntry {
     public CompanyProfile getCompanyProfile() { return companyProfile; }
     public void setCompanyProfile(CompanyProfile cp) {
         this.companyProfile = cp;
-        System.out.println("[CP] Applied to TradeItem " + getSymbol() + " name=" + this.companyProfile.getName());
     }
 
     /**
