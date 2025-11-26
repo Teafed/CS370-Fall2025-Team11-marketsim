@@ -30,6 +30,11 @@ public class OrderTab extends ContentPanel {
     private final Color buyColor  = GUIComponents.GREEN;
     private final Color sellColor = GUIComponents.RED;
 
+    private JButton btn25;
+    private JButton btn50;
+    private JButton btnBuyMax;
+    private JButton btnSellMax;
+
     private final DecimalFormat money = new DecimalFormat("$#,##0.00");
     private final DecimalFormat sharesFmt = new DecimalFormat("#,##0");
 
@@ -182,7 +187,6 @@ public class OrderTab extends ContentPanel {
         label.setBorder(BorderFactory.createEmptyBorder(0, 0, 4, 0));
         panel.add(label, BorderLayout.NORTH);
 
-        // --- ROW: shares field + quick buttons ---
         JPanel row = new JPanel();
         row.setLayout(new BoxLayout(row, BoxLayout.X_AXIS));
         row.setOpaque(false);
@@ -218,14 +222,17 @@ public class OrderTab extends ContentPanel {
         row.add(sharesField);
         row.add(Box.createHorizontalStrut(8));
 
-        // Add quick buttons
-        row.add(createSmallSharesButton("25%", () -> applyFraction(0.25)));
+        btn25 = createSmallSharesButton("25%", () -> applyFraction(0.25));
+        btn50 = createSmallSharesButton("50%", () -> applyFraction(0.50));
+        btnBuyMax = createSmallSharesButton("Buy Max", this::setBuyMax);
+        btnSellMax = createSmallSharesButton("Sell Max", this::setSellMax);
+        row.add(btn25);
         row.add(Box.createHorizontalStrut(4));
-        row.add(createSmallSharesButton("50%", () -> applyFraction(0.50)));
+        row.add(btn50);
         row.add(Box.createHorizontalStrut(4));
-        row.add(createSmallSharesButton("Buy Max", this::setBuyMax));
+        row.add(btnBuyMax);
         row.add(Box.createHorizontalStrut(4));
-        row.add(createSmallSharesButton("Sell All", this::setSellAll));
+        row.add(btnSellMax);
 
         panel.add(row, BorderLayout.CENTER);
 
@@ -246,6 +253,28 @@ public class OrderTab extends ContentPanel {
         ));
         b.addActionListener(e -> action.run());
         return b;
+    }
+
+    private void updateSmallButtonState(JButton b, boolean enabled) {
+        b.setEnabled(enabled);
+
+        if (enabled) {
+            b.setBackground(GUIComponents.BG_MEDIUM);
+            b.setForeground(GUIComponents.TEXT_PRIMARY);
+            b.setBorder(BorderFactory.createCompoundBorder(
+                    BorderFactory.createLineBorder(GUIComponents.BORDER_COLOR, 1),
+                    BorderFactory.createEmptyBorder(4, 8, 4, 8)
+            ));
+        } else {
+            // Desaturate manually
+            Color bg = GUIComponents.BG_DARK;  // darker background
+            b.setBackground(bg);
+            b.setForeground(GUIComponents.TEXT_SECONDARY);
+            b.setBorder(BorderFactory.createCompoundBorder(
+                    BorderFactory.createLineBorder(GUIComponents.BORDER_COLOR.darker(), 1),
+                    BorderFactory.createEmptyBorder(4, 8, 4, 8)
+            ));
+        }
     }
 
 
@@ -311,7 +340,7 @@ public class OrderTab extends ContentPanel {
         refreshReadouts();
     }
 
-    private void setSellAll() {
+    private void setSellMax() {
         String sym = symbol();
         if (sym == null || sym.isBlank()) return;
 
@@ -360,7 +389,6 @@ public class OrderTab extends ContentPanel {
             lblTotalPrice.setText("$0.00");
         }
 
-        // Position: we want quantity for selected symbol (if available in DTO)
         int qty = 0;
         try {
             var dto = model.getAccountDTO();
@@ -369,15 +397,28 @@ public class OrderTab extends ContentPanel {
                 Integer q = pos.get(sym);
                 if (q != null) qty = q;
             }
-        } catch (Exception ignore) {}
+        } catch (Exception ignore) { }
         lblPos.setText(sharesFmt.format(qty));
 
-        // Button enablement
+        double cash = getCurrentCash();
         boolean haveSym = (sym != null && !sym.isBlank());
         boolean havePrice = !Double.isNaN(price) && price > 0.0;
         boolean validShares = shares > 0;
-        updateButtonState(buyButton,  haveSym && havePrice && validShares, buyColor);
+
+        updateButtonState(buyButton, haveSym && havePrice && validShares, buyColor);
         updateButtonState(sellButton, haveSym && havePrice && validShares, sellColor);
+
+        int affordable = (havePrice ? (int) Math.floor(cash / price) : 0);
+        int baseForFractions = (qty > 0 ? qty : affordable);
+
+        boolean canUseFractions = haveSym && havePrice && baseForFractions > 0;
+        boolean canBuyMax = haveSym && havePrice && affordable > 0;
+        boolean hasPosition = haveSym && qty > 0;
+
+        if (btn25 != null) updateSmallButtonState(btn25, canUseFractions);
+        if (btn50 != null) updateSmallButtonState(btn50, canUseFractions);
+        if (btnBuyMax != null) updateSmallButtonState(btnBuyMax, canBuyMax);
+        if (btnSellMax != null) updateSmallButtonState(btnSellMax, hasPosition);
     }
 
     private int parseShares() {

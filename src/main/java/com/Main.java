@@ -17,7 +17,7 @@ public class Main {
      * @throws SQLException If the database cannot be initialized.
      */
     public static void main(String[] args) throws SQLException {
-        String dbFile = "data/marketsim-presentation.db";
+        String dbFile = "data/marketsim-sample.db";
 
         try {
             Database db = new Database(dbFile);
