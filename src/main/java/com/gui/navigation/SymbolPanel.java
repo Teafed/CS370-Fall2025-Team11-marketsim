@@ -108,9 +108,13 @@ public class SymbolPanel extends ContentPanel {
 
     public void buildList(List<TradeItem> watchlist, List<TradeItem> portfolio) {
         listModel.clear();
-        listModel.addElement(portfolioHeader);
-        if (!portfolioHeader.isCollapsed()) {
-            portfolio.forEach(listModel::addElement);
+
+        // only show portfolio header if it has items
+        if (portfolio != null && !portfolio.isEmpty()) {
+            listModel.addElement(portfolioHeader);
+            if (!portfolioHeader.isCollapsed()) {
+                portfolio.forEach(listModel::addElement);
+            }
         }
         listModel.addElement(watchlistHeader);
         if (!watchlistHeader.isCollapsed()) {
