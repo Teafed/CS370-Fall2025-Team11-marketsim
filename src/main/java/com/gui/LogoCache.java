@@ -105,7 +105,6 @@ public class LogoCache {
                         try {
                             BufferedImage img = ImageIO.read(diskPath.toFile());
                             if (img != null) {
-                                System.out.println("[LogoCache] Hit disk cache for " + symbol);
                                 BufferedImage resized = resizeImage(img, 40, 40);
                                 ImageIcon result = new ImageIcon(resized);
                                 cache.put(symbol, result);

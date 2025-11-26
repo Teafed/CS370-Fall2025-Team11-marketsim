@@ -7,7 +7,6 @@ import com.gui.navigation.SymbolListEntry;
  * Holds current price, change, and other market data.
  */
 public class TradeItem implements SymbolListEntry {
-    private String name; // DEPRECATED
     private final String symbol;
     private double price;
     private double changePercent;
@@ -34,7 +33,10 @@ public class TradeItem implements SymbolListEntry {
     public String getSymbol() { return symbol; }
 
     public CompanyProfile getCompanyProfile() { return companyProfile; }
-    public void setCompanyProfile(CompanyProfile cp) { this.companyProfile = cp; }
+    public void setCompanyProfile(CompanyProfile cp) {
+        this.companyProfile = cp;
+        System.out.println("[CP] Applied to TradeItem " + getSymbol() + " name=" + this.companyProfile.getName());
+    }
 
     /**
      * Gets the current price.
@@ -101,7 +103,7 @@ public class TradeItem implements SymbolListEntry {
 
     @Override
     public String toString() {
-        return this.getClass().getSimpleName() + "{" + "name=" + name + ", symbol=" + symbol + ", price=" + price + '}';
+        return this.getClass().getSimpleName() + "{" + "name=" + companyProfile.getName() + ", symbol=" + symbol + ", price=" + price + '}';
     }
 
     @Override

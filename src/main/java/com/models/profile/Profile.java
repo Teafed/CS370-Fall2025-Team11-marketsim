@@ -71,7 +71,6 @@ public class Profile {
         return true;
     }
 
-    // Get account by name
     /**
      * Gets an account by name.
      *

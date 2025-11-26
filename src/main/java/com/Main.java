@@ -6,7 +6,7 @@ import com.gui.*;
 import java.sql.SQLException;
 
 /**
- * The entry point for the Market Simulator application.
+ * The entry point for the MarketSim application.
  * Initializes the database and launches the startup window.
  */
 public class Main {

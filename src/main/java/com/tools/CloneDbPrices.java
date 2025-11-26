@@ -8,21 +8,17 @@ import java.nio.file.Paths;
 import java.sql.*;
 
 /**
- * Utility to create a "clean" test database that keeps only price-related data.
+ * Utility to create a “clean” database that keeps only market data
+ * (prices + company_profiles) and drops all user/profile data.
  *
  * Usage:
- *   java com.tools.PriceDbCloneTool path/to/source.db path/to/clean.db
- *
- * Result:
- *   - clean.db has the full schema
- *   - prices (and company_profiles) are copied over
- *   - no profiles/accounts/trades/cash_ledger/positions/watchlists
+ *   java com.tools.CloneDbPrices path/to/source.db path/to/clean.db
  */
 public class CloneDbPrices {
 
     public static void main(String[] args) throws Exception {
         if (args.length != 2) {
-            System.err.println("Usage: PriceDbCloneTool <source.db> <dest.db>");
+            System.err.println("Usage: CloneDbPrices <source.db> <dest.db>");
             System.exit(1);
         }
 
@@ -38,36 +34,35 @@ public class CloneDbPrices {
             System.exit(1);
         }
 
-        // 1) Create destination DB with full schema (but empty tables)
+        // 1) Create destination DB with full schema
         System.out.println("Creating destination DB with schema: " + dstPath);
         try (Database ignored = new Database(dstPath.toString())) {
-            // constructor ensures schema; we don't need anything else here
+            // constructor ensures schema, then closes
         }
 
-        // 2) Open raw JDBC connections to source and dest
+        // 2) Copy rows using raw JDBC
         String srcUrl = "jdbc:sqlite:" + srcPath;
         String dstUrl = "jdbc:sqlite:" + dstPath + "?busy_timeout=5000";
 
         try (Connection src = DriverManager.getConnection(srcUrl);
              Connection dst = DriverManager.getConnection(dstUrl)) {
 
-            // Just to be explicit
             try (Statement st = dst.createStatement()) {
                 st.execute("PRAGMA foreign_keys = ON");
             }
 
-            copyPrices(src, dst);
-            copyCompanyProfiles(src, dst); // optional but useful
+            int priceRows = copyPrices(src, dst);
+            int cpRows = copyCompanyProfiles(src, dst);
 
-            System.out.println("Done!");
+            System.out.println("==================================================");
+            System.out.println("Copy finished:");
+            System.out.println("  prices            : " + priceRows + " rows");
+            System.out.println("  company_profiles  : " + cpRows + " rows");
+            System.out.println("Destination DB ready at: " + dstPath);
         }
     }
 
-    /**
-     * Copy all rows from source.prices to dest.prices,
-     * ignoring the autoincrement 'id' and relying on the UNIQUE(symbol, timespan, multiplier, timestamp).
-     */
-    private static void copyPrices(Connection src, Connection dst) throws SQLException {
+    private static int copyPrices(Connection src, Connection dst) throws SQLException {
         System.out.println("Copying prices...");
         String selectSql = """
                 SELECT symbol, timespan, multiplier, timestamp,
@@ -93,7 +88,7 @@ public class CloneDbPrices {
                 ins.setString(2, rs.getString("timespan"));
                 ins.setInt(3, rs.getInt("multiplier"));
                 ins.setLong(4, rs.getLong("timestamp"));
-                ins.setObject(5, rs.getObject("open"));   // allows NULL
+                ins.setObject(5, rs.getObject("open"));
                 ins.setObject(6, rs.getObject("high"));
                 ins.setObject(7, rs.getObject("low"));
                 ins.setObject(8, rs.getObject("close"));
@@ -108,18 +103,14 @@ public class CloneDbPrices {
             throw e;
         }
 
-        System.out.println("Copied " + count + " price rows.");
+        System.out.println("Copied " + count + " rows into prices.");
+        return count;
     }
 
-    /**
-     * Copy all rows from source.company_profiles to dest.company_profiles.
-     * This is optional, but nice so your app already has cached metadata.
-     */
-    private static void copyCompanyProfiles(Connection src, Connection dst) throws SQLException {
-        // If the source DB doesn't have this table (older DB), just skip
+    private static int copyCompanyProfiles(Connection src, Connection dst) throws SQLException {
         if (!tableExists(src, "company_profiles")) {
             System.out.println("No company_profiles table in source; skipping.");
-            return;
+            return 0;
         }
 
         System.out.println("Copying company_profiles...");
@@ -167,7 +158,8 @@ public class CloneDbPrices {
             throw e;
         }
 
-        System.out.println("Copied " + count + " company_profiles rows.");
+        System.out.println("Copied " + count + " rows into company_profiles.");
+        return count;
     }
 
     private static boolean tableExists(Connection conn, String name) throws SQLException {

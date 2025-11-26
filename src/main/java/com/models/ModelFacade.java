@@ -421,15 +421,28 @@ public class ModelFacade {
         String key = symbol.trim().toUpperCase();
         try {
             CompanyProfile cp = db.getCompanyProfile(key);
-            if (cp != null) return cp;
+            if (cp != null) {
+                attachProfileToTradeItem(key, cp);
+                return cp;
+            }
 
             // fetch from remote
             CompanyProfile fetched = client.fetchInfo(key);
             if (fetched != null) {
                 db.upsertCompanyProfile(key, fetched, System.currentTimeMillis());
+                attachProfileToTradeItem(key, cp);
             }
             return fetched;
         } catch (Exception e) { return null; }
+    }
+    private void attachProfileToTradeItem(String symbol, CompanyProfile cp) {
+        if (cp == null) return;
+        String key = symbol.trim().toUpperCase();
+        TradeItem ti = market.get(key);
+        if (ti != null) {
+            // This will hit your debug print:
+            ti.setCompanyProfile(cp);
+        }
     }
     private void ensureWatchlistPopulated(Account a) throws Exception {
         List<TradeItem> dbSymbols = a.getWatchlistItems();
