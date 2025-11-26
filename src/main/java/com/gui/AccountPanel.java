@@ -7,11 +7,11 @@ import com.models.profile.Account;
 
 import javax.swing.*;
 import java.awt.*;
-import java.awt.geom.*;
 import java.sql.SQLException;
 import java.text.NumberFormat;
-import java.util.*;
 import java.util.List;
+import java.util.*;
+import java.util.Map;
 
 /**
  * A redesigned panel displaying comprehensive account information.
@@ -23,9 +23,14 @@ public class AccountPanel extends ContentPanel implements ModelListener {
     private final JLabel totalAccountValueLabel = new JLabel();
     private final JLabel cashBalanceLabel = new JLabel();
     private final JLabel portfolioValueLabel = new JLabel();
+
+    private final JLabel profileLabel = new JLabel();
+    private final JLabel accountLabel = new JLabel();
+
     private final JButton btnDeposit = new JButton("Deposit Cash");
     private final JButton btnCustomize = new JButton("Customize");
     private final JButton btnSwitchAccount = new JButton("Switch Account");
+    private final JButton btnNewAccount = new JButton("New Account");
     private final JPanel holdingsPanel = new JPanel();
     private final GoalChartPanel goalChart;
     private final PieChartPanel pieChart;
@@ -53,10 +58,10 @@ public class AccountPanel extends ContentPanel implements ModelListener {
         leftPanel.setLayout(new BoxLayout(leftPanel, BoxLayout.Y_AXIS));
         leftPanel.setOpaque(false);
 
-        // Cash Balance and Portfolio Value side by side (with Total spanning across)
+        // Cash Balance and Portfolio Value side by side
         JPanel balanceRow = new JPanel(new GridLayout(1, 2, 12, 0));
         balanceRow.setOpaque(false);
-        balanceRow.setMaximumSize(new Dimension(Integer.MAX_VALUE, 120));
+        balanceRow.setMaximumSize(new Dimension(Integer.MAX_VALUE, 160));
 
         JPanel cashCard = createCard();
         cashCard.setLayout(new BorderLayout());
@@ -64,6 +69,37 @@ public class AccountPanel extends ContentPanel implements ModelListener {
         JPanel cashContent = new JPanel();
         cashContent.setLayout(new BoxLayout(cashContent, BoxLayout.Y_AXIS));
         cashContent.setOpaque(false);
+
+        // Profile & account labels here (above cash)
+        profileLabel.setForeground(GUIComponents.TEXT_SECONDARY);
+        profileLabel.setFont(new Font("Segoe UI", Font.PLAIN, 11));
+        profileLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+        accountLabel.setForeground(GUIComponents.TEXT_PRIMARY);
+        accountLabel.setFont(new Font("Segoe UI", Font.BOLD, 28));
+        accountLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+        JLabel cashTitle = new JLabel("💵 Cash Balance");
+        cashTitle.setForeground(GUIComponents.TEXT_SECONDARY);
+        cashTitle.setFont(new Font("Segoe UI", Font.PLAIN, 11));
+        cashTitle.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+        cashBalanceLabel.setForeground(GUIComponents.TEXT_PRIMARY);
+        cashBalanceLabel.setFont(new Font("Segoe UI", Font.BOLD, 24));
+        cashBalanceLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+        cashContent.add(profileLabel);
+        cashContent.add(Box.createVerticalStrut(2));
+        cashContent.add(accountLabel);
+        cashContent.add(Box.createVerticalStrut(8));
+        cashContent.add(cashTitle);
+        cashContent.add(Box.createVerticalStrut(6));
+        cashContent.add(cashBalanceLabel);
+
+        cashCard.add(cashContent, BorderLayout.NORTH);
+
+        JPanel portfolioCard = createCard();
+        portfolioCard.setLayout(new BoxLayout(portfolioCard, BoxLayout.Y_AXIS));
 
         JLabel totalTitle = new JLabel("Total Account Value");
         totalTitle.setForeground(GUIComponents.TEXT_SECONDARY);
@@ -74,48 +110,35 @@ public class AccountPanel extends ContentPanel implements ModelListener {
         totalAccountValueLabel.setFont(new Font("Segoe UI", Font.BOLD, 28));
         totalAccountValueLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
 
-        cashContent.add(totalTitle);
-        cashContent.add(Box.createVerticalStrut(4));
-        cashContent.add(totalAccountValueLabel);
-        cashContent.add(Box.createVerticalStrut(12));
-
-        JLabel cashTitle = new JLabel("💵 Cash Balance");
-        cashTitle.setForeground(GUIComponents.TEXT_SECONDARY);
-        cashTitle.setFont(new Font("Segoe UI", Font.PLAIN, 11));
-        cashTitle.setAlignmentX(Component.LEFT_ALIGNMENT);
-
-        cashBalanceLabel.setForeground(GUIComponents.TEXT_PRIMARY);
-        cashBalanceLabel.setFont(new Font("Segoe UI", Font.BOLD, 20));
-        cashBalanceLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
-
-        cashContent.add(cashTitle);
-        cashContent.add(Box.createVerticalStrut(4));
-        cashContent.add(cashBalanceLabel);
-
-        cashCard.add(cashContent, BorderLayout.NORTH);
-
-        JPanel portfolioCard = createCard();
-        portfolioCard.setLayout(new BoxLayout(portfolioCard, BoxLayout.Y_AXIS));
         JLabel portfolioTitle = new JLabel("📊 Portfolio Value");
         portfolioTitle.setForeground(GUIComponents.TEXT_SECONDARY);
         portfolioTitle.setFont(new Font("Segoe UI", Font.PLAIN, 11));
+        portfolioTitle.setAlignmentX(Component.LEFT_ALIGNMENT);
+
         portfolioValueLabel.setForeground(GUIComponents.TEXT_PRIMARY);
         portfolioValueLabel.setFont(new Font("Segoe UI", Font.BOLD, 20));
+        portfolioValueLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+        portfolioCard.add(totalTitle);
+        portfolioCard.add(Box.createVerticalStrut(4));
+        portfolioCard.add(totalAccountValueLabel);
+        portfolioCard.add(Box.createVerticalStrut(12));
         portfolioCard.add(portfolioTitle);
-        portfolioCard.add(Box.createVerticalStrut(8));
+        portfolioCard.add(Box.createVerticalStrut(4));
         portfolioCard.add(portfolioValueLabel);
 
         balanceRow.add(cashCard);
         balanceRow.add(portfolioCard);
 
-        // Action buttons - all in one row
-        JPanel buttonRow = new JPanel(new GridLayout(1, 3, 12, 0));
+        // ---- Action buttons ----
+        JPanel buttonRow = new JPanel(new GridLayout(1, 4, 12, 0));
         buttonRow.setOpaque(false);
         buttonRow.setMaximumSize(new Dimension(Integer.MAX_VALUE, 40));
 
         styleButton(btnDeposit);
         styleButton(btnCustomize);
         styleButton(btnSwitchAccount);
+        styleButton(btnNewAccount);
 
         btnDeposit.addActionListener(e -> onDepositCash());
         btnCustomize.addActionListener(e -> {
@@ -126,15 +149,16 @@ public class AccountPanel extends ContentPanel implements ModelListener {
             }
         });
         btnSwitchAccount.addActionListener(e -> onSwitchAccount());
+        btnNewAccount.addActionListener(e -> onNewAccount());
 
         buttonRow.add(btnDeposit);
         buttonRow.add(btnCustomize);
         buttonRow.add(btnSwitchAccount);
+        buttonRow.add(btnNewAccount);
 
         // Portfolio Holdings section
         JPanel holdingsSection = createCard();
         holdingsSection.setLayout(new BorderLayout());
-        holdingsSection.setPreferredSize(new Dimension(450, 300));
 
         JLabel holdingsTitle = new JLabel("Portfolio Holdings");
         holdingsTitle.setForeground(GUIComponents.TEXT_PRIMARY);
@@ -148,6 +172,7 @@ public class AccountPanel extends ContentPanel implements ModelListener {
         holdingsScroll.setBorder(BorderFactory.createEmptyBorder());
         holdingsScroll.setOpaque(false);
         holdingsScroll.getViewport().setOpaque(false);
+        holdingsScroll.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
 
         holdingsSection.add(holdingsTitle, BorderLayout.NORTH);
         holdingsSection.add(holdingsScroll, BorderLayout.CENTER);
@@ -166,8 +191,6 @@ public class AccountPanel extends ContentPanel implements ModelListener {
 
         JPanel goalSection = createCard();
         goalSection.setLayout(new BorderLayout());
-        goalSection.setPreferredSize(new Dimension(300, 250));
-
         JLabel goalTitle = new JLabel("Goal Progress");
         goalTitle.setForeground(GUIComponents.TEXT_PRIMARY);
         goalTitle.setFont(new Font("Segoe UI", Font.BOLD, 16));
@@ -178,8 +201,7 @@ public class AccountPanel extends ContentPanel implements ModelListener {
 
         JPanel pieSection = createCard();
         pieSection.setLayout(new BorderLayout());
-        pieSection.setPreferredSize(new Dimension(300, 300));
-
+        pieSection.setPreferredSize(new Dimension(0, 260));
         JLabel pieTitle = new JLabel("Asset Allocation");
         pieTitle.setForeground(GUIComponents.TEXT_PRIMARY);
         pieTitle.setFont(new Font("Segoe UI", Font.BOLD, 16));
@@ -192,14 +214,21 @@ public class AccountPanel extends ContentPanel implements ModelListener {
         rightPanel.add(Box.createVerticalStrut(16));
         rightPanel.add(pieSection);
 
-        // Add panels to main content
-        mainContent.add(leftPanel, BorderLayout.CENTER);
-        mainContent.add(rightPanel, BorderLayout.EAST);
+        // Add panels to main content (left + right)
+        JPanel centerPanel = new JPanel();
+        centerPanel.setLayout(new BoxLayout(centerPanel, BoxLayout.X_AXIS));
+        centerPanel.setOpaque(false);
+        centerPanel.add(leftPanel);
+        centerPanel.add(Box.createRigidArea(new Dimension(16, 0)));
+        centerPanel.add(rightPanel);
+
+        mainContent.add(centerPanel, BorderLayout.CENTER);
 
         JScrollPane mainScroll = new JScrollPane(mainContent);
         mainScroll.setBorder(BorderFactory.createEmptyBorder());
         mainScroll.setOpaque(false);
         mainScroll.getViewport().setOpaque(false);
+        mainScroll.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
 
         add(mainScroll, BorderLayout.CENTER);
 
@@ -275,39 +304,59 @@ public class AccountPanel extends ContentPanel implements ModelListener {
         NumberFormat currency = NumberFormat.getCurrencyInstance();
 
         double cash = dto != null ? dto.cash() : 0.0;
-        double portfolioValue = calculatePortfolioValue(dto);
+
+        Map<String, Double> holdingsValues = computeHoldingsValues(dto);
+        double portfolioValue = holdingsValues.values().stream().mapToDouble(Double::doubleValue).sum();
         double totalValue = cash + portfolioValue;
 
         totalAccountValueLabel.setText(currency.format(totalValue));
         cashBalanceLabel.setText(currency.format(cash));
         portfolioValueLabel.setText(currency.format(portfolioValue));
 
-        // Update holdings
+        // Account / profile label
+        String profileName = model.getProfileName();
+        String accountName = model.getActiveAccountName();
+
+        accountLabel.setText((accountName == null || accountName.isBlank() ? "—" : accountName));
+
+        // Update holdings list
         updateHoldings(dto);
 
         // Update charts
         goalChart.setValues(totalValue, goalAmount);
-        pieChart.setValues(cash, portfolioValue);
+        pieChart.setValues(cash, holdingsValues);
 
         revalidate();
         repaint();
     }
 
-    private double calculatePortfolioValue(AccountDTO dto) {
-        if (dto == null || dto.positions() == null) return 0.0;
-
-        double total = 0.0;
-        for (Map.Entry<String, Integer> entry : dto.positions().entrySet()) {
-            String symbol = entry.getKey();
-            int shares = entry.getValue();
-            if (shares > 0) {
-                double price = model.getPrice(symbol);
-                if (!Double.isNaN(price)) {
-                    total += shares * price;
-                }
-            }
+    private Map<String, Double> computeHoldingsValues(AccountDTO dto) {
+        Map<String, Double> out = new LinkedHashMap<>();
+        if (dto == null || dto.positions() == null || dto.positions().isEmpty()) {
+            return out;
         }
-        return total;
+
+        List<Map.Entry<String, Integer>> entries = new ArrayList<>(dto.positions().entrySet());
+        entries.removeIf(e -> e.getValue() == null || e.getValue() <= 0);
+
+        // Sort by descending value
+        entries.sort((a, b) -> {
+            double pa = model.getPrice(a.getKey());
+            double pb = model.getPrice(b.getKey());
+            double va = Double.isNaN(pa) ? 0 : pa * a.getValue();
+            double vb = Double.isNaN(pb) ? 0 : pb * b.getValue();
+            return Double.compare(vb, va);
+        });
+
+        for (Map.Entry<String, Integer> e : entries) {
+            String symbol = e.getKey();
+            int shares = e.getValue();
+            double price = model.getPrice(symbol);
+            if (Double.isNaN(price) || price <= 0 || shares <= 0) continue;
+            out.put(symbol, price * shares);
+        }
+
+        return out;
     }
 
     private void updateHoldings(AccountDTO dto) {
@@ -319,10 +368,9 @@ public class AccountPanel extends ContentPanel implements ModelListener {
             noData.setFont(new Font("Segoe UI", Font.ITALIC, 13));
             holdingsPanel.add(noData);
         } else {
-            // Filter for positive positions only
             List<Map.Entry<String, Integer>> holdings = dto.positions().entrySet().stream()
                     .filter(e -> e.getValue() != null && e.getValue() > 0)
-                    .sorted((a, b) -> b.getKey().compareTo(a.getKey())) // Sort by symbol
+                    .sorted((a, b) -> b.getKey().compareTo(a.getKey()))
                     .toList();
 
             if (holdings.isEmpty()) {
@@ -346,7 +394,7 @@ public class AccountPanel extends ContentPanel implements ModelListener {
     private JPanel createHoldingRow(String symbol, int shares) {
         JPanel row = new JPanel(new BorderLayout());
         row.setOpaque(false);
-        row.setMaximumSize(new Dimension(Integer.MAX_VALUE, 60));
+        row.setMaximumSize(new Dimension(Integer.MAX_VALUE, 72));
 
         JPanel leftInfo = new JPanel();
         leftInfo.setLayout(new BoxLayout(leftInfo, BoxLayout.Y_AXIS));
@@ -363,7 +411,7 @@ public class AccountPanel extends ContentPanel implements ModelListener {
         sharesLabel.setForeground(GUIComponents.TEXT_SECONDARY);
         sharesLabel.setFont(new Font("Segoe UI", Font.PLAIN, 12));
 
-        JLabel priceLabel = new JLabel("Current: " + priceStr);
+        JLabel priceLabel = new JLabel("Current price: " + priceStr);
         priceLabel.setForeground(new Color(150, 150, 150));
         priceLabel.setFont(new Font("Segoe UI", Font.PLAIN, 11));
 
@@ -378,16 +426,16 @@ public class AccountPanel extends ContentPanel implements ModelListener {
         if (!Double.isNaN(currentPrice)) {
             double value = shares * currentPrice;
 
-            JLabel valueLabel = new JLabel(NumberFormat.getCurrencyInstance().format(value));
+            JLabel valueLabel = new JLabel("Value: " + NumberFormat.getCurrencyInstance().format(value));
             valueLabel.setForeground(GUIComponents.TEXT_PRIMARY);
-            valueLabel.setFont(new Font("Segoe UI", Font.BOLD, 14));
+            valueLabel.setFont(new Font("Segoe UI", Font.BOLD, 13));
             valueLabel.setHorizontalAlignment(SwingConstants.RIGHT);
-
+            valueLabel.setAlignmentX(Component.RIGHT_ALIGNMENT);
             rightInfo.add(valueLabel);
 
-            // Try to get trade history for gain/loss calculation
+            // Try to get trade history for gain/loss calculation (approximation)
             try {
-                List<ModelFacade.TradeRow> trades = model.getRecentTrades(100);
+                List<ModelFacade.TradeRow> trades = model.getRecentTrades(Integer.MAX_VALUE);
                 double totalCost = 0;
                 int totalShares = 0;
 
@@ -400,24 +448,32 @@ public class AccountPanel extends ContentPanel implements ModelListener {
 
                 if (totalShares > 0) {
                     double avgCost = totalCost / totalShares;
-                    double gain = value - (shares * avgCost);
-                    double gainPct = (avgCost > 0) ? (gain / (shares * avgCost) * 100) : 0;
+                    double costBasisForCurrent = shares * avgCost;
+                    double gain = value - costBasisForCurrent;
+                    double gainPct = (costBasisForCurrent > 0) ? (gain / costBasisForCurrent * 100) : 0;
 
-                    Color gainColor = gain >= 0 ? new Color(76, 175, 80) : new Color(244, 67, 54);
-                    JLabel gainLabel = new JLabel(String.format("%+.2f (%.2f%%)", gain, gainPct));
-                    gainLabel.setForeground(gainColor);
+                    String colorHex = gain >= 0 ? "#4CAF50" : "#F44336";
+                    String text = String.format(
+                            "<html>Unrealized P/L: <span style='color:%s'>%+.2f (%.2f%%)</span></html>",
+                            colorHex, gain, gainPct
+                    );
+
+                    JLabel gainLabel = new JLabel(text);
+                    gainLabel.setForeground(GUIComponents.TEXT_SECONDARY); // base text color
                     gainLabel.setFont(new Font("Segoe UI", Font.PLAIN, 12));
                     gainLabel.setHorizontalAlignment(SwingConstants.RIGHT);
+                    gainLabel.setAlignmentX(Component.RIGHT_ALIGNMENT);
 
                     rightInfo.add(gainLabel);
                 }
             } catch (Exception ignored) {
-                // If we can't calculate gain/loss, just show the value
+                // Just show value if we can't compute P/L
             }
         } else {
-            JLabel valueLabel = new JLabel("—");
+            JLabel valueLabel = new JLabel("Value: —");
             valueLabel.setForeground(GUIComponents.TEXT_SECONDARY);
-            valueLabel.setFont(new Font("Segoe UI", Font.BOLD, 14));
+            valueLabel.setFont(new Font("Segoe UI", Font.BOLD, 13));
+            valueLabel.setAlignmentX(Component.RIGHT_ALIGNMENT);
             rightInfo.add(valueLabel);
         }
 
@@ -468,6 +524,60 @@ public class AccountPanel extends ContentPanel implements ModelListener {
         }
     }
 
+    private void onNewAccount() {
+        JTextField nameField = new JTextField("New Account");
+        JFormattedTextField balanceField = new JFormattedTextField(NumberFormat.getNumberInstance());
+        balanceField.setValue(10000.0);
+
+        JPanel panel = new JPanel(new GridBagLayout());
+        GridBagConstraints gc = new GridBagConstraints();
+        gc.insets = new Insets(4, 4, 4, 4);
+        gc.anchor = GridBagConstraints.WEST;
+
+        gc.gridx = 0; gc.gridy = 0;
+        panel.add(new JLabel("Account name:"), gc);
+        gc.gridx = 1; gc.gridy = 0;
+        gc.fill = GridBagConstraints.HORIZONTAL; gc.weightx = 1.0;
+        panel.add(nameField, gc);
+
+        gc.gridx = 0; gc.gridy = 1; gc.fill = GridBagConstraints.NONE; gc.weightx = 0.0;
+        panel.add(new JLabel("Initial deposit:"), gc);
+        gc.gridx = 1; gc.gridy = 1; gc.fill = GridBagConstraints.HORIZONTAL; gc.weightx = 1.0;
+        panel.add(balanceField, gc);
+
+        int result = JOptionPane.showConfirmDialog(
+                this, panel, "Create New Account",
+                JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
+
+        if (result != JOptionPane.OK_OPTION) return;
+
+        String name = nameField.getText().trim();
+        double amount = 0.0;
+        try {
+            balanceField.commitEdit();
+            Object v = balanceField.getValue();
+            if (v instanceof Number n) amount = n.doubleValue();
+        } catch (Exception ignored) { }
+
+        if (name.isBlank()) {
+            JOptionPane.showMessageDialog(this, "Account name is required.", "Validation", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+        if (amount < 0) {
+            JOptionPane.showMessageDialog(this, "Initial deposit cannot be negative.", "Validation", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
+        try {
+            model.createAccount(name, amount);
+            JOptionPane.showMessageDialog(this, "Account created and set active.", "Success", JOptionPane.INFORMATION_MESSAGE);
+        } catch (Exception e) {
+            JOptionPane.showMessageDialog(this,
+                    "Failed to create account:\n" + e.getMessage(),
+                    "Error", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
     private void onCustomize() throws SQLException {
         Account activeAccount = model.getActiveAccount();
         if (activeAccount == null) {
@@ -490,10 +600,18 @@ public class AccountPanel extends ContentPanel implements ModelListener {
             if (newColor != null) {
                 accountColor = newColor;
                 colorPanel.setBackground(newColor);
+                repaint();
             }
         });
 
+        boolean isDefault = model.isDefaultAccount(activeAccount);
+        JCheckBox defaultCheck = new JCheckBox("Set as default account");
+        defaultCheck.setSelected(isDefault);
+        defaultCheck.setOpaque(true);
+        defaultCheck.setForeground(GUIComponents.BG_DARK);
+
         JPanel panel = new JPanel(new GridBagLayout());
+        panel.setOpaque(false);
         GridBagConstraints gc = new GridBagConstraints();
         gc.insets = new Insets(4, 4, 4, 4);
         gc.anchor = GridBagConstraints.WEST;
@@ -511,9 +629,13 @@ public class AccountPanel extends ContentPanel implements ModelListener {
         panel.add(new JLabel("Account color:"), gc);
         gc.gridx = 1; gc.gridy = 2;
         JPanel colorRow = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        colorRow.setOpaque(false);
         colorRow.add(colorPanel);
         colorRow.add(colorButton);
         panel.add(colorRow, gc);
+
+        gc.gridx = 0; gc.gridy = 3; gc.gridwidth = 2;
+        panel.add(defaultCheck, gc);
 
         int result = JOptionPane.showConfirmDialog(
                 this, panel, "Customize Account",
@@ -534,6 +656,16 @@ public class AccountPanel extends ContentPanel implements ModelListener {
                 goalChart.setValues(calculateTotalValue(), goalAmount);
             }
         } catch (Exception ignored) { }
+
+        if (defaultCheck.isSelected() && !isDefault) {
+            try {
+                model.setDefaultAccount(activeAccount);
+            } catch (Exception e) {
+                JOptionPane.showMessageDialog(this,
+                        "Failed to set default account:\n" + e.getMessage(),
+                        "Error", JOptionPane.ERROR_MESSAGE);
+            }
+        }
 
         repaint();
     }
@@ -591,7 +723,6 @@ public class AccountPanel extends ContentPanel implements ModelListener {
 
         public GoalChartPanel() {
             setOpaque(false);
-            setPreferredSize(new Dimension(280, 180));
         }
 
         public void setValues(double current, double goal) {
@@ -642,16 +773,15 @@ public class AccountPanel extends ContentPanel implements ModelListener {
 
     private class PieChartPanel extends JPanel {
         private double cash = 0;
-        private double portfolio = 0;
+        private Map<String, Double> holdings = Collections.emptyMap(); // symbol -> value
 
         public PieChartPanel() {
             setOpaque(false);
-            setPreferredSize(new Dimension(280, 220));
         }
 
-        public void setValues(double cash, double portfolio) {
+        public void setValues(double cash, Map<String, Double> holdings) {
             this.cash = cash;
-            this.portfolio = portfolio;
+            this.holdings = (holdings == null) ? Collections.emptyMap() : new LinkedHashMap<>(holdings);
             repaint();
         }
 
@@ -663,12 +793,11 @@ public class AccountPanel extends ContentPanel implements ModelListener {
 
             int width = getWidth();
             int height = getHeight();
-            int size = Math.min(width, height) - 60;
-            int x = (width - size) / 2;
-            int y = 20;
 
-            double total = cash + portfolio;
-            if (total == 0) {
+            double portfolioTotal = holdings.values().stream().mapToDouble(Double::doubleValue).sum();
+            double total = cash + portfolioTotal;
+
+            if (total <= 0) {
                 g2.setColor(GUIComponents.TEXT_SECONDARY);
                 g2.setFont(new Font("Segoe UI", Font.ITALIC, 13));
                 String msg = "No data to display";
@@ -677,29 +806,92 @@ public class AccountPanel extends ContentPanel implements ModelListener {
                 return;
             }
 
-            // Draw pie slices
-            double cashAngle = (cash / total) * 360;
-            double portfolioAngle = (portfolio / total) * 360;
+            // Reserve vertical space at bottom for legend
+            int legendHeight = 60;
+            int pieAreaHeight = height - legendHeight - 20;
+            int size = Math.min(width - 60, pieAreaHeight);
+            size = Math.max(80, size);
 
-            g2.setColor(new Color(76, 175, 80)); // Green for cash
-            g2.fillArc(x, y, size, size, 90, (int) cashAngle);
+            int x = (width - size) / 2;
+            int y = 10;
 
-            g2.setColor(accountColor); // Account color for portfolio
-            g2.fillArc(x, y, size, size, 90 + (int) cashAngle, (int) portfolioAngle);
+            // --- Draw pie ---
 
-            // Draw legend
-            int legendY = y + size + 30;
+            double startAngle = 90.0;
+
+            // Cash slice
+            double cashAngle = (cash > 0 ? (cash / total) * 360.0 : 0.0);
+            if (cashAngle > 0.0) {
+                g2.setColor(new Color(76, 175, 80)); // Green for cash
+                g2.fillArc(x, y, size, size, (int) startAngle, (int) cashAngle);
+                startAngle += cashAngle;
+            }
+
+            // Color palette for holdings
+            Color[] palette = new Color[]{
+                    accountColor,
+                    new Color(244, 67, 54),
+                    new Color(255, 193, 7),
+                    new Color(33, 150, 243),
+                    new Color(156, 39, 176),
+                    new Color(0, 150, 136)
+            };
+
+            int i = 0;
+            for (Map.Entry<String, Double> e : holdings.entrySet()) {
+                double v = e.getValue();
+                if (v <= 0) continue;
+                double angle = (v / total) * 360.0;
+                if (angle <= 0) continue;
+
+                Color c = palette[i % palette.length];
+                i++;
+                g2.setColor(c);
+                g2.fillArc(x, y, size, size, (int) startAngle, (int) angle);
+                startAngle += angle;
+            }
+
+            // --- Legend UNDER the pie ---
+
+            int legendY = y + size + 12;
+            int legendX = 20;
+            int rowHeight = 18;
             g2.setFont(new Font("Segoe UI", Font.PLAIN, 12));
 
-            g2.setColor(new Color(76, 175, 80));
-            g2.fillRect(20, legendY, 12, 12);
-            g2.setColor(GUIComponents.TEXT_PRIMARY);
-            g2.drawString(String.format("Cash: %.1f%%", (cash / total) * 100), 40, legendY + 10);
+            int row = 0;
 
-            g2.setColor(accountColor);
-            g2.fillRect(20, legendY + 20, 12, 12);
-            g2.setColor(GUIComponents.TEXT_PRIMARY);
-            g2.drawString(String.format("Portfolio: %.1f%%", (portfolio / total) * 100), 40, legendY + 30);
+            // Cash legend
+            if (cash > 0) {
+                double pct = (cash / total) * 100.0;
+                g2.setColor(new Color(76, 175, 80));
+                g2.fillRect(legendX, legendY + row * rowHeight, 12, 12);
+                g2.setColor(GUIComponents.TEXT_PRIMARY);
+                g2.drawString(String.format("Cash: %.1f%%", pct),
+                        legendX + 20,
+                        legendY + row * rowHeight + 10);
+                row++;
+            }
+
+            // Holdings legend (one row per stock)
+            i = 0;
+            for (Map.Entry<String, Double> e : holdings.entrySet()) {
+                double v = e.getValue();
+                if (v <= 0) continue;
+                double pct = (v / total) * 100.0;
+
+                Color c = palette[i % palette.length];
+                i++;
+
+                g2.setColor(c);
+                g2.fillRect(legendX, legendY + row * rowHeight, 12, 12);
+                g2.setColor(GUIComponents.TEXT_PRIMARY);
+                g2.drawString(
+                        String.format("%s: %.1f%%", e.getKey(), pct),
+                        legendX + 20,
+                        legendY + row * rowHeight + 10
+                );
+                row++;
+            }
         }
     }
 
