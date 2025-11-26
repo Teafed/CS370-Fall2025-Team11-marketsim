@@ -296,6 +296,21 @@ public class StartupWindow extends ContentPanel {
 
         formPanel.add(continueButton);
 
+        Action submitAction = new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                // Same behavior as clicking the button
+                validateAndSubmit(startupListener);
+            }
+        };
+
+        KeyStroke enter = KeyStroke.getKeyStroke(KeyEvent.VK_ENTER, 0);
+
+        for (JTextField tf : new JTextField[]{ nameField, balanceField }) {
+            tf.getInputMap(JComponent.WHEN_FOCUSED).put(enter, "submitWithEnter");
+            tf.getActionMap().put("submitWithEnter", submitAction);
+        }
+
         // Initial centering
         SwingUtilities.invokeLater(this::centerContent);
     }
@@ -416,6 +431,24 @@ public class StartupWindow extends ContentPanel {
             return false;
         }
     }
+
+    private void installEnterKeySubmission(StartupListener startupListener) {
+        javax.swing.Action submitAction = new AbstractAction() {
+            @Override
+            public void actionPerformed(java.awt.event.ActionEvent e) {
+                // Same behavior as clicking the button
+                validateAndSubmit(startupListener);
+            }
+        };
+
+        KeyStroke enter = KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_ENTER, 0);
+
+        for (JTextField tf : new JTextField[]{ nameField, balanceField }) {
+            tf.getInputMap(JComponent.WHEN_FOCUSED).put(enter, "submitWithEnter");
+            tf.getActionMap().put("submitWithEnter", submitAction);
+        }
+    }
+
 
     private void showError(String message) {
         errorLabel.setText(message);
