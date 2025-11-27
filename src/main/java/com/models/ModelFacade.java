@@ -412,6 +412,27 @@ public class ModelFacade {
             fireError("Failed to deposit", e);
         }
     }
+    public void withdraw(double amount, String memo) {
+        try {
+            Account a = profile.getActiveAccount();
+            if (a == null) throw new IllegalStateException("No active account");
+
+            double currentCash = db.getAccountCash(a.getId());
+            if (amount <= 0) {
+                throw new IllegalArgumentException("Withdraw amount must be positive");
+            }
+            if (currentCash + 1e-6 < amount) {
+                throw new IllegalStateException("Insufficient cash: have " + currentCash + " need " + amount);
+            }
+
+            db.withdrawCash(a.getId(), amount, System.currentTimeMillis(), memo);
+            a.setCash(db.getAccountCash(a.getId()));
+            fireAccountChanged();
+        } catch (Exception e) {
+            fireError("Failed to withdraw", e);
+        }
+    }
+
 
     // DATABASE - commands
     public void close() throws SQLException { db.close(); }

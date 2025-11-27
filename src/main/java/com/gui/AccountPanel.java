@@ -29,8 +29,8 @@ public class AccountPanel extends ContentPanel implements ModelListener {
     private final JLabel profileLabel = new JLabel();
     private final JLabel accountLabel = new JLabel();
 
-    private final JButton btnDeposit = new JButton("Deposit Cash");
-    private final JButton btnCustomize = new JButton("Customize");
+    private final JButton btnDeposit = new JButton("Deposit / Withdraw");
+    private final JButton btnSettings = new JButton("Account Settings");
     private final JButton btnSwitchAccount = new JButton("Switch Account");
     private final JButton btnNewAccount = new JButton("New Account");
     private final JPanel holdingsPanel = new JPanel();
@@ -81,7 +81,7 @@ public class AccountPanel extends ContentPanel implements ModelListener {
         accountLabel.setFont(new Font("Segoe UI", Font.BOLD, 28));
         accountLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
 
-        JLabel cashTitle = new JLabel("💵 Cash Balance");
+        JLabel cashTitle = new JLabel("\uD83D\uDCB0 Cash Balance");
         cashTitle.setForeground(GUIComponents.TEXT_SECONDARY);
         cashTitle.setFont(new Font("Segoe UI", Font.PLAIN, 11));
         cashTitle.setAlignmentX(Component.LEFT_ALIGNMENT);
@@ -138,14 +138,14 @@ public class AccountPanel extends ContentPanel implements ModelListener {
         buttonRow.setMaximumSize(new Dimension(Integer.MAX_VALUE, 40));
 
         styleButton(btnDeposit);
-        styleButton(btnCustomize);
+        styleButton(btnSettings);
         styleButton(btnSwitchAccount);
         styleButton(btnNewAccount);
 
         btnDeposit.addActionListener(e -> onDepositCash());
-        btnCustomize.addActionListener(e -> {
+        btnSettings.addActionListener(e -> {
             try {
-                onCustomize();
+                onSettings();
             } catch (SQLException ex) {
                 throw new RuntimeException(ex);
             }
@@ -154,7 +154,7 @@ public class AccountPanel extends ContentPanel implements ModelListener {
         btnNewAccount.addActionListener(e -> onNewAccount());
 
         buttonRow.add(btnDeposit);
-        buttonRow.add(btnCustomize);
+        buttonRow.add(btnSettings);
         buttonRow.add(btnSwitchAccount);
         buttonRow.add(btnNewAccount);
 
@@ -309,6 +309,62 @@ public class AccountPanel extends ContentPanel implements ModelListener {
         if (primaryButton != null) {
             styleButton(primaryButton);
             footer.add(primaryButton);
+        }
+
+        card.add(header, BorderLayout.NORTH);
+        card.add(body, BorderLayout.CENTER);
+        card.add(footer, BorderLayout.SOUTH);
+
+        return card;
+    }
+
+    // overload for more buttons
+    private JPanel createDialogCard(String title, JComponent body, java.util.List<JButton> actionButtons) {
+        JPanel card = new JPanel() {
+            @Override
+            public Dimension getPreferredSize() {
+                Dimension base = super.getPreferredSize();
+                int maxWidth = 420;
+                return new Dimension(Math.min(base.width, maxWidth), base.height);
+            }
+
+            @Override
+            protected void paintComponent(Graphics g) {
+                super.paintComponent(g);
+                Graphics2D g2 = (Graphics2D) g.create();
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+
+                g2.setColor(GUIComponents.BG_LIGHTER);
+                g2.fillRoundRect(0, 0, getWidth(), getHeight(), 16, 16);
+
+                g2.setColor(GUIComponents.BORDER_COLOR);
+                g2.drawRoundRect(0, 0, getWidth() - 1, getHeight() - 1, 16, 16);
+
+                g2.dispose();
+            }
+        };
+        card.setOpaque(false);
+        card.setLayout(new BorderLayout());
+        card.setBorder(BorderFactory.createEmptyBorder(16, 20, 16, 20));
+
+        JLabel titleLabel = new JLabel(title);
+        titleLabel.setForeground(GUIComponents.TEXT_PRIMARY);
+        titleLabel.setFont(new Font("Segoe UI", Font.BOLD, 16));
+
+        JPanel header = new JPanel(new BorderLayout());
+        header.setOpaque(false);
+        header.add(titleLabel, BorderLayout.WEST);
+
+        JPanel footer = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
+        footer.setOpaque(false);
+
+        if (actionButtons != null) {
+            for (JButton b : actionButtons) {
+                if (b != null) {
+                    styleButton(b);
+                    footer.add(b);
+                }
+            }
         }
 
         card.add(header, BorderLayout.NORTH);
@@ -550,7 +606,24 @@ public class AccountPanel extends ContentPanel implements ModelListener {
                 BorderFactory.createEmptyBorder(8, 10, 8, 10)
         ));
 
-        JLabel label = new JLabel("Amount to deposit");
+
+        amountField.addFocusListener(new java.awt.event.FocusAdapter() {
+            @Override
+            public void focusGained(java.awt.event.FocusEvent e) {
+                if ("0".equals(amountField.getText().trim())) {
+                    amountField.setText("");
+                }
+            }
+
+            @Override
+            public void focusLost(java.awt.event.FocusEvent e) {
+                if (amountField.getText().trim().isEmpty()) {
+                    amountField.setText("0");
+                }
+            }
+        });
+
+        JLabel label = new JLabel("Amount");
         label.setForeground(GUIComponents.TEXT_SECONDARY);
         label.setFont(new Font("Segoe UI", Font.PLAIN, 12));
 
@@ -561,10 +634,15 @@ public class AccountPanel extends ContentPanel implements ModelListener {
         body.add(Box.createVerticalStrut(6));
         body.add(amountField);
 
-        JButton ok = new JButton("Deposit");
+        JButton depositBtn = new JButton("Deposit");
+        JButton withdrawBtn = new JButton("Withdraw");
         JButton cancel = new JButton("Cancel");
 
-        ok.addActionListener(e -> {
+        Runnable parseAndValidate = () -> {
+            // no-op
+        };
+
+        depositBtn.addActionListener(e -> {
             double amount = 0.0;
             try {
                 amountField.commitEdit();
@@ -590,9 +668,32 @@ public class AccountPanel extends ContentPanel implements ModelListener {
             }
         });
 
+        withdrawBtn.addActionListener(e -> {
+            double amount = 0.0;
+            try {
+                amountField.commitEdit();
+                Object v = amountField.getValue();
+                if (v instanceof Number n) amount = n.doubleValue();
+            } catch (Exception ignored) { }
+
+            if (amount <= 0) {
+                Toast.show(amountField, "Enter a positive amount.");
+                return;
+            }
+
+            try {
+                model.withdraw(amount, "Cash withdrawal");
+                OverlayDialog.close(AccountPanel.this);
+                Toast.show(btnDeposit, "Withdrawal successful!");
+            } catch (Exception ex) {
+                Toast.show(btnDeposit, "Failed to withdraw: " + ex.getMessage());
+            }
+        });
+
         cancel.addActionListener(e -> OverlayDialog.close(AccountPanel.this));
 
-        JPanel card = createDialogCard("Deposit Cash", body, ok, cancel);
+        java.util.List<JButton> actions = java.util.Arrays.asList(depositBtn, withdrawBtn, cancel);
+        JPanel card = createDialogCard("Adjust Cash Balance", body, actions);
         OverlayDialog.show(this, card);
     }
 
@@ -683,10 +784,10 @@ public class AccountPanel extends ContentPanel implements ModelListener {
         OverlayDialog.show(this, card);
     }
 
-    private void onCustomize() throws SQLException {
+    private void onSettings() throws SQLException {
         Account activeAccount = model.getActiveAccount();
         if (activeAccount == null) {
-            Toast.show(btnCustomize, "No active account.");
+            Toast.show(btnSettings, "No active account.");
             return;
         }
 
@@ -825,7 +926,7 @@ public class AccountPanel extends ContentPanel implements ModelListener {
 
         cancel.addActionListener(e -> OverlayDialog.close(AccountPanel.this));
 
-        JPanel card = createDialogCard("Customize Account", body, save, cancel);
+        JPanel card = createDialogCard("Account Settings", body, save, cancel);
         OverlayDialog.show(this, card);
     }
 
