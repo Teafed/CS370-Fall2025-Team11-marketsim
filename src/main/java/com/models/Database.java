@@ -672,6 +672,12 @@ public class Database implements AutoCloseable {
             }
         }
     }
+    public void deleteAccount(long accountId) throws SQLException {
+        try (PreparedStatement ps = conn.prepareStatement("DELETE FROM accounts WHERE id = ?")) {
+            ps.setLong(1, accountId);
+            ps.executeUpdate();
+        }
+    }
     /**
      * Deposits cash into an account.
      *

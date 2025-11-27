@@ -790,6 +790,7 @@ public class AccountPanel extends ContentPanel implements ModelListener {
             Toast.show(btnSettings, "No active account.");
             return;
         }
+        boolean isDefault = model.isDefaultAccount(activeAccount);
 
         JTextField nameField = new JTextField(activeAccount.getName());
         nameField.setFont(new Font("Segoe UI", Font.PLAIN, 13));
@@ -830,7 +831,6 @@ public class AccountPanel extends ContentPanel implements ModelListener {
             }
         });
 
-        boolean isDefault = model.isDefaultAccount(activeAccount);
         JCheckBox defaultCheck = new JCheckBox("Set as default account");
 
         defaultCheck.setSelected(isDefault);
@@ -888,6 +888,31 @@ public class AccountPanel extends ContentPanel implements ModelListener {
         JButton save = new JButton("Save");
         JButton cancel = new JButton("Cancel");
 
+        JButton delete = new JButton("Delete Account");
+        delete.setForeground(GUIComponents.RED);
+        delete.setBorder(BorderFactory.createEmptyBorder(10, 20, 10, 20));
+        delete.setContentAreaFilled(false);
+        delete.setFocusPainted(false);
+        delete.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+
+        final boolean[] confirming = { false };
+
+        delete.addActionListener(e -> {
+            if (!confirming[0]) {
+                confirming[0] = true;
+                delete.setText("Are you sure?");
+                return;
+            }
+
+            try {
+                model.deleteAccount(activeAccount);
+                OverlayDialog.close(AccountPanel.this);
+                Toast.show(btnSettings, "Account deleted.");
+            } catch (Exception ex) {
+                Toast.show(btnSettings, "Failed to delete account: " + ex.getMessage());
+            }
+        });
+
         save.addActionListener(e -> {
             String newName = nameField.getText().trim();
             if (newName.isBlank()) {
@@ -926,7 +951,8 @@ public class AccountPanel extends ContentPanel implements ModelListener {
 
         cancel.addActionListener(e -> OverlayDialog.close(AccountPanel.this));
 
-        JPanel card = createDialogCard("Account Settings", body, save, cancel);
+        java.util.List<JButton> actions = java.util.Arrays.asList(delete, cancel, save);
+        JPanel card = createDialogCard("Account Settings", body, actions);
         OverlayDialog.show(this, card);
     }
 

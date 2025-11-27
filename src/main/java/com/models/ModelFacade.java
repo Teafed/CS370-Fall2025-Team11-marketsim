@@ -284,6 +284,40 @@ public class ModelFacade {
 
         setActiveAccount(a);
     }
+    public void deleteAccount(Account account) throws Exception {
+        if (account == null) throw new IllegalArgumentException("Account required");
+
+        long profileId = profile.getId();
+        Long defaultId = getDefaultAccountId();
+        boolean deletingDefault = (defaultId != null && defaultId == account.getId());
+
+        db.deleteAccount(account.getId());
+        if (deletingDefault) db.clearDefaultAccount(profileId);
+
+        profile.removeAccount(account);
+        Account newActive = null;
+        if (!profile.getAccounts().isEmpty()) {
+            if (!deletingDefault && defaultId != null) {
+                for (Account a : profile.getAccounts()) {
+                    if (a.getId() == defaultId) {
+                        newActive = a;
+                        break;
+                    }
+                }
+            }
+            if (newActive == null) {
+                newActive = profile.getFirstAccount();
+            }
+        }
+
+        if (newActive != null) {
+            setActiveAccount(newActive);
+        } else {
+            fireAccountChanged();
+            fireWatchlistChanged(java.util.List.of(), java.util.List.of());
+        }
+    }
+
     public void setActiveAccount(Account account) throws Exception {
         // don't reload if same account
         var current = profile.getActiveAccount();
@@ -432,7 +466,6 @@ public class ModelFacade {
             fireError("Failed to withdraw", e);
         }
     }
-
 
     // DATABASE - commands
     public void close() throws SQLException { db.close(); }
