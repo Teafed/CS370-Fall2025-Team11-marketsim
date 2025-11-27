@@ -2,6 +2,7 @@ package com.gui.tabs;
 
 import com.gui.ContentPanel;
 import com.gui.GUIComponents;
+import com.gui.Toast;
 import com.models.ModelFacade;
 
 import javax.swing.*;
@@ -477,7 +478,7 @@ public class OrderTab extends ContentPanel {
     }
 
     private void msg(String text) {
-        JOptionPane.showMessageDialog(this, text, "Order", JOptionPane.WARNING_MESSAGE);
+        Toast.show(sharesField, text);
     }
 
     @FunctionalInterface

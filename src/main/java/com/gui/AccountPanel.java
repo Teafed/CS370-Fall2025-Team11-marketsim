@@ -13,6 +13,8 @@ import java.util.List;
 import java.util.*;
 import java.util.Map;
 
+import static com.gui.GUIComponents.makeCheckIcon;
+
 /**
  * A redesigned panel displaying comprehensive account information.
  * Shows total account value, cash balance, portfolio holdings, and visualizations.
@@ -232,7 +234,6 @@ public class AccountPanel extends ContentPanel implements ModelListener {
 
         add(mainScroll, BorderLayout.CENTER);
 
-        // Initial data load
         try {
             onAccountChanged(model.getAccountDTO());
         } catch (Exception ignore) {
@@ -248,11 +249,8 @@ public class AccountPanel extends ContentPanel implements ModelListener {
                 Graphics2D g2 = (Graphics2D) g.create();
                 g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 
-                // Draw rounded background
                 g2.setColor(GUIComponents.BG_MEDIUM);
                 g2.fillRoundRect(0, 0, getWidth(), getHeight(), 12, 12);
-
-                // Draw subtle border
                 g2.setColor(GUIComponents.BORDER_COLOR);
                 g2.drawRoundRect(0, 0, getWidth() - 1, getHeight() - 1, 12, 12);
 
@@ -261,6 +259,62 @@ public class AccountPanel extends ContentPanel implements ModelListener {
         };
         card.setOpaque(false);
         card.setBorder(BorderFactory.createEmptyBorder(16, 16, 16, 16));
+        return card;
+    }
+
+    private JPanel createDialogCard(String title, JComponent body, JButton primaryButton, JButton cancelButton) {
+        JPanel card = new JPanel() {
+            @Override
+            public Dimension getPreferredSize() {
+                Dimension base = super.getPreferredSize();
+                // cap width
+                int maxWidth = 420;
+                return new Dimension(Math.min(base.width, maxWidth), base.height);
+            }
+
+            @Override
+            protected void paintComponent(Graphics g) {
+                super.paintComponent(g);
+                Graphics2D g2 = (Graphics2D) g.create();
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+
+                g2.setColor(GUIComponents.BG_LIGHTER);
+                g2.fillRoundRect(0, 0, getWidth(), getHeight(), 16, 16);
+
+                g2.setColor(GUIComponents.BORDER_COLOR);
+                g2.drawRoundRect(0, 0, getWidth() - 1, getHeight() - 1, 16, 16);
+
+                g2.dispose();
+            }
+        };
+        card.setOpaque(false);
+        card.setLayout(new BorderLayout());
+        card.setBorder(BorderFactory.createEmptyBorder(16, 20, 16, 20));
+
+        JLabel titleLabel = new JLabel(title);
+        titleLabel.setForeground(GUIComponents.TEXT_PRIMARY);
+        titleLabel.setFont(new Font("Segoe UI", Font.BOLD, 16));
+
+        JPanel header = new JPanel(new BorderLayout());
+        header.setOpaque(false);
+        header.add(titleLabel, BorderLayout.WEST);
+
+        JPanel footer = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
+        footer.setOpaque(false);
+
+        if (cancelButton != null) {
+            styleButton(cancelButton);
+            footer.add(cancelButton);
+        }
+        if (primaryButton != null) {
+            styleButton(primaryButton);
+            footer.add(primaryButton);
+        }
+
+        card.add(header, BorderLayout.NORTH);
+        card.add(body, BorderLayout.CENTER);
+        card.add(footer, BorderLayout.SOUTH);
+
         return card;
     }
 
@@ -486,115 +540,186 @@ public class AccountPanel extends ContentPanel implements ModelListener {
     private void onDepositCash() {
         JFormattedTextField amountField = new JFormattedTextField(NumberFormat.getNumberInstance());
         amountField.setValue(0.0);
-        amountField.setColumns(15);
+        amountField.setColumns(12);
+        amountField.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        amountField.setForeground(GUIComponents.TEXT_PRIMARY);
+        amountField.setBackground(GUIComponents.BG_MEDIUM);
+        amountField.setCaretColor(GUIComponents.TEXT_PRIMARY);
+        amountField.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(GUIComponents.BORDER_COLOR, 1),
+                BorderFactory.createEmptyBorder(8, 10, 8, 10)
+        ));
 
-        JPanel panel = new JPanel(new FlowLayout(FlowLayout.LEFT));
-        panel.add(new JLabel("Amount to deposit:"));
-        panel.add(amountField);
+        JLabel label = new JLabel("Amount to deposit");
+        label.setForeground(GUIComponents.TEXT_SECONDARY);
+        label.setFont(new Font("Segoe UI", Font.PLAIN, 12));
 
-        int result = JOptionPane.showConfirmDialog(
-                this, panel, "Deposit Cash",
-                JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
+        JPanel body = new JPanel();
+        body.setOpaque(false);
+        body.setLayout(new BoxLayout(body, BoxLayout.Y_AXIS));
+        body.add(label);
+        body.add(Box.createVerticalStrut(6));
+        body.add(amountField);
 
-        if (result != JOptionPane.OK_OPTION) return;
+        JButton ok = new JButton("Deposit");
+        JButton cancel = new JButton("Cancel");
 
-        double amount = 0.0;
-        try {
-            amountField.commitEdit();
-            Object v = amountField.getValue();
-            if (v instanceof Number n) amount = n.doubleValue();
-        } catch (Exception ignored) { }
+        ok.addActionListener(e -> {
+            double amount = 0.0;
+            try {
+                amountField.commitEdit();
+                Object v = amountField.getValue();
+                if (v instanceof Number n) amount = n.doubleValue();
+            } catch (Exception ignored) { }
 
-        if (amount <= 0) {
-            JOptionPane.showMessageDialog(this, "Enter a positive amount.", "Validation", JOptionPane.WARNING_MESSAGE);
-            return;
-        }
-        if (amount > 100000) {
-            JOptionPane.showMessageDialog(this, "Maximum deposit is $100,000.", "Validation", JOptionPane.WARNING_MESSAGE);
-            return;
-        }
+            if (amount <= 0) {
+                Toast.show(amountField, "Enter a positive amount.");
+                return;
+            }
+            if (amount > 100_000) {
+                Toast.show(amountField, "Maximum deposit is $100,000.");
+                return;
+            }
 
-        try {
-            model.deposit(amount, "Cash deposit");
-            JOptionPane.showMessageDialog(this, "Deposit successful!", "Success", JOptionPane.INFORMATION_MESSAGE);
-        } catch (Exception e) {
-            JOptionPane.showMessageDialog(this,
-                    "Failed to deposit cash:\n" + e.getMessage(),
-                    "Error", JOptionPane.ERROR_MESSAGE);
-        }
+            try {
+                model.deposit(amount, "Cash deposit");
+                OverlayDialog.close(AccountPanel.this);
+                Toast.show(btnDeposit, "Deposit successful!");
+            } catch (Exception ex) {
+                Toast.show(btnDeposit, "Failed to deposit: " + ex.getMessage());
+            }
+        });
+
+        cancel.addActionListener(e -> OverlayDialog.close(AccountPanel.this));
+
+        JPanel card = createDialogCard("Deposit Cash", body, ok, cancel);
+        OverlayDialog.show(this, card);
     }
 
     private void onNewAccount() {
         JTextField nameField = new JTextField("New Account");
-        JFormattedTextField balanceField = new JFormattedTextField(NumberFormat.getNumberInstance());
-        balanceField.setValue(10000.0);
+        nameField.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        nameField.setForeground(GUIComponents.TEXT_PRIMARY);
+        nameField.setBackground(GUIComponents.BG_DARK);
+        nameField.setCaretColor(GUIComponents.TEXT_PRIMARY);
+        nameField.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(GUIComponents.BORDER_COLOR, 1),
+                BorderFactory.createEmptyBorder(8, 10, 8, 10)
+        ));
 
-        JPanel panel = new JPanel(new GridBagLayout());
+        JFormattedTextField balanceField = new JFormattedTextField(NumberFormat.getNumberInstance());
+        balanceField.setValue(10_000.0);
+        balanceField.setColumns(12);
+        balanceField.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        balanceField.setForeground(GUIComponents.TEXT_PRIMARY);
+        balanceField.setBackground(GUIComponents.BG_DARK);
+        balanceField.setCaretColor(GUIComponents.TEXT_PRIMARY);
+        balanceField.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(GUIComponents.BORDER_COLOR, 1),
+                BorderFactory.createEmptyBorder(8, 10, 8, 10)
+        ));
+
+        JLabel nameLabel = new JLabel("Account name");
+        nameLabel.setForeground(GUIComponents.TEXT_SECONDARY);
+        nameLabel.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+
+        JLabel balanceLabel = new JLabel("Initial deposit");
+        balanceLabel.setForeground(GUIComponents.TEXT_SECONDARY);
+        balanceLabel.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+
+        JPanel body = new JPanel();
+        body.setOpaque(false);
+        body.setLayout(new GridBagLayout());
         GridBagConstraints gc = new GridBagConstraints();
-        gc.insets = new Insets(4, 4, 4, 4);
+        gc.insets = new Insets(6, 4, 6, 4);
         gc.anchor = GridBagConstraints.WEST;
+        gc.fill = GridBagConstraints.HORIZONTAL;
+        gc.weightx = 1.0;
 
         gc.gridx = 0; gc.gridy = 0;
-        panel.add(new JLabel("Account name:"), gc);
-        gc.gridx = 1; gc.gridy = 0;
-        gc.fill = GridBagConstraints.HORIZONTAL; gc.weightx = 1.0;
-        panel.add(nameField, gc);
+        body.add(nameLabel, gc);
+        gc.gridy = 1;
+        body.add(nameField, gc);
 
-        gc.gridx = 0; gc.gridy = 1; gc.fill = GridBagConstraints.NONE; gc.weightx = 0.0;
-        panel.add(new JLabel("Initial deposit:"), gc);
-        gc.gridx = 1; gc.gridy = 1; gc.fill = GridBagConstraints.HORIZONTAL; gc.weightx = 1.0;
-        panel.add(balanceField, gc);
+        gc.gridx = 0; gc.gridy = 2;
+        body.add(balanceLabel, gc);
+        gc.gridy = 3;
+        body.add(balanceField, gc);
 
-        int result = JOptionPane.showConfirmDialog(
-                this, panel, "Create New Account",
-                JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
+        JButton create = new JButton("Create");
+        JButton cancel = new JButton("Cancel");
 
-        if (result != JOptionPane.OK_OPTION) return;
+        create.addActionListener(e -> {
+            String name = nameField.getText().trim();
+            double amount = 0.0;
 
-        String name = nameField.getText().trim();
-        double amount = 0.0;
-        try {
-            balanceField.commitEdit();
-            Object v = balanceField.getValue();
-            if (v instanceof Number n) amount = n.doubleValue();
-        } catch (Exception ignored) { }
+            try {
+                balanceField.commitEdit();
+                Object v = balanceField.getValue();
+                if (v instanceof Number n) amount = n.doubleValue();
+            } catch (Exception ignored) { }
 
-        if (name.isBlank()) {
-            JOptionPane.showMessageDialog(this, "Account name is required.", "Validation", JOptionPane.WARNING_MESSAGE);
-            return;
-        }
-        if (amount < 0) {
-            JOptionPane.showMessageDialog(this, "Initial deposit cannot be negative.", "Validation", JOptionPane.WARNING_MESSAGE);
-            return;
-        }
+            if (name.isBlank()) {
+                Toast.show(nameField, "Account name is required.");
+                return;
+            }
+            if (amount < 0) {
+                Toast.show(balanceField, "Initial deposit cannot be negative.");
+                return;
+            }
 
-        try {
-            model.createAccount(name, amount);
-            JOptionPane.showMessageDialog(this, "Account created and set active.", "Success", JOptionPane.INFORMATION_MESSAGE);
-        } catch (Exception e) {
-            JOptionPane.showMessageDialog(this,
-                    "Failed to create account:\n" + e.getMessage(),
-                    "Error", JOptionPane.ERROR_MESSAGE);
-        }
+            try {
+                model.createAccount(name, amount);
+                OverlayDialog.close(AccountPanel.this);
+                Toast.show(btnNewAccount, "Account created and set active.");
+            } catch (Exception ex) {
+                Toast.show(btnNewAccount, "Failed to create account: " + ex.getMessage());
+            }
+        });
+
+        cancel.addActionListener(e -> OverlayDialog.close(AccountPanel.this));
+
+        JPanel card = createDialogCard("New Account", body, create, cancel);
+        OverlayDialog.show(this, card);
     }
 
     private void onCustomize() throws SQLException {
         Account activeAccount = model.getActiveAccount();
         if (activeAccount == null) {
-            JOptionPane.showMessageDialog(this, "No active account.", "Error", JOptionPane.ERROR_MESSAGE);
+            Toast.show(btnCustomize, "No active account.");
             return;
         }
 
         JTextField nameField = new JTextField(activeAccount.getName());
+        nameField.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        nameField.setForeground(GUIComponents.TEXT_PRIMARY);
+        nameField.setBackground(GUIComponents.BG_DARK);
+        nameField.setCaretColor(GUIComponents.TEXT_PRIMARY);
+        nameField.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(GUIComponents.BORDER_COLOR, 1),
+                BorderFactory.createEmptyBorder(8, 10, 8, 10)
+        ));
+
         JFormattedTextField goalField = new JFormattedTextField(NumberFormat.getNumberInstance());
         goalField.setValue(goalAmount);
+        goalField.setColumns(12);
+        goalField.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        goalField.setForeground(GUIComponents.TEXT_PRIMARY);
+        goalField.setBackground(GUIComponents.BG_DARK);
+        goalField.setCaretColor(GUIComponents.TEXT_PRIMARY);
+        goalField.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(GUIComponents.BORDER_COLOR, 1),
+                BorderFactory.createEmptyBorder(8, 10, 8, 10)
+        ));
 
         JPanel colorPanel = new JPanel();
-        colorPanel.setPreferredSize(new Dimension(40, 25));
+        colorPanel.setPreferredSize(new Dimension(40, 24));
         colorPanel.setBackground(accountColor);
-        colorPanel.setBorder(BorderFactory.createLineBorder(Color.GRAY));
+        colorPanel.setBorder(BorderFactory.createLineBorder(GUIComponents.BORDER_COLOR));
+        colorPanel.setOpaque(true);
 
         JButton colorButton = new JButton("Choose Color");
+        styleButton(colorButton);
         colorButton.addActionListener(e -> {
             Color newColor = JColorChooser.showDialog(this, "Choose Account Color", accountColor);
             if (newColor != null) {
@@ -606,106 +731,191 @@ public class AccountPanel extends ContentPanel implements ModelListener {
 
         boolean isDefault = model.isDefaultAccount(activeAccount);
         JCheckBox defaultCheck = new JCheckBox("Set as default account");
+
         defaultCheck.setSelected(isDefault);
-        defaultCheck.setOpaque(true);
-        defaultCheck.setForeground(GUIComponents.BG_DARK);
+        defaultCheck.setOpaque(false);
+        defaultCheck.setForeground(GUIComponents.TEXT_SECONDARY);
+        defaultCheck.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        defaultCheck.setFocusPainted(false);
+        defaultCheck.setIcon(makeCheckIcon(false));
+        defaultCheck.setSelectedIcon(makeCheckIcon(true));
 
-        JPanel panel = new JPanel(new GridBagLayout());
-        panel.setOpaque(false);
-        GridBagConstraints gc = new GridBagConstraints();
-        gc.insets = new Insets(4, 4, 4, 4);
-        gc.anchor = GridBagConstraints.WEST;
+        JLabel nameLabel = new JLabel("Account name");
+        nameLabel.setForeground(GUIComponents.TEXT_SECONDARY);
+        nameLabel.setFont(new Font("Segoe UI", Font.PLAIN, 12));
 
-        gc.gridx = 0; gc.gridy = 0; panel.add(new JLabel("Account name:"), gc);
-        gc.gridx = 1; gc.gridy = 0; gc.fill = GridBagConstraints.HORIZONTAL; gc.weightx = 1.0;
-        panel.add(nameField, gc);
+        JLabel goalLabel = new JLabel("Goal amount");
+        goalLabel.setForeground(GUIComponents.TEXT_SECONDARY);
+        goalLabel.setFont(new Font("Segoe UI", Font.PLAIN, 12));
 
-        gc.gridx = 0; gc.gridy = 1; gc.fill = GridBagConstraints.NONE; gc.weightx = 0.0;
-        panel.add(new JLabel("Goal amount:"), gc);
-        gc.gridx = 1; gc.gridy = 1; gc.fill = GridBagConstraints.HORIZONTAL; gc.weightx = 1.0;
-        panel.add(goalField, gc);
+        JLabel colorLabel = new JLabel("Account color");
+        colorLabel.setForeground(GUIComponents.TEXT_SECONDARY);
+        colorLabel.setFont(new Font("Segoe UI", Font.PLAIN, 12));
 
-        gc.gridx = 0; gc.gridy = 2; gc.fill = GridBagConstraints.NONE; gc.weightx = 0.0;
-        panel.add(new JLabel("Account color:"), gc);
-        gc.gridx = 1; gc.gridy = 2;
-        JPanel colorRow = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        JPanel colorRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
         colorRow.setOpaque(false);
         colorRow.add(colorPanel);
         colorRow.add(colorButton);
-        panel.add(colorRow, gc);
 
-        gc.gridx = 0; gc.gridy = 3; gc.gridwidth = 2;
-        panel.add(defaultCheck, gc);
+        JPanel body = new JPanel(new GridBagLayout());
+        body.setOpaque(false);
+        GridBagConstraints gc = new GridBagConstraints();
+        gc.insets = new Insets(6, 4, 6, 4);
+        gc.anchor = GridBagConstraints.WEST;
+        gc.fill = GridBagConstraints.HORIZONTAL;
+        gc.weightx = 1.0;
 
-        int result = JOptionPane.showConfirmDialog(
-                this, panel, "Customize Account",
-                JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
+        gc.gridx = 0; gc.gridy = 0;
+        body.add(nameLabel, gc);
+        gc.gridy = 1;
+        body.add(nameField, gc);
 
-        if (result != JOptionPane.OK_OPTION) return;
+        gc.gridx = 0; gc.gridy = 2;
+        body.add(goalLabel, gc);
+        gc.gridy = 3;
+        body.add(goalField, gc);
 
-        String newName = nameField.getText().trim();
-        if (!newName.isBlank() && !newName.equals(activeAccount.getName())) {
-            model.setAccountName(newName);
-        }
+        gc.gridx = 0; gc.gridy = 4;
+        body.add(colorLabel, gc);
+        gc.gridy = 5;
+        body.add(colorRow, gc);
 
-        try {
-            goalField.commitEdit();
-            Object v = goalField.getValue();
-            if (v instanceof Number n) {
-                goalAmount = n.doubleValue();
-                goalChart.setValues(calculateTotalValue(), goalAmount);
+        gc.gridx = 0; gc.gridy = 6;
+        gc.fill = GridBagConstraints.NONE;
+        body.add(defaultCheck, gc);
+
+        JButton save = new JButton("Save");
+        JButton cancel = new JButton("Cancel");
+
+        save.addActionListener(e -> {
+            String newName = nameField.getText().trim();
+            if (newName.isBlank()) {
+                Toast.show(nameField, "Account name is required.");
+                return;
             }
-        } catch (Exception ignored) { }
 
-        if (defaultCheck.isSelected() && !isDefault) {
+            if (!newName.equals(activeAccount.getName())) {
+                try {
+                    model.setAccountName(newName);
+                } catch (SQLException ex) {
+                    throw new RuntimeException(ex);
+                }
+            }
+
             try {
-                model.setDefaultAccount(activeAccount);
-            } catch (Exception e) {
-                JOptionPane.showMessageDialog(this,
-                        "Failed to set default account:\n" + e.getMessage(),
-                        "Error", JOptionPane.ERROR_MESSAGE);
-            }
-        }
+                goalField.commitEdit();
+                Object v = goalField.getValue();
+                if (v instanceof Number n) {
+                    goalAmount = n.doubleValue();
+                    goalChart.setValues(calculateTotalValue(), goalAmount);
+                }
+            } catch (Exception ignored) { }
 
-        repaint();
+            if (defaultCheck.isSelected() && !isDefault) {
+                try {
+                    model.setDefaultAccount(activeAccount);
+                } catch (Exception ex) {
+                    Toast.show(defaultCheck, "Failed to set default account: " + ex.getMessage());
+                }
+            }
+
+            OverlayDialog.close(AccountPanel.this);
+            repaint();
+        });
+
+        cancel.addActionListener(e -> OverlayDialog.close(AccountPanel.this));
+
+        JPanel card = createDialogCard("Customize Account", body, save, cancel);
+        OverlayDialog.show(this, card);
     }
 
     private void onSwitchAccount() {
         var accounts = model.listAccounts();
         if (accounts == null || accounts.isEmpty()) {
-            JOptionPane.showMessageDialog(this, "No accounts available.", "Info", JOptionPane.INFORMATION_MESSAGE);
+            Toast.show(btnSwitchAccount, "No accounts available.");
             return;
         }
 
-        DefaultComboBoxModel<Account> comboModel = new DefaultComboBoxModel<>();
-        for (Account a : accounts) comboModel.addElement(a);
+        JPanel list = new JPanel();
+        list.setOpaque(false);
+        list.setLayout(new BoxLayout(list, BoxLayout.Y_AXIS));
 
-        JComboBox<Account> combo = new JComboBox<>(comboModel);
-        combo.setRenderer(new DefaultListCellRenderer() {
-            @Override
-            public Component getListCellRendererComponent(JList<?> list, Object value, int index, boolean isSelected, boolean cellHasFocus) {
-                super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
-                if (value instanceof Account a) setText(a.getName());
-                return this;
-            }
-        });
+        for (Account a : accounts) {
+            JPanel card = new JPanel() {
+                @Override
+                protected void paintComponent(Graphics g) {
+                    super.paintComponent(g);
+                    Graphics2D g2 = (Graphics2D) g.create();
+                    g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 
-        int result = JOptionPane.showConfirmDialog(
-                this, combo, "Switch Account",
-                JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
+                    Color bg = getBackground();
+                    g2.setColor(bg);
+                    g2.fillRoundRect(0, 0, getWidth(), getHeight(), 10, 10);
 
-        if (result != JOptionPane.OK_OPTION) return;
+                    g2.setColor(GUIComponents.BORDER_COLOR);
+                    g2.drawRoundRect(0, 0, getWidth() - 1, getHeight() - 1, 10, 10);
 
-        Account selected = (Account) combo.getSelectedItem();
-        if (selected == null) return;
+                    g2.dispose();
+                }
+            };
+            card.setOpaque(false);
+            card.setBackground(GUIComponents.BG_MEDIUM);
+            card.setLayout(new BorderLayout());
+            card.setBorder(BorderFactory.createEmptyBorder(10, 12, 10, 12));
+            card.setMaximumSize(new Dimension(Integer.MAX_VALUE, 50));
+            card.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
 
-        try {
-            model.switchAccount(selected.getId());
-        } catch (Exception e) {
-            JOptionPane.showMessageDialog(this,
-                    "Failed to switch account:\n" + e.getMessage(),
-                    "Error", JOptionPane.ERROR_MESSAGE);
+            JLabel nameLabel = new JLabel(a.getName());
+            nameLabel.setForeground(GUIComponents.TEXT_PRIMARY);
+            nameLabel.setFont(new Font("Segoe UI", Font.BOLD, 14));
+
+            card.add(nameLabel, BorderLayout.CENTER);
+
+            card.addMouseListener(new java.awt.event.MouseAdapter() {
+                @Override
+                public void mouseEntered(java.awt.event.MouseEvent e) {
+                    card.setBackground(GUIComponents.BG_LIGHT);
+                    card.repaint();
+                }
+
+                @Override
+                public void mouseExited(java.awt.event.MouseEvent e) {
+                    card.setBackground(GUIComponents.BG_MEDIUM);
+                    card.repaint();
+                }
+
+                @Override
+                public void mouseClicked(java.awt.event.MouseEvent e) {
+                    try {
+                        model.switchAccount(a.getId());
+                        OverlayDialog.close(AccountPanel.this);
+                        Toast.show(btnSwitchAccount, "Switched to " + a.getName());
+                    } catch (Exception ex) {
+                        Toast.show(btnSwitchAccount, "Failed to switch: " + ex.getMessage());
+                    }
+                }
+            });
+
+            list.add(card);
+            list.add(Box.createVerticalStrut(8));
         }
+
+        JScrollPane scroll = new JScrollPane(list);
+        scroll.setBorder(BorderFactory.createEmptyBorder());
+        scroll.setOpaque(false);
+        scroll.getViewport().setOpaque(false);
+        scroll.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
+        scroll.setPreferredSize(new Dimension(340, Math.min(250, accounts.size() * 60)));
+
+        JPanel body = new JPanel(new BorderLayout());
+        body.setOpaque(false);
+        body.add(scroll, BorderLayout.CENTER);
+
+        JButton close = new JButton("Close");
+        close.addActionListener(e -> OverlayDialog.close(AccountPanel.this));
+
+        JPanel card = createDialogCard("Switch Account", body, close, null);
+        OverlayDialog.show(this, card);
     }
 
     private double calculateTotalValue() {

@@ -14,6 +14,7 @@ import java.util.List;
 import java.util.function.Consumer;
 import javax.swing.text.*;
 import java.util.function.BiConsumer;
+import static com.gui.GUIComponents.makeCheckIcon;
 
 /**
  * Window for initial setup or account selection.
@@ -449,7 +450,6 @@ public class StartupWindow extends ContentPanel {
         }
     }
 
-
     private void showError(String message) {
         errorLabel.setText(message);
         errorLabel.setVisible(true);
@@ -504,7 +504,6 @@ public class StartupWindow extends ContentPanel {
         card.setName("card");
         center.add(card);
 
-        // --- Always Use checkbox (moved ABOVE the account list) ---
         JCheckBox alwaysUse = new JCheckBox("Always use this account on startup");
         alwaysUse.setOpaque(false);
         alwaysUse.setForeground(new Color(180, 180, 190));
@@ -610,43 +609,6 @@ public class StartupWindow extends ContentPanel {
 
         return panel;
     }
-
-    private static Icon makeCheckIcon(boolean checked) {
-        return new Icon() {
-            private final int size = 16;
-
-            @Override
-            public int getIconWidth() { return size; }
-
-            @Override
-            public int getIconHeight() { return size; }
-
-            @Override
-            public void paintIcon(Component c, Graphics g, int x, int y) {
-                Graphics2D g2 = (Graphics2D) g.create();
-                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-
-                // Base square
-                g2.setColor(new Color(40, 45, 58)); // same input-background tone
-                g2.fillRoundRect(x, y, size, size, 4, 4);
-
-                // Border
-                g2.setColor(new Color(90, 95, 110));
-                g2.drawRoundRect(x, y, size - 1, size - 1, 4, 4);
-
-                // Checkmark
-                if (checked) {
-                    g2.setStroke(new BasicStroke(2.4f));
-                    g2.setColor(new Color(120, 160, 255));
-                    g2.drawLine(x + 4, y + 8, x + 7, y + 12);
-                    g2.drawLine(x + 7, y + 12, x + 13, y + 4);
-                }
-
-                g2.dispose();
-            }
-        };
-    }
-
 
     /**
      * Entry point for the GUI. Determines the startup state and shows the

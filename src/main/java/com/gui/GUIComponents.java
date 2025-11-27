@@ -11,7 +11,6 @@ import java.util.Objects;
  * Ensures consistent styling across the application.
  */
 public class GUIComponents {
-   // hi
    // color palette
    public static final Color BG_DARKER = new Color(25, 25, 25);
    public static final Color BG_DARK = new Color(30, 34, 45);
@@ -127,4 +126,40 @@ public class GUIComponents {
    public static javax.swing.border.Border createBorder() {
       return BorderFactory.createEmptyBorder();
    }
+
+    public static Icon makeCheckIcon(boolean checked) {
+        return new Icon() {
+            private final int size = 16;
+
+            @Override
+            public int getIconWidth() { return size; }
+
+            @Override
+            public int getIconHeight() { return size; }
+
+            @Override
+            public void paintIcon(Component c, Graphics g, int x, int y) {
+                Graphics2D g2 = (Graphics2D) g.create();
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+
+                // Base square
+                g2.setColor(new Color(40, 45, 58)); // same input-background tone
+                g2.fillRoundRect(x, y, size, size, 4, 4);
+
+                // Border
+                g2.setColor(new Color(90, 95, 110));
+                g2.drawRoundRect(x, y, size - 1, size - 1, 4, 4);
+
+                // Checkmark
+                if (checked) {
+                    g2.setStroke(new BasicStroke(2.4f));
+                    g2.setColor(new Color(120, 160, 255));
+                    g2.drawLine(x + 4, y + 8, x + 7, y + 12);
+                    g2.drawLine(x + 7, y + 12, x + 13, y + 4);
+                }
+
+                g2.dispose();
+            }
+        };
+    }
 }
