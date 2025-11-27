@@ -460,55 +460,193 @@ public class StartupWindow extends ContentPanel {
     }
 
     private static ContentPanel createAccountSelectPanel(
-            List<Account> accounts,
-            BiConsumer<Account, Boolean> onPick) {
+            java.util.List<Account> accounts,
+            java.util.function.BiConsumer<Account, Boolean> onPick) {
+
         ContentPanel panel = new ContentPanel();
-        panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
-        panel.setBorder(BorderFactory.createEmptyBorder(40, 100, 40, 100));
+        panel.setLayout(new BorderLayout());
+        panel.setBackground(new Color(20, 24, 32));
+        panel.setPreferredSize(new Dimension(700, 700));
 
-        JLabel titleLabel = new JLabel("MarketSim", SwingConstants.CENTER);
-        titleLabel.setFont(new Font("Segoe UI", Font.BOLD, 24));
-        titleLabel.setForeground(GUIComponents.TEXT_PRIMARY);
-        titleLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
-        panel.add(titleLabel);
-        panel.add(Box.createVerticalStrut(12));
+        JPanel center = new JPanel(null);
+        center.setOpaque(false);
+        panel.add(center, BorderLayout.CENTER);
 
-        JLabel info = new JLabel("Select an account to start:");
-        info.setForeground(GUIComponents.TEXT_SECONDARY);
-        info.setAlignmentX(Component.CENTER_ALIGNMENT);
-        panel.add(info);
-        panel.add(Box.createVerticalStrut(16));
+        JLabel titleLabel = new JLabel(
+                "<html><span style='color: white;'>Market</span><span style='color: #7B8CDE;'>Sim</span></html>",
+                SwingConstants.CENTER);
+        titleLabel.setFont(new Font("Segoe UI", Font.BOLD, 32));
+        titleLabel.setSize(400, 40);
+        titleLabel.setName("title");
+        center.add(titleLabel);
 
-        JComboBox<Account> combo = new JComboBox<>(accounts.toArray(new Account[0]));
-        combo.setRenderer((list, value, index, isSelected, cellHasFocus) -> {
-            JLabel lbl = new JLabel(value == null ? "" : value.getName());
-            if (isSelected) {
-                lbl.setOpaque(true);
-                lbl.setBackground(list.getSelectionBackground());
-                lbl.setForeground(list.getSelectionForeground());
+        JLabel info = new JLabel("Select an account to start", SwingConstants.CENTER);
+        info.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+        info.setForeground(new Color(180, 180, 190));
+        info.setSize(400, 25);
+        info.setName("info");
+        center.add(info);
+
+        JPanel card = new JPanel() {
+            @Override
+            protected void paintComponent(Graphics g) {
+                super.paintComponent(g);
+                Graphics2D g2 = (Graphics2D) g;
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                g2.setColor(new Color(30, 35, 45));
+                g2.fillRoundRect(0, 0, getWidth(), getHeight(), 20, 20);
             }
-            return lbl;
-        });
-        panel.add(combo);
-        panel.add(Box.createVerticalStrut(12));
+        };
+        card.setLayout(new BoxLayout(card, BoxLayout.Y_AXIS));
+        card.setOpaque(false);
+        card.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
+        card.setSize(500, 360);
+        card.setName("card");
+        center.add(card);
 
+        // --- Always Use checkbox (moved ABOVE the account list) ---
         JCheckBox alwaysUse = new JCheckBox("Always use this account on startup");
+        alwaysUse.setOpaque(false);
+        alwaysUse.setForeground(new Color(180, 180, 190));
+        alwaysUse.setFont(new Font("Segoe UI", Font.PLAIN, 12));
         alwaysUse.setAlignmentX(Component.LEFT_ALIGNMENT);
-        panel.add(alwaysUse);
-        panel.add(Box.createVerticalStrut(16));
 
-        JButton startButton = new JButton("Start");
-        startButton.setAlignmentX(Component.CENTER_ALIGNMENT);
-        panel.add(startButton);
+        alwaysUse.setIcon(makeCheckIcon(false));
+        alwaysUse.setSelectedIcon(makeCheckIcon(true));
+        alwaysUse.setFocusPainted(false);
+        alwaysUse.setBorder(BorderFactory.createEmptyBorder(0, 0, 4, 0));
 
-        startButton.addActionListener(e -> {
-            Account selected = (Account) combo.getSelectedItem();
-            if (selected != null)
-                onPick.accept(selected, alwaysUse.isSelected());
+        card.add(alwaysUse);
+        card.add(Box.createVerticalStrut(12));
+        card.putClientProperty("alwaysUseCheckbox", alwaysUse);
+
+        JLabel accountsLabel = new JLabel("Choose an account");
+        accountsLabel.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        accountsLabel.setForeground(new Color(170, 170, 180));
+        accountsLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
+        card.add(accountsLabel);
+
+        card.add(Box.createVerticalStrut(10));
+
+        JPanel listPanel = new JPanel();
+        listPanel.setOpaque(false);
+        listPanel.setLayout(new BoxLayout(listPanel, BoxLayout.Y_AXIS));
+        listPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+        ButtonGroup group = new ButtonGroup();
+
+        for (Account a : accounts) {
+            JToggleButton btn = new JToggleButton(a.getName());
+            btn.setAlignmentX(Component.LEFT_ALIGNMENT);
+            btn.setFocusPainted(false);
+            btn.setContentAreaFilled(false);
+            btn.setOpaque(true);
+            btn.setHorizontalAlignment(SwingConstants.LEFT);
+            btn.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+            btn.setForeground(Color.WHITE);
+            btn.setBackground(new Color(45, 50, 65));
+            btn.setBorder(BorderFactory.createEmptyBorder(10, 14, 10, 14));
+
+            btn.addChangeListener(e -> {
+                if (btn.isSelected()) {
+                    btn.setBackground(new Color(90, 110, 230));
+                } else {
+                    btn.setBackground(new Color(45, 50, 65));
+                }
+            });
+
+            btn.addMouseListener(new java.awt.event.MouseAdapter() {
+                @Override
+                public void mouseClicked(java.awt.event.MouseEvent e) {
+                    if (btn.isEnabled()) {
+                        JCheckBox alwaysUse = (JCheckBox) card.getClientProperty("alwaysUseCheckbox");
+                        boolean alwaysUseVal = alwaysUse != null && alwaysUse.isSelected();
+                        onPick.accept(a, alwaysUseVal);
+                    }
+                }
+            });
+
+            group.add(btn);
+            listPanel.add(btn);
+            listPanel.add(Box.createVerticalStrut(6));
+        }
+
+        card.add(listPanel);
+        card.add(Box.createVerticalStrut(16));
+
+        center.addComponentListener(new java.awt.event.ComponentAdapter() {
+            @Override
+            public void componentResized(java.awt.event.ComponentEvent e) {
+                int pw = center.getWidth();
+                int ph = center.getHeight();
+
+                if (pw <= 0 || ph <= 0) return;
+
+                int titleW = titleLabel.getWidth();
+                int titleH = titleLabel.getHeight();
+                int infoW  = info.getWidth();
+                int infoH  = info.getHeight();
+                int cardW  = card.getWidth();
+                int cardH  = card.getHeight();
+
+                int spacingTitleToInfo = 10;
+                int spacingInfoToCard  = 30;
+
+                int totalH = titleH + spacingTitleToInfo + infoH + spacingInfoToCard + cardH;
+                int startY = (ph - totalH) / 2;
+
+                int titleX = (pw - titleW) / 2;
+                int infoX  = (pw - infoW) / 2;
+                int cardX  = (pw - cardW) / 2;
+
+                titleLabel.setLocation(titleX, startY);
+                info.setLocation(infoX, startY + titleH + spacingTitleToInfo);
+                card.setLocation(cardX, startY + titleH + spacingTitleToInfo + infoH + spacingInfoToCard);
+
+                center.revalidate();
+                center.repaint();
+            }
         });
 
         return panel;
     }
+
+    private static Icon makeCheckIcon(boolean checked) {
+        return new Icon() {
+            private final int size = 16;
+
+            @Override
+            public int getIconWidth() { return size; }
+
+            @Override
+            public int getIconHeight() { return size; }
+
+            @Override
+            public void paintIcon(Component c, Graphics g, int x, int y) {
+                Graphics2D g2 = (Graphics2D) g.create();
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+
+                // Base square
+                g2.setColor(new Color(40, 45, 58)); // same input-background tone
+                g2.fillRoundRect(x, y, size, size, 4, 4);
+
+                // Border
+                g2.setColor(new Color(90, 95, 110));
+                g2.drawRoundRect(x, y, size - 1, size - 1, 4, 4);
+
+                // Checkmark
+                if (checked) {
+                    g2.setStroke(new BasicStroke(2.4f));
+                    g2.setColor(new Color(120, 160, 255));
+                    g2.drawLine(x + 4, y + 8, x + 7, y + 12);
+                    g2.drawLine(x + 7, y + 12, x + 13, y + 4);
+                }
+
+                g2.dispose();
+            }
+        };
+    }
+
 
     /**
      * Entry point for the GUI. Determines the startup state and shows the
@@ -611,6 +749,11 @@ public class StartupWindow extends ContentPanel {
                         setupFrame.setLocationRelativeTo(null);
                         setupFrame.setVisible(true);
                     } else {
+                        frame.dispose();
+
+                        final JFrame accountFrame = new JFrame("MarketSim - Select Account");
+                        accountFrame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+
                         ContentPanel picker = createAccountSelectPanel(
                                 profile.getAccounts(),
                                 (selected, alwaysUse) -> {
@@ -619,7 +762,7 @@ public class StartupWindow extends ContentPanel {
                                             db.setDefaultAccountId(profile.getId(), selected.getId());
                                         }
                                         runApp(db, profile, selected);
-                                        frame.dispose();
+                                        accountFrame.dispose();
                                     } catch (Exception ex) {
                                         ex.printStackTrace();
                                         JOptionPane.showMessageDialog(frame,
@@ -628,8 +771,10 @@ public class StartupWindow extends ContentPanel {
                                     }
                                 }
                         );
-                        frame.setContentPane(picker);
-                        frame.revalidate(); frame.repaint();
+                        accountFrame.setContentPane(picker);
+                        accountFrame.pack();
+                        accountFrame.setLocationRelativeTo(null);
+                        accountFrame.setVisible(true);
                     }
                 }
             }.execute();
