@@ -42,23 +42,4 @@ public class TabStripUI extends BasicTabbedPaneUI {
             g.fillRect(x, y + h - 2, w, 2);
         }
     }
-
-    @Override
-    protected void paintText(Graphics g, int tabPlacement, Font font, FontMetrics metrics, int tabIndex, String title,
-            Rectangle textRect, boolean isSelected) {
-        g.setFont(font);
-        g.setColor(isSelected ? Color.WHITE : GUIComponents.TEXT_SECONDARY);
-
-        int x = textRect.x;
-        int y = textRect.y + metrics.getAscent();
-        g.drawString(title, x, y);
-
-        int mnemIndex = tabPane.getDisplayedMnemonicIndexAt(tabIndex);
-        if (mnemIndex >= 0 && mnemIndex < title.length()) {
-            int underlineX = x + metrics.stringWidth(title.substring(0, mnemIndex));
-            int underlineW = Math.max(1, metrics.charWidth(title.charAt(mnemIndex)));
-            int underlineY = y + 1;
-            g.fillRect(underlineX, underlineY, underlineW, 1);
-        }
-    }
 }

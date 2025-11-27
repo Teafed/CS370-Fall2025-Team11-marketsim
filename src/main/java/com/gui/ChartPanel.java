@@ -519,20 +519,42 @@ public class ChartPanel extends ContentPanel {
             boolean isPositive = prices[prices.length - 1] >= prices[0];
             Color lineColor = isPositive ? GUIComponents.GREEN : GUIComponents.RED;
             Color gradientStart = new Color(lineColor.getRed(), lineColor.getGreen(), lineColor.getBlue(), 100);
-            Color gradientEnd = new Color(lineColor.getRed(), lineColor.getGreen(), lineColor.getBlue(), 0);
-            Color labelColor = new Color(190, 190, 190);
-            Color gridMajor = new Color(255, 255, 255, 35);
-            Color gridMinor = new Color(255, 255, 255, 18);
-            Font labelFont = new Font("Segoe UI", Font.PLAIN, 10);
-            Font labelFontBold = labelFont.deriveFont(Font.BOLD);
+            Color gradientEnd   = new Color(lineColor.getRed(), lineColor.getGreen(), lineColor.getBlue(), 0);
+            Color labelColor    = new Color(190, 190, 190);
+            Color gridMajor     = new Color(255, 255, 255, 35);
+            Color gridMinor     = new Color(255, 255, 255, 18);
+            Font  labelFont     = new Font("Segoe UI", Font.PLAIN, 12);
+            Font  labelFontBold = labelFont.deriveFont(Font.BOLD);
 
             int w = getWidth();
             int h = getHeight();
             Insets in = getInsets();
-            int drawWidth = w - in.left - in.right;
-            int drawHeight = h - in.top - in.bottom;
+
+            int plotX = in.left;
+            int plotY = in.top;
+            int plotW = w - in.left - in.right;
+            int plotH = h - in.top - in.bottom;
+
             if (maxTime == minTime || maxPrice == minPrice)
                 return;
+
+            Color axisBg = GUIComponents.BG_LIGHTER;
+            Color plotBg = GUIComponents.BG_LIGHTER;
+
+            g2.setColor(getBackground());
+            g2.fillRect(0, 0, w, h);
+            g2.setColor(plotBg);
+            g2.fillRect(plotX, plotY, plotW, plotH);
+            g2.setColor(axisBg);
+            g2.fillRect(0, 0, plotX, h);
+            g2.fillRect(0, h - in.bottom, w, in.bottom);
+            g2.setColor(gridMajor);
+            g2.setStroke(new BasicStroke(1f));
+            g2.drawLine(plotX, 0, plotX, h);
+            g2.drawLine(0, h - in.bottom, w, h - in.bottom);
+
+            int drawWidth = plotW;
+            int drawHeight = plotH;
 
             int n = times.length;
             int[] xPoints = new int[n];
@@ -553,7 +575,9 @@ public class ChartPanel extends ContentPanel {
                 int y = h - in.bottom -
                         (int) ((pt.value - minPrice) * drawHeight / (maxPrice - minPrice));
                 g2.setColor(pt.major ? gridMajor : gridMinor);
-                g2.drawLine(in.left, y, w - in.right, y);
+
+                // g2.drawLine(in.left, y, w - in.right, y);
+                g2.drawLine(plotX, y, w - 1, y);
             }
 
             // draw grid (time)
@@ -561,7 +585,8 @@ public class ChartPanel extends ContentPanel {
                 int x = in.left +
                         (int) ((tt.time - minTime) * drawWidth / (double) (maxTime - minTime));
                 g2.setColor(tt.major ? gridMajor : gridMinor);
-                g2.drawLine(x, in.top, x, h - in.bottom);
+                // g2.drawLine(x, in.top, x, h - in.bottom);
+                g2.drawLine(x, 0, x, h - in.bottom);
             }
 
             // area under curve
@@ -681,7 +706,6 @@ public class ChartPanel extends ContentPanel {
 
                 long lastLabelX = Long.MIN_VALUE;
 
-                // 1) month starts as majors
                 LocalDate m = startDate.withDayOfMonth(1);
                 if (m.isBefore(startDate)) m = m.plusMonths(1);
                 while (!m.isAfter(endDate)) {
@@ -690,7 +714,6 @@ public class ChartPanel extends ContentPanel {
                             (int) ((t - minTime) * drawWidth / (double) (maxTime - minTime));
 
                     String majorLabel = m.getMonth().getDisplayName(java.time.format.TextStyle.SHORT, Locale.US);
-                    // Always include major, but update spacing baseline
                     if (lastLabelX == Long.MIN_VALUE || x - lastLabelX >= minPixelSpacing) {
                         ticks.add(new TimeTick(t, true, majorLabel, null));
                         lastLabelX = x;
@@ -703,13 +726,12 @@ public class ChartPanel extends ContentPanel {
                     m = m.plusMonths(1);
                 }
 
-                // 2) day-of-month numbers as minor labels using a step
                 int approxTicks = Math.max(3, drawWidth / 80);
                 int stepDays = (int) Math.max(1, Math.round((double) spanDays / approxTicks));
 
                 LocalDate d = startDate;
                 while (!d.isAfter(endDate)) {
-                    // skip 1st-of-month (already added as major)
+                    // skip 1st of month
                     if (d.getDayOfMonth() != 1) {
                         long t = d.atStartOfDay(zone).toInstant().toEpochMilli();
                         int x = in.left +
