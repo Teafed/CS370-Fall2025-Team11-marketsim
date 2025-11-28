@@ -338,6 +338,18 @@ public class Database implements AutoCloseable {
             }
         }
     }
+    public long getCompanyProfileLastFetched(String symbol) throws SQLException {
+        String sql = "SELECT last_fetched_ms FROM company_profiles WHERE symbol = ?";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, symbol.trim().toUpperCase());
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getLong(1);
+                }
+            }
+        }
+        return 0L;
+    }
 
     // price timestamps
     public long getLatestTimestamp(String symbol) throws SQLException {
@@ -907,7 +919,6 @@ public class Database implements AutoCloseable {
             ps.executeUpdate();
         }
     }
-
 
     // portfolio
     private void upsertPositionFromTrade(long accountId, String symbol, String side,

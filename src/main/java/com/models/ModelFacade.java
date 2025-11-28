@@ -485,24 +485,48 @@ public class ModelFacade {
     public void close() throws SQLException { db.close(); }
 
     // helpers
-    private CompanyProfile fetchAndCacheCompanyProfile(String symbol) {
-        String key = symbol.trim().toUpperCase();
-        try {
-            CompanyProfile cp = db.getCompanyProfile(key);
-            if (cp != null) {
-                attachProfileToTradeItem(key, cp);
-                return cp;
-            }
+private CompanyProfile fetchAndCacheCompanyProfile(String symbol) {
+    String key = symbol.trim().toUpperCase();
+    long now = System.currentTimeMillis();
 
-            // fetch from remote
-            CompanyProfile fetched = client.fetchInfo(key);
-            if (fetched != null) {
-                db.upsertCompanyProfile(key, fetched, System.currentTimeMillis());
-                attachProfileToTradeItem(key, cp);
-            }
+    try {
+        CompanyProfile cached = db.getCompanyProfile(key);
+        long lastFetched = db.getCompanyProfileLastFetched(key);
+
+        boolean needsRefresh = (cached == null) || (now - lastFetched > (24L * 60 * 60 * 1000));
+
+        if (!needsRefresh) {
+            attachProfileToTradeItem(key, cached);
+            return cached;
+        }
+
+        // if too old, refresh
+        CompanyProfile fetched = client.fetchInfo(key);
+        if (fetched != null) {
+            db.upsertCompanyProfile(key, fetched, now);
+            attachProfileToTradeItem(key, fetched);
+
+            System.out.printf("[Model] Refreshed company profile for %s (market cap=%s)%n",
+                    key, fetched.getMarketCap());
+
             return fetched;
-        } catch (Exception e) { return null; }
+        }
+
+        if (cached != null) {
+            return cached;
+        }
+
+        return null;
+    } catch (Exception e) {
+        try {
+            CompanyProfile cached = db.getCompanyProfile(key);
+            if (cached != null) {
+                return cached;
+            }
+        } catch (Exception ignored) { }
+        return null;
     }
+}
     private void attachProfileToTradeItem(String symbol, CompanyProfile cp) {
         if (cp == null) return;
         String key = symbol.trim().toUpperCase();
