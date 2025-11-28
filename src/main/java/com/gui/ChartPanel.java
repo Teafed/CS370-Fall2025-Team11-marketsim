@@ -462,41 +462,42 @@ public class ChartPanel extends ContentPanel {
             Insets in = getInsets();
             int w = getWidth();
             int h = getHeight();
-            int drawWidth = w - in.left - in.right;
-            int drawHeight = h - in.top - in.bottom;
+            int plotX = in.left;
+            int plotY = in.top;
+            int plotW = w - in.left - in.right;
+            int plotH = h - in.top - in.bottom;
 
-            // check if mouse is in bounds
-            if (mousePos.x < in.left || mousePos.x > w - in.right ||
-                    mousePos.y < in.top || mousePos.y > h - in.bottom) {
+            // Check if mouse is inside the plot area
+            if (mousePos.x < plotX || mousePos.x > plotX + plotW ||
+                mousePos.y < plotY || mousePos.y > plotY + plotH) {
                 hoveredIndex = -1;
                 return;
             }
 
-            double timeRatio = (mousePos.x - in.left) / (double) drawWidth;
-            long hoveredTime = minTime + (long)(timeRatio * (maxTime - minTime));
+            if (maxTime <= minTime) {
+                hoveredIndex = -1;
+                return;
+            }
 
-            hoveredIndex = -1;
-            for (int i = 0; i < times.length - 1; i++) {
-                if (hoveredTime >= times[i] && hoveredTime <= times[i + 1]) {
-                    double t = (hoveredTime - times[i]) / (double)(times[i + 1] - times[i]);
-                    hoveredPrice = prices[i] + t * (prices[i + 1] - prices[i]);
-                    this.interpolatedTime = hoveredTime;
-                    hoveredIndex = i;
-                    break;
+            int n = times.length;
+            int nearestIndex = -1;
+            int nearestDist = Integer.MAX_VALUE;
+
+            // Compute the screen x for each candle, then find the closest
+            for (int i = 0; i < n; i++) {
+                int x = plotX + (int) ((times[i] - minTime) * plotW / (double) (maxTime - minTime));
+                int dx = Math.abs(mousePos.x - x);
+                if (dx < nearestDist) {
+                    nearestDist = dx;
+                    nearestIndex = i;
                 }
             }
 
-            // edge case handling
-            if (hoveredIndex == -1) {
-                if (hoveredTime < times[0]) {
-                    hoveredIndex = 0;
-                    hoveredPrice = prices[0];
-                    this.interpolatedTime = times[0];
-                } else if (hoveredTime > times[times.length - 1]) {
-                    hoveredIndex = times.length - 1;
-                    hoveredPrice = prices[times.length - 1];
-                    this.interpolatedTime = times[times.length - 1];
-                }
+            hoveredIndex = nearestIndex;
+
+            if (hoveredIndex >= 0) {
+                hoveredPrice = prices[hoveredIndex];
+                interpolatedTime = times[hoveredIndex]; // now actually the data point time
             }
         }
 
@@ -576,8 +577,8 @@ public class ChartPanel extends ContentPanel {
                         (int) ((pt.value - minPrice) * drawHeight / (maxPrice - minPrice));
                 g2.setColor(pt.major ? gridMajor : gridMinor);
 
-                // g2.drawLine(in.left, y, w - in.right, y);
-                g2.drawLine(plotX, y, w - 1, y);
+                g2.drawLine(in.left, y, w - in.right, y);
+                // g2.drawLine(plotX, y, w - 1, y);
             }
 
             // draw grid (time)
@@ -585,8 +586,8 @@ public class ChartPanel extends ContentPanel {
                 int x = in.left +
                         (int) ((tt.time - minTime) * drawWidth / (double) (maxTime - minTime));
                 g2.setColor(tt.major ? gridMajor : gridMinor);
-                // g2.drawLine(x, in.top, x, h - in.bottom);
-                g2.drawLine(x, 0, x, h - in.bottom);
+                g2.drawLine(x, in.top, x, h - in.bottom);
+                // g2.drawLine(x, 0, x, h - in.bottom);
             }
 
             // area under curve
@@ -635,10 +636,13 @@ public class ChartPanel extends ContentPanel {
 
             // draw hover tooltip
             if (hoveredIndex >= 0) {
-                int hoveredX = in.left + (int) ((interpolatedTime - minTime) * drawWidth / (double) (maxTime - minTime));
-                int hoveredY = h - in.bottom - (int) ((hoveredPrice - minPrice) * drawHeight / (maxPrice - minPrice));
+                long t = times[hoveredIndex];
+                double p = prices[hoveredIndex];
 
-                drawTooltip(g2, hoveredX, hoveredY, interpolatedTime, hoveredPrice);
+                int hoveredX = in.left + (int) ((t - minTime) * drawWidth / (double) (maxTime - minTime));
+                int hoveredY = h - in.bottom - (int) ((p - minPrice) * drawHeight / (maxPrice - minPrice));
+
+                drawTooltip(g2, hoveredX, hoveredY, t, p);
             }
 
             if (loading) {
