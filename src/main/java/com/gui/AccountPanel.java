@@ -38,7 +38,6 @@ public class AccountPanel extends ContentPanel implements ModelListener {
     private final PieChartPanel pieChart;
 
     private Color accountColor = new Color(100, 149, 237); // Default cornflower blue
-    private double goalAmount = 100000.0; // Default goal
 
     public AccountPanel(ModelFacade model) {
         this.model = model;
@@ -433,7 +432,7 @@ public class AccountPanel extends ContentPanel implements ModelListener {
         updateHoldings(dto);
 
         // Update charts
-        goalChart.setValues(totalValue, goalAmount);
+        goalChart.setValues(totalValue, model.getGoalAmount());
         pieChart.setValues(cash, holdingsValues);
 
         revalidate();
@@ -803,7 +802,7 @@ public class AccountPanel extends ContentPanel implements ModelListener {
         ));
 
         JFormattedTextField goalField = new JFormattedTextField(NumberFormat.getNumberInstance());
-        goalField.setValue(goalAmount);
+        goalField.setValue(model.getGoalAmount());
         goalField.setColumns(12);
         goalField.setFont(new Font("Segoe UI", Font.PLAIN, 13));
         goalField.setForeground(GUIComponents.TEXT_PRIMARY);
@@ -932,8 +931,9 @@ public class AccountPanel extends ContentPanel implements ModelListener {
                 goalField.commitEdit();
                 Object v = goalField.getValue();
                 if (v instanceof Number n) {
-                    goalAmount = n.doubleValue();
-                    goalChart.setValues(calculateTotalValue(), goalAmount);
+                    double newGoal = n.doubleValue();
+                    model.setGoalAmount(newGoal);
+                    goalChart.setValues(calculateTotalValue(), newGoal);
                 }
             } catch (Exception ignored) { }
 

@@ -257,6 +257,17 @@ public class ModelFacade {
             return List.of();
         return db.listRecentTrades(a.getId(), limit);
     }
+    public void setGoalAmount(double goal) throws SQLException {
+        Account a = profile.getActiveAccount();
+        if (a == null) throw new IllegalStateException("No active account");
+        if (goal < 0) goal = 0;
+
+        db.setAccountGoal(a.getId(), goal);
+        a.setGoal(goal);
+        // update any views that depend on goal
+        fireAccountChanged();
+    }
+
     // ACCOUNT - commands
     public void createAccount(String accountName, double initialDeposit) throws Exception {
         if (accountName == null || accountName.isBlank()) throw new IllegalArgumentException("Account name is required.");
@@ -317,7 +328,6 @@ public class ModelFacade {
             fireWatchlistChanged(java.util.List.of(), java.util.List.of());
         }
     }
-
     public void setActiveAccount(Account account) throws Exception {
         // don't reload if same account
         var current = profile.getActiveAccount();
@@ -465,6 +475,10 @@ public class ModelFacade {
         } catch (Exception e) {
             fireError("Failed to withdraw", e);
         }
+    }
+    public double getGoalAmount() {
+        Account a = profile.getActiveAccount();
+        return (a == null) ? 0.0 : a.getGoal();
     }
 
     // DATABASE - commands

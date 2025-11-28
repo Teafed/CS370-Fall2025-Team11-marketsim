@@ -118,6 +118,21 @@ public class Database implements AutoCloseable {
                         )
                     """);
 
+            // i think this is the only way go add to the table
+            boolean hasGoal = false;
+            try (ResultSet rs = st.executeQuery("PRAGMA table_info(accounts)")) {
+                while (rs.next()) {
+                    if ("goal".equalsIgnoreCase(rs.getString("name"))) {
+                        hasGoal = true;
+                        break;
+                    }
+                }
+            }
+            if (!hasGoal) {
+                st.execute("ALTER TABLE accounts ADD COLUMN goal REAL NOT NULL DEFAULT 100000");
+            }
+
+
             st.execute("""
                         CREATE TABLE IF NOT EXISTS watchlists (
                             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -872,6 +887,27 @@ public class Database implements AutoCloseable {
             conn.setAutoCommit(prev);
         }
     }
+    public double getAccountGoal(long accountId) throws SQLException {
+        String sql = "SELECT goal FROM accounts WHERE id = ?";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setLong(1, accountId);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getDouble(1);
+                }
+            }
+        }
+        return 100000.0; // sensible default
+    }
+    public void setAccountGoal(long accountId, double goal) throws SQLException {
+        String sql = "UPDATE accounts SET goal = ? WHERE id = ?";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setDouble(1, goal);
+            ps.setLong(2, accountId);
+            ps.executeUpdate();
+        }
+    }
+
 
     // portfolio
     private void upsertPositionFromTrade(long accountId, String symbol, String side,
@@ -1106,7 +1142,7 @@ public class Database implements AutoCloseable {
 
         ArrayList<Account> accounts = new ArrayList<>();
         try (PreparedStatement ps = conn.prepareStatement("""
-                    SELECT id, name
+                    SELECT id, name, goal
                     FROM accounts
                     WHERE profile_id=?
                     ORDER BY name
@@ -1114,9 +1150,11 @@ public class Database implements AutoCloseable {
             ps.setLong(1, profileId);
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
-                    long accountId = rs.getLong(1);
-                    String accountName = rs.getString(2);
+                    long accountId = rs.getLong("id");
+                    String accountName = rs.getString("name");
+                    double goal = rs.getDouble("goal");
                     Account a = new Account(accountId, accountName);
+                    a.setGoal(goal);
 
                     // balance
                     double balance = getAccountCash(accountId);

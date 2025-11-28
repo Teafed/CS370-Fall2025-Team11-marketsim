@@ -12,12 +12,14 @@ import java.util.Objects;
 public class Account {
     private long id; // identifier used in database
     private String name; // User defined name of account
-
     private double cash; // the amount the user can currently trade
+    private double goalAmount = 100000.0; // new
+
     private Portfolio portfolio = new Portfolio();
     private Watchlist watchlist = new Watchlist();
 
     // constructors
+
     /**
      * Constructs a new Account with a default name.
      */
@@ -58,6 +60,7 @@ public class Account {
     }
 
     // name
+
     /**
      * Sets the account name.
      *
@@ -91,6 +94,7 @@ public class Account {
     }
 
     // cash
+
     /**
      * Sets the cash balance.
      *
@@ -110,6 +114,7 @@ public class Account {
     }
 
     // portfolio/watchlist
+
     /**
      * Gets the account's portfolio.
      *
@@ -137,7 +142,9 @@ public class Account {
         return watchlist;
     }
 
-    // Add value to account
+    public double getGoal() { return goalAmount; }
+    public void setGoal(double goalAmount) { this.goalAmount = Math.max(0.0, goalAmount); }
+
     /**
      * Deposits funds into the account.
      *
@@ -153,6 +160,7 @@ public class Account {
     }
 
     // withdraw funds from account
+
     /**
      * Withdraws funds from the account.
      *
@@ -169,14 +177,4 @@ public class Account {
         }
         return false;
     }
-
-    // public void executeBuy(TradeItem tradeItem, int shares, double value) {
-    // reduceBalance(value);
-    // portfolio.addTradeItem(tradeItem, shares);
-    // }
-    //
-    // public void executeSell(TradeItem tradeItem, int shares, double value) {
-    // portfolio.removeTradeItem(tradeItem, shares);
-    // depositFunds(value);
-    // }
 }
