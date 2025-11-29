@@ -83,10 +83,24 @@ public class SymbolPanel extends ContentPanel {
         portfolioHeading.setFont(portfolioHeading.getFont().deriveFont(Font.BOLD, 14f));
         portfolioHeading.setBorder(BorderFactory.createEmptyBorder(5, 5, 5, 5));
 
-
         JScrollPane scrollPane = GUIComponents.createScrollPane(listSymbols);
         scrollPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
         scrollPane.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
+        scrollPane.addMouseWheelListener(e -> {
+            JScrollBar vBar = scrollPane.getVerticalScrollBar();
+            if (vBar == null || !vBar.isVisible()) return;
+            double rotation = e.getPreciseWheelRotation();
+            int basePixelsPerUnit = 16;
+            double factor = 1.0 + Math.min(2.0, Math.abs(rotation));  // between 1x and 3x
+
+            int delta = (int) Math.round(rotation * basePixelsPerUnit * factor);
+
+            int newValue = vBar.getValue() + delta;
+            newValue = Math.max(0, Math.min(newValue, vBar.getMaximum()));
+
+            vBar.setValue(newValue);
+            e.consume();
+        });
 
         JPanel listWrapper = new JPanel(new BorderLayout());
         listWrapper.add(listSymbols, BorderLayout.NORTH);
