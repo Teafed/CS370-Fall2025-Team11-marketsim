@@ -38,35 +38,36 @@ public class CompanyProfileTab extends ContentPanel {
         setLayout(new BorderLayout());
         setBackground(GUIComponents.BG_DARK);
 
-        JPanel contentPanel = new JPanel();
-        contentPanel.setLayout(new BoxLayout(contentPanel, BoxLayout.Y_AXIS));
+        JPanel contentPanel = new JPanel(new BorderLayout());
         contentPanel.setOpaque(false);
         contentPanel.setBorder(BorderFactory.createEmptyBorder(12, 12, 12, 12));
 
-        // Company name
+        JPanel infoPanel = new JPanel();
+        infoPanel.setLayout(new BoxLayout(infoPanel, BoxLayout.Y_AXIS));
+        infoPanel.setOpaque(false);
+
         lblName.setFont(new Font("Arial", Font.BOLD, 18));
         lblName.setForeground(GUIComponents.TEXT_PRIMARY);
-        lblName.setAlignmentX(Component.CENTER_ALIGNMENT);
-        contentPanel.add(lblName);
-        contentPanel.add(Box.createVerticalStrut(10));
+        lblName.setAlignmentX(Component.LEFT_ALIGNMENT);
 
-        // Logo
+        infoPanel.add(lblName);
+        infoPanel.add(Box.createVerticalStrut(12));
+        infoPanel.add(createInfoRow("IPO Date: ", lblIPO));
+        infoPanel.add(Box.createVerticalStrut(6));
+        infoPanel.add(createInfoRow("Market Cap: ", lblMarketCap));
+        infoPanel.add(Box.createVerticalStrut(6));
+        infoPanel.add(createInfoRow("Website: ", lblWebsite));
+        infoPanel.add(Box.createVerticalStrut(6));
+
+        JPanel logoPanel = new JPanel(new BorderLayout());
+        logoPanel.setOpaque(false);
         lblLogo.setHorizontalAlignment(SwingConstants.CENTER);
-        lblLogo.setAlignmentX(Component.CENTER_ALIGNMENT);
-        contentPanel.add(lblLogo);
-        contentPanel.add(Box.createVerticalStrut(10));
+        lblLogo.setVerticalAlignment(SwingConstants.CENTER);
+        logoPanel.add(lblLogo, BorderLayout.EAST);
+        logoPanel.setBorder(BorderFactory.createEmptyBorder(0, 20, 0, 0));
 
-        // IPO date
-        contentPanel.add(createInfoRow("IPO Date:", lblIPO));
-        contentPanel.add(Box.createVerticalStrut(6));
-
-        // Market cap
-        contentPanel.add(createInfoRow("Market Cap:", lblMarketCap));
-        contentPanel.add(Box.createVerticalStrut(6));
-
-        // Website
-        contentPanel.add(createInfoRow("Website:", lblWebsite));
-        contentPanel.add(Box.createVerticalStrut(6));
+        contentPanel.add(infoPanel, BorderLayout.CENTER);
+        contentPanel.add(logoPanel, BorderLayout.EAST);
 
         JScrollPane scrollPane = GUIComponents.createScrollPane(contentPanel);
         scrollPane.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
@@ -79,8 +80,6 @@ public class CompanyProfileTab extends ContentPanel {
         refreshTimer.start();
 
         SwingUtilities.invokeLater(this::refreshReadouts);
-
-
     }
 
     private JPanel createInfoRow(String labelText, JLabel valueLabel) {
