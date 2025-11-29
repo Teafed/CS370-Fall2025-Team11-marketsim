@@ -348,19 +348,45 @@ public class ChartPanel extends ContentPanel {
         private long minTime, maxTime;
         private double minPrice, maxPrice;
 
+        // Candidate scales, from fine → coarse
+        private static final TimeScale[] TIME_SCALES = new TimeScale[] {
+                // show individual days, bold at month / year boundaries
+                new TimeScale(ChronoUnit.DAYS,   1, ChronoUnit.MONTHS, 1),
+                new TimeScale(ChronoUnit.DAYS,   2, ChronoUnit.MONTHS, 1),
+                new TimeScale(ChronoUnit.DAYS,   5, ChronoUnit.MONTHS, 1),
+                new TimeScale(ChronoUnit.DAYS,   7, ChronoUnit.MONTHS, 1),
+                new TimeScale(ChronoUnit.DAYS,  14, ChronoUnit.MONTHS, 1),
+
+                // show months, bold at years
+                new TimeScale(ChronoUnit.MONTHS, 1, ChronoUnit.YEARS, 1),
+                new TimeScale(ChronoUnit.MONTHS, 3, ChronoUnit.YEARS, 1),
+                new TimeScale(ChronoUnit.MONTHS, 6, ChronoUnit.YEARS, 1),
+
+                // show years, bold every Nth year
+                new TimeScale(ChronoUnit.YEARS,  1, ChronoUnit.YEARS, 5),
+                new TimeScale(ChronoUnit.YEARS,  2, ChronoUnit.YEARS, 10),
+                new TimeScale(ChronoUnit.YEARS,  5, ChronoUnit.YEARS, 20)
+        };
+
+
         // axis helpers
-
         private static final class TimeTick {
-            final long time;
-            final boolean major;        // for grid intensity
-            final String majorLabel;    // bold
-            final String minorLabel;    // normal
+            final int index;
+            final boolean major;
+            final String majorLabel;
+            final String minorLabel;
+            final boolean drawGrid;
 
-            TimeTick(long time, boolean major, String majorLabel, String minorLabel) {
-                this.time = time;
+            TimeTick(int index, boolean major, String majorLabel, String minorLabel) {
+                this(index, major, majorLabel, minorLabel, true);
+            }
+
+            TimeTick(int index, boolean major, String majorLabel, String minorLabel, boolean drawGrid) {
+                this.index = index;
                 this.major = major;
                 this.majorLabel = majorLabel;
                 this.minorLabel = minorLabel;
+                this.drawGrid = drawGrid;
             }
         }
 
@@ -371,6 +397,21 @@ public class ChartPanel extends ContentPanel {
             PriceTick(double value, boolean major) {
                 this.value = value;
                 this.major = major;
+            }
+        }
+
+        private static final class TimeScale {
+            final ChronoUnit unit;     // DAYS, MONTHS, YEARS
+            final int step;            // spacing between ticks (1, 2, 3, 6, ...)
+            final ChronoUnit majorUnit; // which unit should be considered "major" (for bold)
+            final int majorStep;       // how often a major label occurs in that unit
+
+            TimeScale(ChronoUnit unit, int step,
+                      ChronoUnit majorUnit, int majorStep) {
+                this.unit = unit;
+                this.step = step;
+                this.majorUnit = majorUnit;
+                this.majorStep = majorStep;
             }
         }
 
@@ -469,23 +510,25 @@ public class ChartPanel extends ContentPanel {
 
             // Check if mouse is inside the plot area
             if (mousePos.x < plotX || mousePos.x > plotX + plotW ||
-                mousePos.y < plotY || mousePos.y > plotY + plotH) {
-                hoveredIndex = -1;
-                return;
-            }
-
-            if (maxTime <= minTime) {
+                    mousePos.y < plotY || mousePos.y > plotY + plotH) {
                 hoveredIndex = -1;
                 return;
             }
 
             int n = times.length;
+            if (n <= 0) {
+                hoveredIndex = -1;
+                return;
+            }
+
+            double xStep = (n > 1) ? (plotW / (double) (n - 1)) : 0.0;
+
             int nearestIndex = -1;
             int nearestDist = Integer.MAX_VALUE;
 
-            // Compute the screen x for each candle, then find the closest
+            // Find nearest data point by X
             for (int i = 0; i < n; i++) {
-                int x = plotX + (int) ((times[i] - minTime) * plotW / (double) (maxTime - minTime));
+                int x = plotX + (int) Math.round(i * xStep);
                 int dx = Math.abs(mousePos.x - x);
                 if (dx < nearestDist) {
                     nearestDist = dx;
@@ -497,9 +540,10 @@ public class ChartPanel extends ContentPanel {
 
             if (hoveredIndex >= 0) {
                 hoveredPrice = prices[hoveredIndex];
-                interpolatedTime = times[hoveredIndex]; // now actually the data point time
+                interpolatedTime = times[hoveredIndex];
             }
         }
+
 
         @Override
         protected void paintComponent(Graphics g) {
@@ -551,7 +595,7 @@ public class ChartPanel extends ContentPanel {
             g2.fillRect(0, h - in.bottom, w, in.bottom);
             g2.setColor(gridMajor);
             g2.setStroke(new BasicStroke(1f));
-            g2.drawLine(plotX, 0, plotX, h);
+            g2.drawLine(plotX, 0, plotX, h - in.bottom);
             g2.drawLine(0, h - in.bottom, w, h - in.bottom);
 
             int drawWidth = plotW;
@@ -560,13 +604,14 @@ public class ChartPanel extends ContentPanel {
             int n = times.length;
             int[] xPoints = new int[n];
             int[] yPoints = new int[n];
+            double xStep = (n > 1) ? (drawWidth / (double) (n - 1)) : 0.0;
+
             for (int i = 0; i < n; i++) {
-                xPoints[i] = in.left + (int) ((times[i] - minTime) * drawWidth / (double) (maxTime - minTime));
+                xPoints[i] = plotX + (int) Math.round(i * xStep);
                 yPoints[i] = h - in.bottom - (int) ((prices[i] - minPrice) * drawHeight / (maxPrice - minPrice));
             }
 
-            // build time/price ticks for grid and axis
-            java.util.List<TimeTick> timeTicks = computeTimeTicks(drawWidth, in);
+            java.util.List<TimeTick> timeTicks = computeTimeTicks(drawWidth, n);
             java.util.List<PriceTick> priceTicks = computePriceTicks(drawHeight);
 
             g2.setStroke(new BasicStroke(1f));
@@ -583,11 +628,11 @@ public class ChartPanel extends ContentPanel {
 
             // draw grid (time)
             for (TimeTick tt : timeTicks) {
-                int x = in.left +
-                        (int) ((tt.time - minTime) * drawWidth / (double) (maxTime - minTime));
-                g2.setColor(tt.major ? gridMajor : gridMinor);
-                g2.drawLine(x, in.top, x, h - in.bottom);
-                // g2.drawLine(x, 0, x, h - in.bottom);
+                int x = plotX + (int) Math.round(tt.index * xStep);
+                if (tt.drawGrid) {
+                    g2.setColor(tt.major ? gridMajor : gridMinor);
+                    g2.drawLine(x, in.top, x, h - in.bottom);
+                }
             }
 
             // area under curve
@@ -621,8 +666,7 @@ public class ChartPanel extends ContentPanel {
             // time axis labels
             int baseY = h - in.bottom + 2 + fm.getAscent();
             for (TimeTick tt : timeTicks) {
-                int x = in.left +
-                        (int) ((tt.time - minTime) * drawWidth / (double) (maxTime - minTime));
+                int x = plotX + (int) Math.round(tt.index * xStep);
                 String label = (tt.majorLabel != null) ? tt.majorLabel : tt.minorLabel;
                 if (label == null || label.isEmpty()) continue;
 
@@ -630,6 +674,7 @@ public class ChartPanel extends ContentPanel {
                 g2.setFont(isMajorLabel ? labelFontBold : labelFont);
                 FontMetrics fmLabel = g2.getFontMetrics();
                 int tw = fmLabel.stringWidth(label);
+
                 g2.setColor(labelColor);
                 g2.drawString(label, x - tw / 2, baseY);
             }
@@ -639,11 +684,12 @@ public class ChartPanel extends ContentPanel {
                 long t = times[hoveredIndex];
                 double p = prices[hoveredIndex];
 
-                int hoveredX = in.left + (int) ((t - minTime) * drawWidth / (double) (maxTime - minTime));
+                int hoveredX = plotX + (int) Math.round(hoveredIndex * xStep);
                 int hoveredY = h - in.bottom - (int) ((p - minPrice) * drawHeight / (maxPrice - minPrice));
 
                 drawTooltip(g2, hoveredX, hoveredY, t, p);
             }
+
 
             if (loading) {
                 g2 = (Graphics2D) g.create();
@@ -658,103 +704,107 @@ public class ChartPanel extends ContentPanel {
             }
         }
 
-        private java.util.List<TimeTick> computeTimeTicks(int drawWidth, Insets in) {
+        private java.util.List<TimeTick> computeTimeTicks(int drawWidth, int n) {
             java.util.List<TimeTick> out = new ArrayList<>();
-            if (maxTime <= minTime) return out;
+            if (times == null || n <= 0 || maxTime <= minTime) return out;
 
             ZoneId zone = ZoneId.of("UTC");
-            Instant minInst = Instant.ofEpochMilli(minTime);
-            Instant maxInst = Instant.ofEpochMilli(maxTime);
+            LocalDate minDate = Instant.ofEpochMilli(minTime).atZone(zone).toLocalDate();
+            LocalDate maxDate = Instant.ofEpochMilli(maxTime).atZone(zone).toLocalDate();
+            long spanDays = ChronoUnit.DAYS.between(minDate, maxDate) + 1;
 
-            LocalDate startDate = minInst.atZone(zone).toLocalDate();
-            LocalDate endDate = maxInst.atZone(zone).toLocalDate();
-            long spanDays = ChronoUnit.DAYS.between(startDate, endDate) + 1;
+            // target number of visible labels based on pixels
+            int targetLabels = Math.max(2, drawWidth / 80);
 
-            int approxLabelCount = Math.max(2, drawWidth / 80);
-            int minPixelSpacing = 50;
+            // pick the best scale for this span+width
+            TimeScale scale = chooseBestScale(minDate, maxDate, spanDays, targetLabels);
 
-            // long span -> months as minors, years as majors (at January)
-            if (spanDays > 60) {
-                LocalDate cursor = startDate.withDayOfMonth(1);
-                if (cursor.isBefore(startDate)) cursor = cursor.plusMonths(1);
+            // find the first calendar boundary ≥ minDate for this scale
+            LocalDate firstTickDate = alignToScaleStart(minDate, scale);
 
-                long lastLabelX = Long.MIN_VALUE;
-                while (!cursor.isAfter(endDate.plusMonths(1))) {
-                    long t = cursor.atStartOfDay(zone).toInstant().toEpochMilli();
-                    int x = in.left +
-                            (int) ((t - minTime) * drawWidth / (double) (maxTime - minTime));
+            // pre-compute some helpers for index mapping
+            java.util.List<Integer> usedIndices = new ArrayList<>();
+            java.util.LinkedHashSet<Integer> uniqueIndices = new java.util.LinkedHashSet<>();
 
-                    boolean isJanuary = cursor.getMonthValue() == 1;
-                    boolean major = isJanuary;
-                    String majorLabel = isJanuary ? String.valueOf(cursor.getYear()) : null;
-                    String minorLabel = isJanuary
-                            ? null
-                            : cursor.getMonth().getDisplayName(java.time.format.TextStyle.SHORT, Locale.US);
+            for (LocalDate d = firstTickDate;
+                 !d.isAfter(maxDate);
+                 d = d.plus(scale.step, scale.unit)) {
 
-                    if (lastLabelX != Long.MIN_VALUE &&
-                            x - lastLabelX < minPixelSpacing &&
-                            !major) {
-                        cursor = cursor.plusMonths(1);
-                        continue;
-                    }
+                int idx = findNearestIndexForDate(d, zone);
+                if (idx < 0 || idx >= n) continue;
 
-                    out.add(new TimeTick(t, major, majorLabel, minorLabel));
-                    lastLabelX = x;
+                // avoid duplicate indices (e.g. weekends / gaps)
+                if (!uniqueIndices.add(idx)) continue;
 
-                    cursor = cursor.plusMonths(1);
-                    if (out.size() > approxLabelCount + 6) break; // safety
-                }
-            } else {
-                // short span -> days as minors, month names as majors at 1st-of-month
-                java.util.List<TimeTick> ticks = new ArrayList<>();
+                boolean major = isMajorTickDate(d, scale);
+                String majorLabel = null;
+                String minorLabel = null;
 
-                long lastLabelX = Long.MIN_VALUE;
-
-                LocalDate m = startDate.withDayOfMonth(1);
-                if (m.isBefore(startDate)) m = m.plusMonths(1);
-                while (!m.isAfter(endDate)) {
-                    long t = m.atStartOfDay(zone).toInstant().toEpochMilli();
-                    int x = in.left +
-                            (int) ((t - minTime) * drawWidth / (double) (maxTime - minTime));
-
-                    String majorLabel = m.getMonth().getDisplayName(java.time.format.TextStyle.SHORT, Locale.US);
-                    if (lastLabelX == Long.MIN_VALUE || x - lastLabelX >= minPixelSpacing) {
-                        ticks.add(new TimeTick(t, true, majorLabel, null));
-                        lastLabelX = x;
-                    } else {
-                        // if it's very close, still include it but overwrite spacing baseline
-                        ticks.add(new TimeTick(t, true, majorLabel, null));
-                        lastLabelX = x;
-                    }
-
-                    m = m.plusMonths(1);
-                }
-
-                int approxTicks = Math.max(3, drawWidth / 80);
-                int stepDays = (int) Math.max(1, Math.round((double) spanDays / approxTicks));
-
-                LocalDate d = startDate;
-                while (!d.isAfter(endDate)) {
-                    // skip 1st of month
-                    if (d.getDayOfMonth() != 1) {
-                        long t = d.atStartOfDay(zone).toInstant().toEpochMilli();
-                        int x = in.left +
-                                (int) ((t - minTime) * drawWidth / (double) (maxTime - minTime));
-
-                        if (lastLabelX == Long.MIN_VALUE || x - lastLabelX >= minPixelSpacing) {
-                            String minorLabel = String.valueOf(d.getDayOfMonth());
-                            ticks.add(new TimeTick(t, false, null, minorLabel));
-                            lastLabelX = x;
+                // Labeling strategy:
+                //  - When showing DAYS: minor = day-of-month, major = month or year
+                //  - When showing MONTHS: minor = month, major = year
+                //  - When showing YEARS: minor = year, major = selected years only
+                if (scale.unit == ChronoUnit.DAYS) {
+                    // small-ish spans, show day numbers, bold month/year
+                    if (major) {
+                        if (d.getMonthValue() == 1 && d.getDayOfMonth() <= scale.step) {
+                            // new year → bold year
+                            majorLabel = String.valueOf(d.getYear());
+                        } else {
+                            // new month → bold month abbreviation
+                            majorLabel = d.getMonth()
+                                    .getDisplayName(java.time.format.TextStyle.SHORT, Locale.US);
                         }
+                    } else {
+                        minorLabel = String.valueOf(d.getDayOfMonth());
                     }
-                    d = d.plusDays(stepDays);
+                } else if (scale.unit == ChronoUnit.MONTHS) {
+                    // medium spans, show months, bold at year boundaries
+                    if (major) {
+                        majorLabel = String.valueOf(d.getYear());
+                    } else {
+                        minorLabel = d.getMonth()
+                                .getDisplayName(java.time.format.TextStyle.SHORT, Locale.US);
+                    }
+                } else { // YEARS scale
+                    int year = d.getYear();
+                    if (major) {
+                        majorLabel = String.valueOf(year);
+                    } else {
+                        minorLabel = String.valueOf(year);
+                    }
                 }
 
-                // sort combined majors + minors by time
-                ticks.sort(java.util.Comparator.comparingLong(tt -> tt.time));
-                out = ticks;
+                out.add(new TimeTick(idx, major, majorLabel, minorLabel));
+            }
+            boolean hasAnyMajorLabel = false;
+            for (TimeTick tt : out) {
+                if (tt.majorLabel != null && !tt.majorLabel.isEmpty()) {
+                    hasAnyMajorLabel = true;
+                    break;
+                }
             }
 
+            // Special case: day-scale, but no month/year labels → inject month labels
+            if (scale.unit == ChronoUnit.DAYS && !hasAnyMajorLabel) {
+                // We’ll add one label per month in range, positioned at the nearest data index
+                LocalDate firstMonthStart = LocalDate.of(minDate.getYear(), minDate.getMonth(), 1);
+                if (firstMonthStart.isBefore(minDate)) {
+                    firstMonthStart = firstMonthStart.plusMonths(1);
+                }
+
+                for (LocalDate m = firstMonthStart; !m.isAfter(maxDate); m = m.plusMonths(1)) {
+                    int idx = findNearestIndexForDate(m, zone);
+                    if (idx < 0 || idx >= n) continue;
+
+                    String monthLabel = m.getMonth()
+                            .getDisplayName(java.time.format.TextStyle.SHORT, Locale.US);
+
+                    // Bold month label, but NO extra grid line
+                    out.add(new TimeTick(idx, true, monthLabel, null, false));
+                }
+            }
+            out.sort(java.util.Comparator.comparingInt(tt -> tt.index));
             return out;
         }
 
@@ -773,6 +823,123 @@ public class ChartPanel extends ContentPanel {
                 out.add(new PriceTick(v, major));
             }
             return out;
+        }
+
+        private TimeScale chooseBestScale(LocalDate minDate,
+                                          LocalDate maxDate,
+                                          long spanDays,
+                                          int targetLabels) {
+            TimeScale best = TIME_SCALES[0];
+            double bestError = Double.MAX_VALUE;
+
+            for (TimeScale s : TIME_SCALES) {
+                long count = estimateTickCount(minDate, maxDate, s);
+                if (count <= 0) continue;
+
+                double error = Math.abs(count - targetLabels);
+
+                // prefer scales that don't wildly overshoot (e.g. > 2x target)
+                if (count > targetLabels * 2 && error > bestError) {
+                    continue;
+                }
+
+                if (error < bestError) {
+                    bestError = error;
+                    best = s;
+                }
+            }
+            return best;
+        }
+
+        private long estimateTickCount(LocalDate minDate,
+                                       LocalDate maxDate,
+                                       TimeScale scale) {
+            LocalDate first = alignToScaleStart(minDate, scale);
+            if (first.isAfter(maxDate)) return 0;
+
+            long count = 0;
+            for (LocalDate d = first; !d.isAfter(maxDate); d = d.plus(scale.step, scale.unit)) {
+                count++;
+                if (count > 10_000) break; // safety guard
+            }
+            return count;
+        }
+
+        private LocalDate alignToScaleStart(LocalDate minDate, TimeScale scale) {
+            LocalDate d;
+
+            if (scale.unit == ChronoUnit.DAYS) {
+                // start at the exact first trading day in the range
+                d = minDate;
+            } else if (scale.unit == ChronoUnit.MONTHS) {
+                // start at the 1st of this month or a later aligned month
+                d = LocalDate.of(minDate.getYear(), minDate.getMonth(), 1);
+            } else { // YEARS
+                d = LocalDate.of(minDate.getYear(), 1, 1);
+            }
+
+            // bump forward until we're within the range and aligned to step
+            while (d.isBefore(minDate)) {
+                d = d.plus(scale.step, scale.unit);
+            }
+            return d;
+        }
+
+        private int findNearestIndexForDate(LocalDate date, ZoneId zone) {
+            if (times == null || times.length == 0) return -1;
+
+            long target = date.atStartOfDay(zone).toInstant().toEpochMilli();
+
+            int lo = 0;
+            int hi = times.length - 1;
+
+            while (lo <= hi) {
+                int mid = (lo + hi) >>> 1;
+                long t = times[mid];
+
+                if (t < target) {
+                    lo = mid + 1;
+                } else if (t > target) {
+                    hi = mid - 1;
+                } else {
+                    return mid; // exact match
+                }
+            }
+
+            // lo is first index with time >= target (or len)
+            int idx1 = Math.min(lo, times.length - 1);
+            int idx0 = Math.max(0, lo - 1);
+
+            long dt1 = Math.abs(times[idx1] - target);
+            long dt0 = Math.abs(times[idx0] - target);
+
+            return (dt0 <= dt1) ? idx0 : idx1;
+        }
+
+        private boolean isMajorTickDate(LocalDate d, TimeScale scale) {
+            if (scale.majorUnit == null) return false;
+
+            if (scale.majorUnit == ChronoUnit.MONTHS) {
+                // day-scale: month boundaries are major
+                return d.getDayOfMonth() == 1;
+            }
+
+            if (scale.majorUnit == ChronoUnit.YEARS) {
+                int year = d.getYear();
+
+                if (scale.unit == ChronoUnit.DAYS) {
+                    // day-scale: year boundary (Jan 1) is major
+                    return d.getDayOfYear() == 1 && (year % scale.majorStep == 0);
+                } else if (scale.unit == ChronoUnit.MONTHS) {
+                    // month-scale: major at first month of year, with year step
+                    return d.getMonthValue() == 1 && d.getDayOfMonth() == 1
+                            && (year % scale.majorStep == 0);
+                } else { // YEARS scale
+                    return (year % scale.majorStep) == 0;
+                }
+            }
+
+            return false;
         }
 
         private static double niceStep(double rawStep) {
