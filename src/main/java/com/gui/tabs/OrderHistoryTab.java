@@ -61,29 +61,35 @@ public class OrderHistoryTab extends ContentPanel implements ModelListener {
             @Override
             public Component prepareRenderer(TableCellRenderer r, int row, int col) {
                 Component c = super.prepareRenderer(r, row, col);
-                if (!isRowSelected(row)) {
-                    c.setBackground((row % 2 == 0) ? GUIComponents.BG_DARK : GUIComponents.BG_MEDIUM);
-                    c.setForeground(GUIComponents.TEXT_PRIMARY);
+
+                c.setForeground(GUIComponents.TEXT_PRIMARY);
+                c.setBackground((row % 2 == 0)
+                        ? GUIComponents.BG_DARK
+                        : GUIComponents.BG_MEDIUM);
+
+                if (c instanceof JComponent jc) {
+                    jc.setBorder(null);
                 }
+
                 return c;
+            }
+
+            @Override
+            public void setRowSelectionInterval(int index0, int index1) {
+                super.setRowSelectionInterval(index0, index1);
+                repaint();
             }
         };
 
-        holdingsTable.setFillsViewportHeight(true);
+        holdingsTable.setShowGrid(false);
+        holdingsTable.setIntercellSpacing(new Dimension(0, 0));
         holdingsTable.setRowHeight(24);
         holdingsTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-        holdingsTable.setGridColor(GUIComponents.BORDER_COLOR);
-        holdingsTable.setShowGrid(true);
-
-        holdingsTable.setBackground(GUIComponents.BG_DARK);
-        holdingsTable.setForeground(GUIComponents.TEXT_PRIMARY);
         holdingsTable.setSelectionBackground(GUIComponents.ACCENT_BLUE);
         holdingsTable.setSelectionForeground(Color.WHITE);
-
-        JTableHeader header = holdingsTable.getTableHeader();
-        header.setBackground(GUIComponents.BG_MEDIUM);
-        header.setForeground(GUIComponents.TEXT_PRIMARY);
-        header.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        holdingsTable.setBackground(GUIComponents.BG_DARK);
+        holdingsTable.setForeground(GUIComponents.TEXT_PRIMARY);
+        holdingsTable.setFocusable(false);
 
         DefaultTableCellRenderer right = new DefaultTableCellRenderer();
         right.setHorizontalAlignment(SwingConstants.RIGHT);
@@ -118,10 +124,58 @@ public class OrderHistoryTab extends ContentPanel implements ModelListener {
 
         TableRowSorter<TableModel> sorter = new TableRowSorter<>(tableModel);
         holdingsTable.setRowSorter(sorter);
+        holdingsTable.setBorder(BorderFactory.createEmptyBorder());
         sorter.toggleSortOrder(0); // default sort by time
 
+        JTableHeader header = holdingsTable.getTableHeader();
+        header.setBackground(GUIComponents.BG_MEDIUM);
+        header.setForeground(GUIComponents.TEXT_PRIMARY);
+        header.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        header.setBorder(BorderFactory.createEmptyBorder());
+
+        header.setDefaultRenderer(new DefaultTableCellRenderer() {
+            @Override
+            public Component getTableCellRendererComponent(JTable table, Object value,
+                    boolean isSelected, boolean hasFocus, int row, int column) {
+                JLabel lbl = (JLabel) super.getTableCellRendererComponent(
+                        table, value, false, false, row, column);
+
+                lbl.setHorizontalAlignment(SwingConstants.LEFT);
+                lbl.setOpaque(true);
+                lbl.setBackground(GUIComponents.BG_MEDIUM);
+                lbl.setForeground(GUIComponents.TEXT_PRIMARY);
+                lbl.setBorder(BorderFactory.createEmptyBorder(4, 8, 4, 8));
+
+                String text = value == null ? "" : value.toString();
+                lbl.setIcon(null);
+                RowSorter<? extends TableModel> rs = table.getRowSorter();
+                if (rs != null) {
+                    List<? extends RowSorter.SortKey> keys = rs.getSortKeys();
+                    if (!keys.isEmpty()) {
+                        RowSorter.SortKey key = keys.get(0);
+                        int modelCol = table.convertColumnIndexToModel(column);
+                        if (key.getColumn() == modelCol) {
+                            SortOrder order = key.getSortOrder();
+                            if (order == SortOrder.ASCENDING) {
+                                text += " ▲";
+                            } else if (order == SortOrder.DESCENDING) {
+                                text += " ▼";
+                            }
+                        }
+                    }
+                }
+
+                lbl.setText(text);
+                return lbl;
+            }
+        });
+
         JScrollPane scrollPane = GUIComponents.createScrollPane(holdingsTable);
-        scrollPane.setBorder(null);
+        scrollPane.setBorder(BorderFactory.createEmptyBorder());
+        scrollPane.setViewportBorder(BorderFactory.createEmptyBorder());
+        scrollPane.getViewport().setBackground(GUIComponents.BG_DARK);
+        scrollPane.setOpaque(false);
+        scrollPane.getViewport().setOpaque(true);
         add(scrollPane, BorderLayout.CENTER);
     }
 
