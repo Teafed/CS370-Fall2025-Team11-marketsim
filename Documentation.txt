@@ -1,15 +1,163 @@
+-- September 30 2025 -- 
+
+Group members began working on the software requirements specification and began setting up the github including readme, and first files relevant to the project.
+
+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+-- October 2 2025 -- 
+
+Group members met to discuss lab assignment over discord because lecture/lab was cancelled. Members discussed the use of databases, likely chosen Db server is SQlite. Continued research of API's underway, with two major API identified: FinnHub and polygon. Relevant issues with both: rate limiting with free plans, API requests limited to 60 per minute. We must utilize two different API's to form our charts.
+
+Group members began modifying and crteating the document, creating symbol list panel, chart panel, and the overall layout of how the program will work. Members will continue working on the requirements specification.
+
+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+-- October 7 2025 -- 
+
+Members met after lecture to discuss UML use case diagrams and three specific use cases including trade execution, adding a symbol to a watchlist, and a user creating a profile. Important updates involving API integration (API keys) have begun and testing files have been created. Members now will use JDK version 21.
+
+Overall, members still will need to work on use cases and setting up chartpanel mock data.
+
+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+-- October 9 2025 -- 
+
+Group met after lecture to work on UML use case diagrams- updating our software to reflect the use case diagrams.
+
+In lab, we planned to meet with professor on October 21st for our first team review.
+
+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+-- October 14 2025 -- 
+
+Important updates to chart panel and database integration. CSV files were to large for reading, this caused the chart to take longer than 20 seconds to load, and each instantiation would take just as long. Backfill now uses this. 
+
+Integration of a sample database has been created so that chart panel can access fake data. Creation of accountpanel has been added in the lower left corner idnicating future development of user functionality for account.
+
+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+-- October 16 2025 -- 
+
+Group met after lecture to work on the project, working on architecture design for the project. Members met with the professor and decided on a layered architecture design, with different layers from the data handler to the GUI client, and the database. Overall, the group is continuing to work on the project. With important additions/revision to:
+-Chart panel visualization
+-Sketches for UI layout
+-Order panel (buy/sell) functionality
+-Portfolio view
+-Use of a merge branch so merges go more smoothly
+
+Overall, the group is still making final efforts to show functionality and fullest program to the professor for the scheduled meeting.
+
+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+-- October 21 2025 -- 
+
+First meeting with professor, discussed team deliverables, important steps for next meeting:
+-Setting up user profiles
+-Updating GUI for usability
+
+Overall, the team is doing good, but there still needs updates on symbollistpanel, removing references to the database in respective files.
+
+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+-- October 23 2025 -- 
+
+Team met up in Markstein prior to lab and discussed the initialization of symbols. Members still working on backfill to load historical data into charts faster. Main window now initializes if there is a profile created. 
+
+Tema still continuing to work on the lab assignment given (UML Sequence Diagrams), team met up to discuss which diagrams should be focused on- so far trades, Finnhub client, opening a chart, and adding symbols are the most relevant.
+
+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+-- October 28 2025 -- 
+
+Team met in Markstein to discuss important visual changes. Noelle mocked up how the orders panel should look including sell/buy buttons, price, and quantity.
+Important changes:
+-Backfill from historical data now works
+-Implementation of cursor-tracked function when hovering over the chart
+
+Team has begun working on Lab 10, structural diagrams, so far we have decided to work on inheritance, interfaces, and a facade design.
+
+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 -- October 30 2025 -- 
+
 Group members met to discuss Lab Project 10, identifying and creating objects, classes, and relationships for our level 3 package diagram.
 
 Order.java was created, identifying key information regarding trades; Including stock, price, execution time, sharesbought, ordercost, and userselect. 
 *Note that Order is different from Trader. Trader is responsible for computational processes while Order is handled and instanstiated by Orderspanel.
 
 -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+--November 4 2025--
+
+
+Members met after lecture to discuss the Software Design Specification (SDS) document. Ae began editing prior documents including all UML diagrams and use cases to reflect current software design.
+What still needs to be done:
+
+-Mocking up important UI changes: Profile creation, symbol panel, Order/Trade panels
+-Chapters 6 and 7 (Date TBD)
+
+Members will continue to work on the SDS.
+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 --November 5/6 2025--
+
 Group members met to discuss and begin working on the Software Design Spec (SDS), changes have been made including the elimination of redundant files, trade logic, and UI design.
 
 Changes to prior package and class diagrams are in the works to reflect changes and additions to the project.
 
 -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+--November 11 2025--
+
+Group members met and began discussing future needs. So far startup now uses database stored profiles. StartUpWindow now takes into consideration multiple profiles created by a user. Future features such as "always start with this profile" can be implemented.
+
+Renaming of database classes such as DatabaseManager to Database, Account Manager. Disucssing changing the architecture to reflect a layered design based off lectures has begun. Fixing Lucidchart.
+
+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+--November 13 2025--
+
+Group members met after class to discuss important changes to UML Class diagrams to reflect new changes of the software. Members began working on Lab 12, behavorial design to demonstrate how trades, profile creation, and stock searches will function.
+
+Members also met to discuss important feature designs, such as how the search bar will integrate with above the symbols. Watchlistpnael will call the search class.
+
+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 --November 18 2025--
 Group members discused refactorization using the new models class. Important stylistic updates to start-up window and cursor function implementation. Crashing resolved with initalization of accounts. Further development of live graph update to be completed. 
+
+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+--November 20 2025--
+
+Group members met after lecture. Oscar has now implemented stock logos which are then stored in the database. Important future updates/todo for final push:
+-HistoricalService
+   hole filling still doesn't work
+-shut off whole program on window close
+-github readme
+-gui cleanup
+   -default to 3 month view
+   -GUIComponents subpackage
+   -toast notifications
+   -startup window
+   -floating labels on chart (market status -> red/green dot, name)
+   -cursor tracking
+      -x/y lines, time/price label
+   -better time/price axis
+   -minimize order panel should be same section as tabs
+   -font antialiasing
+   -make buy and sell the same size
+   -get selection of account icons
+-adjust MockFinnhubClient
+   -pull latest db price and hover around that
+-populate AccountPanel
+   top section
+   - account name and icon
+   - total account value
+   - cash balance
+   - portfolio value
+   - button: deposit cash
+   - button: switch accounts
+   ... menu
+      - change account name
+      - add new account
+      - delete account
+      - export profile data
+   portfolio
+   - pie chart for all holdings
+   - portfolio value over time chart
+   - selectable list of buttons for each stock held
+      - button label has symbol, share amt, etc
+      - selecting button opens order history & roi chart
+
+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+--November 25 2025--
+
+Group member last meeting before Thanksgiving break. Met after lecture to discuss final changes that are still being worked on. In addition to previous weeks' TODO's.
+
+Members have begun integrating the UI to look more modern, implementation of portfolio vs. watchlist. GUIcomponents updated for more cohesive styling. Important updates to account panel including updating portfolio chart, account goal bar, account customization, depositing money, switching accounts, portfolio holding, total account value, cash account value, and portfolio value.
