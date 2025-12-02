@@ -1103,8 +1103,10 @@ public class AccountPanel extends ContentPanel implements ModelListener {
             NumberFormat currency = NumberFormat.getCurrencyInstance();
             g2.drawString(currency.format(current), 20, barY - 10);
             String goalText = "Goal: " + currency.format(goal);
-            int goalWidth = g2.getFontMetrics().stringWidth(goalText);
-            g2.drawString(goalText, width - 20 - goalWidth, barY - 10);
+            FontMetrics labelFm = g2.getFontMetrics();
+            int goalWidth = labelFm.stringWidth(goalText);
+            int goalY = barY + barHeight + labelFm.getAscent() + 4;
+            g2.drawString(goalText, width - 20 - goalWidth, goalY);
         }
     }
 
