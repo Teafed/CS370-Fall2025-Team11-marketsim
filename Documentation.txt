@@ -161,3 +161,8 @@ Group members met after lecture. Oscar has now implemented stock logos which are
 Group member last meeting before Thanksgiving break. Met after lecture to discuss final changes that are still being worked on. In addition to previous weeks' TODO's.
 
 Members have begun integrating the UI to look more modern, implementation of portfolio vs. watchlist. GUIcomponents updated for more cohesive styling. Important updates to account panel including updating portfolio chart, account goal bar, account customization, depositing money, switching accounts, portfolio holding, total account value, cash account value, and portfolio value.
+
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+--December 1 2025--
+Met with team to finalize last minute touches to presentation and rehearse.
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
