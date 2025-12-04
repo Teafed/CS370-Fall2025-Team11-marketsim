@@ -77,6 +77,8 @@ public class TradeItem implements SymbolListEntry {
         }
     }
 
+    public double getChange() { return change; }
+
     /**
      * Sets the previous close price and recalculates change metrics if current
      * price is valid.
@@ -84,6 +86,7 @@ public class TradeItem implements SymbolListEntry {
      * @param prevClose The previous close price.
      */
     public void setPrevClose(double prevClose) {
+
         this.prevClose = prevClose;
         if (!Double.isNaN(price) && prevClose > 0.0) {
             this.change = price - prevClose;

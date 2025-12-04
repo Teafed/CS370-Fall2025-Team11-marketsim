@@ -1,6 +1,6 @@
 package com.gui;
 
-import com.accountmanager.Account;
+import com.models.profile.Account;
 import org.junit.jupiter.api.Test;
 
 import java.util.concurrent.atomic.AtomicBoolean;

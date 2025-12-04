@@ -38,20 +38,19 @@ class HistoricalServiceTest {
         when(mockHttp.send(any(), any(HttpResponse.BodyHandler.class))).thenReturn(mockResp);
 
         try (Database db = new Database(":memory:")) {
-            HistoricalService svc = new HistoricalService(db, mockHttp, "test-key", "https://fake");
-
             HistoricalService.Range range = new HistoricalService.Range(
                     HistoricalService.Timespan.DAY, 1,
                     LocalDate.parse("2025-09-01"),
-                    LocalDate.parse("2025-09-10")
+                    LocalDate.parse("2025-09-02")
             );
+            HistoricalService svc = new TestHistoricalService(db, mockHttp, range);
 
             svc.backfillRange("AAPL", range);
 
             long latest = db.getLatestTimestamp("AAPL");
             assertEquals(d2, latest);
 
-            try (var rs = db.getCandles("AAPL", 0, Long.MAX_VALUE)) {
+            try (var rs = db.getCandles("AAPL", 1, "day", 0, Long.MAX_VALUE)) {
                 assertTrue(rs.next());
                 assertEquals(d1, rs.getLong("timestamp"));
                 assertEquals(105.0, rs.getDouble("close"), 1e-9);
@@ -74,14 +73,12 @@ class HistoricalServiceTest {
         when(mockHttp.send(any(), any(HttpResponse.BodyHandler.class))).thenReturn(mockResp);
 
         try (Database db = new Database(":memory:")) {
-            HistoricalService svc =
-                    new HistoricalService(db, mockHttp, "test-key", "https://fake");
-
             HistoricalService.Range range = new HistoricalService.Range(
                     HistoricalService.Timespan.DAY, 1,
                     LocalDate.parse("2025-09-01"),
                     LocalDate.parse("2025-09-02")
             );
+            HistoricalService svc = new TestHistoricalService(db, mockHttp, range);
 
             RuntimeException ex = assertThrows(RuntimeException.class,
                     () -> svc.backfillRange("AAPL", range));
@@ -99,5 +96,24 @@ class HistoricalServiceTest {
         obj.addProperty("c", c);
         obj.addProperty("v", v);
         return obj;
+    }
+
+    private static final class TestHistoricalService extends HistoricalService {
+        private final Range fixedRange;
+        private boolean returned;
+
+        TestHistoricalService(Database db, HttpClient http, Range fixedRange) {
+            super(db, http, "test-key", "https://fake");
+            this.fixedRange = fixedRange;
+        }
+
+        @Override
+        public Range ensureRange(String symbol, Range requested) throws java.sql.SQLException {
+            if (returned) {
+                return null;
+            }
+            returned = true;
+            return new Range(fixedRange.timespan, fixedRange.multiplier, fixedRange.from, fixedRange.to);
+        }
     }
 }
