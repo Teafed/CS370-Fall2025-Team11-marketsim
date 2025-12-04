@@ -69,6 +69,10 @@ public class Market implements TradeListener {
      * @param wl The Watchlist containing the stocks.
      * @throws Exception If an error occurs during subscription.
      */
+    /**
+     * Adds all stocks from a watchlist to the market asynchronously.
+     * Kept for backward compatibility.
+     */
     public void addFromWatchlist(Watchlist wl) throws Exception {
         if (wl == null)
             return;
@@ -84,6 +88,16 @@ public class Market implements TradeListener {
         }, "WatchlistInit").start();
     }
 
+    /**
+     * Synchronous variant: adds all watchlist items on the calling thread.
+     */
+    public void addFromWatchlistSync(Watchlist wl) throws Exception {
+        if (wl == null) return;
+        for (TradeItem ti : wl.getWatchlist()) {
+            add(ti);
+        }
+    }
+
     public void addFromPortfolio(Portfolio portfolio) throws Exception {
         if (portfolio == null) return;
 
@@ -97,6 +111,17 @@ public class Market implements TradeListener {
                 }
             }
         }, "PortfolioInit").start();
+    }
+
+    /**
+     * Synchronous variant: adds all portfolio symbols on the calling thread.
+     */
+    public void addFromPortfolioSync(Portfolio portfolio) throws Exception {
+        if (portfolio == null) return;
+        for (String symbol : portfolio.getPortfolioItems()) {
+            TradeItem ti = new TradeItem(symbol);
+            add(ti);
+        }
     }
 
     /**
