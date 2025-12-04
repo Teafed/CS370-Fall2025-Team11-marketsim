@@ -766,12 +766,24 @@ public class Database implements AutoCloseable {
     }
     public List<TradeItem> loadWatchlistSymbols(long accountId) throws SQLException {
         Long watchlistId = null;
+        // Prefer the canonical 'Default' watchlist if present
         try (PreparedStatement sel = conn.prepareStatement(
-                "SELECT id FROM watchlists WHERE account_id=?")) {
+                "SELECT id FROM watchlists WHERE account_id=? AND name='Default' LIMIT 1")) {
             sel.setLong(1, accountId);
             try (ResultSet rs = sel.executeQuery()) {
                 if (rs.next())
                     watchlistId = rs.getLong(1);
+            }
+        }
+        // Fallback: any watchlist for the account
+        if (watchlistId == null) {
+            try (PreparedStatement sel = conn.prepareStatement(
+                    "SELECT id FROM watchlists WHERE account_id=? LIMIT 1")) {
+                sel.setLong(1, accountId);
+                try (ResultSet rs = sel.executeQuery()) {
+                    if (rs.next())
+                        watchlistId = rs.getLong(1);
+                }
             }
         }
         if (watchlistId == null)
