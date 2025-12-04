@@ -37,8 +37,9 @@ public class MockFinnhubClientTest {
         List<String> current = MockFinnhubClient.returnRandomSymbolList();
         assertNotNull(current);
 
-        // Stop the emitter and ensure it doesn't throw or hang
+        // Stop the emitter and ensure it stops within a short timeout
         client.stop();
+        assertTrue(client.waitForStop(2000), "emitter did not stop within timeout");
 
         ex.shutdownNow();
         ex.awaitTermination(2, TimeUnit.SECONDS);
