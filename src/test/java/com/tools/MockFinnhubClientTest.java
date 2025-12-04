@@ -44,4 +44,16 @@ public class MockFinnhubClientTest {
         ex.shutdownNow();
         ex.awaitTermination(2, TimeUnit.SECONDS);
     }
+
+    @Test
+    public void waitForStop_returnsFalseForVerySmallTimeout() throws Exception {
+        MockFinnhubClient client = new MockFinnhubClient(s -> 100.0);
+        // Do not stop; immediate tiny timeout should return false because emitter is still running
+        boolean stopped = client.waitForStop(1);
+        assertFalse(stopped, "waitForStop should return false for tiny timeout when emitter is running");
+        // Cleanup
+        client.stop();
+        client.waitForStop(2000);
+    }
 }
+
