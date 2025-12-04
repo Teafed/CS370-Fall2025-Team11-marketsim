@@ -340,8 +340,16 @@ public class ModelFacade {
 
         profile.setActiveAccount(account);
         ensureWatchlistPopulated(account);
-        market.addFromWatchlist(account.getWatchlist());
-        market.addFromPortfolio(account.getPortfolio());
+        // Populate market synchronously so UI sees canonical trade items immediately
+        try {
+            market.addFromWatchlistSync(account.getWatchlist());
+            market.addFromPortfolioSync(account.getPortfolio());
+        } catch (Exception e) {
+            System.err.println("Failed to populate market synchronously: " + e.getMessage());
+            // fallback to async population to avoid blocking callers
+            try { market.addFromWatchlist(account.getWatchlist()); } catch (Exception ignore) {}
+            try { market.addFromPortfolio(account.getPortfolio()); } catch (Exception ignore) {}
+        }
         fireWatchlistChanged(getWatchlist(), getPortfolioItems());
         fireAccountChanged();
         System.out.printf("[Model] Account set to %s (ID %d)%n", account.getName(), account.getId());
