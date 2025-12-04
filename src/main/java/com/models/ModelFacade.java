@@ -134,9 +134,13 @@ public class ModelFacade {
     public List<TradeItem> getWatchlist() {
         return profile.getActiveAccount().getWatchlist().getWatchlist(); }
     public List<TradeItem> getPortfolioItems() {
-        List<String> symbols = profile.getActiveAccount().getPortfolio().getPortfolioItems();
+        var a = profile.getActiveAccount();
+        if (a == null) return List.of();
+        List<String> symbols = a.getPortfolio().getPortfolioItems();
         List<TradeItem> items = new ArrayList<>();
-        symbols.forEach(symbol -> {items.add(market.get(symbol));});
+        for (String symbol : symbols) {
+            items.add(market.get(symbol));
+        }
         return items;
     }
     public long getLatestTimestamp(String symbol) throws SQLException {
