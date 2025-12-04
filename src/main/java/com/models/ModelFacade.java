@@ -537,9 +537,11 @@ private CompanyProfile fetchAndCacheCompanyProfile(String symbol) {
         }
     }
     private void ensureWatchlistPopulated(Account a) throws Exception {
-        List<TradeItem> dbSymbols = a.getWatchlistItems();
+        // Use DB as the source of truth for persisted watchlists
+        List<TradeItem> dbSymbols = db.loadWatchlistSymbols(a.getId());
+
         if (dbSymbols == null || dbSymbols.isEmpty()) {
-            // add defaults and persist
+            // No persisted watchlist: create defaults and persist as 'Default'
             List<TradeItem> defaults = Watchlist.getDefaultWatchlist();
             for (TradeItem ti : defaults) {
                 CompanyProfile cp = fetchAndCacheCompanyProfile(ti.getSymbol());
@@ -557,7 +559,7 @@ private CompanyProfile fetchAndCacheCompanyProfile(String symbol) {
             hydrateWatchlist(a.getWatchlist().getWatchlist());
             System.out.println("[Model] Loaded default watchlist -> DB (" + defaults.size() + ")");
         } else {
-            // hydrate in-memory list from DB
+            // hydrate in-memory list from DB results (do not re-save under a different name)
             for (TradeItem ti : dbSymbols) {
                 if (ti.getCompanyProfile() == null) {
                     CompanyProfile cp = fetchAndCacheCompanyProfile(ti.getSymbol());
@@ -566,7 +568,6 @@ private CompanyProfile fetchAndCacheCompanyProfile(String symbol) {
             }
             a.getWatchlist().clearList();
             for (TradeItem ti : dbSymbols) a.getWatchlist().addWatchlistItem(ti);
-            db.saveWatchlistSymbols(a.getId(), "User List", dbSymbols);
             System.out.println("[Model] Loaded watchlist from DB (" + dbSymbols.size() + ")");
         }
     }
