@@ -17,7 +17,7 @@ import java.util.Random;
  */
 public class MockFinnhubClient implements TradeSource {
     private TradeListener listener;
-    private static final List<String> subscribedSymbols = new ArrayList<>();
+    private static final java.util.concurrent.CopyOnWriteArrayList<String> subscribedSymbols = new java.util.concurrent.CopyOnWriteArrayList<>();
     private static final Random rand = new Random();
 
     // for getting the starting price
@@ -29,19 +29,22 @@ public class MockFinnhubClient implements TradeSource {
     private final PriceSeedProvider seedProvider;
     private final java.util.concurrent.ConcurrentMap<String, Double> lastPrices =
             new java.util.concurrent.ConcurrentHashMap<>();
+    private volatile boolean running = true;
 
     /**
      * Constructs a new MockFinnhubClient and starts the simulation thread.
      */
     public MockFinnhubClient(PriceSeedProvider seedProvider) {
         this.seedProvider = seedProvider != null ? seedProvider : s -> Double.NaN;
-        new Thread(() -> {
+        // start a daemon emitter thread and allow controlled shutdown
+        Thread emitter = new Thread(() -> {
             try {
                 Thread.sleep(5000);
             } catch (InterruptedException e) {
-                throw new RuntimeException(e);
+                // interrupted during initial wait — exit cleanly
+                return;
             }
-            while (true) {
+            while (running) {
                 JsonArray trades = new JsonArray();
                 long baseTimestamp = System.currentTimeMillis();
 
@@ -60,7 +63,7 @@ public class MockFinnhubClient implements TradeSource {
 
                     // Notify listener
                     if (listener != null) {
-                        listener.onTrade(symbol, price);
+                        try { listener.onTrade(symbol, price); } catch (Exception ignore) {}
                     }
                 }
 
@@ -72,9 +75,14 @@ public class MockFinnhubClient implements TradeSource {
 
                 try {
                     Thread.sleep(900);
-                } catch (InterruptedException ignore) {}
+                } catch (InterruptedException ignore) {
+                    // stop if interrupted
+                    break;
+                }
             }
-        }, "MockFinnhub-Emitter").start();
+        }, "MockFinnhub-Emitter");
+        emitter.setDaemon(true);
+        emitter.start();
     }
 
     /**
@@ -111,6 +119,13 @@ public class MockFinnhubClient implements TradeSource {
     public void unsubscribe(String symbol) {
         System.out.println("[Mock] Unsubscribed from " + symbol);
         subscribedSymbols.remove(symbol);
+    }
+
+    /**
+     * Stops the emitter thread and releases resources used by this mock client.
+     */
+    public void stop() {
+        running = false;
     }
 
     /**
