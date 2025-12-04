@@ -30,6 +30,7 @@ public class MockFinnhubClient implements TradeSource {
     private final java.util.concurrent.ConcurrentMap<String, Double> lastPrices =
             new java.util.concurrent.ConcurrentHashMap<>();
     private volatile boolean running = true;
+    private Thread emitterThread;
 
     /**
      * Constructs a new MockFinnhubClient and starts the simulation thread.
@@ -82,6 +83,7 @@ public class MockFinnhubClient implements TradeSource {
             }
         }, "MockFinnhub-Emitter");
         emitter.setDaemon(true);
+        this.emitterThread = emitter;
         emitter.start();
     }
 
@@ -126,6 +128,26 @@ public class MockFinnhubClient implements TradeSource {
      */
     public void stop() {
         running = false;
+        Thread t = this.emitterThread;
+        if (t != null) {
+            t.interrupt();
+        }
+    }
+
+    /**
+     * Waits for the emitter to stop.
+     * @param timeoutMs maximum time to wait in milliseconds
+     * @return true if the emitter stopped within the timeout, false otherwise
+     */
+    public boolean waitForStop(long timeoutMs) {
+        Thread t = this.emitterThread;
+        if (t == null) return true;
+        try {
+            t.join(timeoutMs);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+        return !t.isAlive();
     }
 
     /**
