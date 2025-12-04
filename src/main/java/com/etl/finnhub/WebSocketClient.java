@@ -120,7 +120,7 @@ public class WebSocketClient implements TradeSource {
      * @param msg The message string.
      * @param db  The database instance.
      */
-    static void parseAndStore(String msg, Database db) {
+    public static void parseAndStore(String msg, Database db) {
         JsonObject obj = JsonParser.parseString(msg).getAsJsonObject();
         if (!obj.has("data"))
             return;
@@ -133,9 +133,7 @@ public class WebSocketClient implements TradeSource {
             String s = trade.get("s").getAsString();
 
             try {
-                // Insert as a daily candle (compatibility overload) so tests can query by
-                // timestamp
-                // db.insertCandle(s, timestamp, price, price, price, price, volume);
+                db.insertCandle(s, 1, "day", timestamp, price, price, price, price, volume);
             } catch (Exception e) {
                 throw new RuntimeException(e);
             }

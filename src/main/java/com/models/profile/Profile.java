@@ -18,12 +18,27 @@ public class Profile {
 
     // Constructor
     /**
+     * Constructs an empty Profile with no accounts.
+     */
+    public Profile() {
+    }
+
+    /**
      * Constructs a new Profile with a list of accounts.
      * Sets the first account as active by default.
      *
      * @param accounts The list of accounts.
      */
     public Profile(ArrayList<Account> accounts) {
+        if (accounts != null) {
+            this.accounts.addAll(accounts);
+            if (!this.accounts.isEmpty()) {
+                this.activeAccount = this.accounts.get(0);
+            }
+        }
+    }
+
+    public Profile(java.util.Collection<Account> accounts) {
         if (accounts != null) {
             this.accounts.addAll(accounts);
             if (!this.accounts.isEmpty()) {
