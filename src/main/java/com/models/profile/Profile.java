@@ -10,18 +10,13 @@ import java.util.Objects;
  * Manages the list of accounts and the active account.
  */
 public class Profile {
+    private static Profile profile = null; // singleton object
     private final ArrayList<Account> accounts = new ArrayList<>(); // list of accounts
     private Account activeAccount;
-    private int maxNumberOfAccounts = 5; // maximum number of accounts
+    private static final int maxNumberOfAccounts = 5; // maximum number of accounts
     private long id; // database identifier
     private String owner;
 
-    // Constructor
-    /**
-     * Constructs an empty Profile with no accounts.
-     */
-    public Profile() {
-    }
 
     /**
      * Constructs a new Profile with a list of accounts.
@@ -29,23 +24,32 @@ public class Profile {
      *
      * @param accounts The list of accounts.
      */
-    public Profile(ArrayList<Account> accounts) {
+    private Profile(ArrayList<Account> accounts) {
         if (accounts != null) {
             this.accounts.addAll(accounts);
             if (!this.accounts.isEmpty()) {
                 this.activeAccount = this.accounts.get(0);
             }
         }
+        else System.out.println("[Profile] Warning: Profile initialized with null accounts");
     }
 
-    public Profile(java.util.Collection<Account> accounts) {
-        if (accounts != null) {
-            this.accounts.addAll(accounts);
-            if (!this.accounts.isEmpty()) {
-                this.activeAccount = this.accounts.get(0);
-            }
+    // ensure singleton
+    public static Profile initProfile(ArrayList<Account> accounts) {
+        if (profile != null) {
+            throw new IllegalStateException("[Profile] Already initialized");
         }
+        profile = new Profile(accounts);
+        return profile;
     }
+
+    public static Profile getProfile() {
+        if (profile == null) {
+            throw new IllegalStateException("[Profile] Not initialized");
+        }
+        return profile;
+    }
+
 
     // Purpose: To add an account to the manager. Returns true if successful,
     // returns false if not.

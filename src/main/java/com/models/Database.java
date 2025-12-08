@@ -1188,7 +1188,7 @@ public class Database implements AutoCloseable {
                 }
             }
         }
-        Profile p = new Profile(accounts);
+        Profile p = Profile.initProfile(accounts);
         p.setOwner(profileName);
         p.setId(profileId);
         return p;

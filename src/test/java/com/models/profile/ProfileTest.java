@@ -1,16 +1,24 @@
 package com.models.profile;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import java.lang.reflect.Field;
 import java.util.ArrayList;
 
 import static org.junit.jupiter.api.Assertions.*;
 
 class ProfileTest {
+    @BeforeEach
+    void resetProfileSingleton() throws Exception {
+        Field instance = Profile.class.getDeclaredField("profile");
+        instance.setAccessible(true);
+        instance.set(null, null);
+    }
 
     @Test
     void noArgConstructorCreatesEmptyProfile() {
-        Profile profile = new Profile();
+        Profile profile = Profile.initProfile(null);
         assertNull(profile.getActiveAccount());
         assertEquals(0, profile.getNumberOfAccounts());
     }
@@ -23,14 +31,14 @@ class ProfileTest {
         accounts.add(first);
         accounts.add(second);
 
-        Profile profile = new Profile(accounts);
+        Profile profile = Profile.initProfile(accounts);
         assertEquals(first, profile.getActiveAccount());
         assertEquals(2, profile.getNumberOfAccounts());
     }
 
     @Test
     void addAndRemoveAccountsManageActiveSelection() {
-        Profile profile = new Profile();
+        Profile profile = Profile.initProfile(null);
         Account first = new Account("First");
         Account second = new Account("Second");
 
@@ -48,7 +56,7 @@ class ProfileTest {
 
     @Test
     void setActiveAccountRequiresMembership() {
-        Profile profile = new Profile();
+        Profile profile = Profile.initProfile(null);
         Account account = new Account("First");
 
         profile.addAccount(account);
