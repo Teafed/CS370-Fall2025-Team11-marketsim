@@ -193,7 +193,7 @@ public class HistoricalService {
         synchronized (lock) {
             if (Boolean.TRUE.equals(IN_FLIGHT.putIfAbsent(k, true))) return 0;
             try {
-                return doBackfillRange(symbol, requested); // extract existing logic into this
+                return doBackfillRange(symbol, requested);
             } finally { IN_FLIGHT.remove(k); }
         }
     }

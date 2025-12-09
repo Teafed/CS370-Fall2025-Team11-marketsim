@@ -136,70 +136,6 @@ public class LogoCache {
     }
 
     /**
-     * Loads a logo asynchronously, resolving the URL if necessary.
-     *
-     * @param symbol      The stock symbol.
-     * @param urlResolver A function that resolves a symbol to a logo URL (can be
-     *                    blocking).
-     * @param w           Desired width.
-     * @param h           Desired height.
-     * @param callback    Callback to be executed on the EDT with the loaded image.
-     */
-    public void load(String symbol, java.util.function.Function<String, String> urlResolver, int w, int h,
-                     Consumer<ImageIcon> callback) {
-        Objects.requireNonNull(callback);
-
-        // Check memory cache first (using symbol as key)
-        ImageIcon existing = cache.get(symbol);
-        if (existing != null) {
-            SwingUtilities.invokeLater(() -> callback.accept(existing));
-            return;
-        }
-
-        // If not in memory, we need to resolve URL and then load/download
-        // This entire process should happen off the EDT
-        ex.submit(() -> {
-            try {
-                // 1. Check disk cache using SYMBOL key
-                Path diskPath = getCachedFilePath(symbol);
-                if (Files.exists(diskPath)) {
-                    try {
-                        BufferedImage img = ImageIO.read(diskPath.toFile());
-                        if (img != null) {
-                            System.out.println("[LogoCache] Hit disk cache for " + symbol);
-                            BufferedImage resized = resizeImage(img, w, h);
-                            ImageIcon result = new ImageIcon(resized);
-                            cache.put(symbol, result);
-                            // Track content hash for deduplication
-                            String contentHash = computeImageHash(img);
-                            contentHashToKey.putIfAbsent(contentHash, symbol);
-                            SwingUtilities.invokeLater(() -> callback.accept(result));
-                            return;
-                        }
-                    } catch (Exception e) {
-                        System.err.println("Failed to load cached logo from disk: " + e.getMessage());
-                    }
-                }
-
-                // 2. Resolve URL
-                String url = urlResolver.apply(symbol);
-                if (url == null || url.isBlank()) {
-                    SwingUtilities.invokeLater(() -> callback.accept(placeholder));
-                    return;
-                }
-
-                // 3. Download and cache using SYMBOL key
-                System.out.println("[LogoCache] Downloading " + symbol);
-                downloadAndCache(symbol, url, w, h, callback, symbol, diskPath);
-
-            } catch (Exception e) {
-                System.err.println("Error loading logo for " + symbol + ": " + e.getMessage());
-                SwingUtilities.invokeLater(() -> callback.accept(placeholder));
-            }
-        });
-    }
-
-    /**
      * Loads a logo asynchronously. Checks memory cache, then disk cache, then
      * downloads if necessary.
      *
@@ -236,7 +172,7 @@ public class LogoCache {
                 try {
                     BufferedImage img = ImageIO.read(cachedFile.toFile());
                     if (img != null) {
-                        System.out.println("[LogoCache] Hit disk cache for " + key);
+                        // System.out.println("[LogoCache] Hit disk cache for " + key);
                         BufferedImage resized = resizeImage(img, w, h);
                         ImageIcon result = new ImageIcon(resized);
                         // Store in memory cache for faster subsequent access

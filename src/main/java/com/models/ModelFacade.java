@@ -27,11 +27,7 @@ public class ModelFacade {
     private final Profile profile;
     private final List<ModelListener> listeners = new CopyOnWriteArrayList<>();
     private final HistoricalService hist;
-
-    private final java.util.Set<String> subscribed = java.util.concurrent.ConcurrentHashMap.newKeySet();
     private final Map<String, String> logoCache = new ConcurrentHashMap<>();
-    private final Map<String, Long> logoFetchAttempts = new ConcurrentHashMap<>();
-    private static final long LOGO_RETRY_DELAY_MS = 60000; // 1 minute before retry
 
     public record TradeRow(long id, long timestamp, String side, String symbol, int quantity, double price, int posAfter) { }
 
@@ -56,7 +52,7 @@ public class ModelFacade {
             }
             @Override
             public void loadSymbols(List<TradeItem> items) {
-                fireWatchlistChanged(items, getPortfolioItems());
+                fireWatchlistChanged(getWatchlistView(), getPortfolioItems());
             }
         });
         this.hist = new HistoricalService(db);
@@ -132,7 +128,8 @@ public class ModelFacade {
         }
     }
     public List<TradeItem> getWatchlist() {
-        return profile.getActiveAccount().getWatchlist().getWatchlist(); }
+        return profile.getActiveAccount().getWatchlist().getWatchlist();
+    }
     public List<TradeItem> getPortfolioItems() {
         List<String> symbols = profile.getActiveAccount().getPortfolio().getPortfolioItems();
         List<TradeItem> items = new ArrayList<>();
@@ -342,7 +339,7 @@ public class ModelFacade {
         ensureWatchlistPopulated(account);
         market.addFromWatchlist(account.getWatchlist());
         market.addFromPortfolio(account.getPortfolio());
-        fireWatchlistChanged(getWatchlist(), getPortfolioItems());
+        fireWatchlistChanged(getWatchlistView(), getPortfolioItems());
         fireAccountChanged();
         System.out.printf("[Model] Account set to %s (ID %d)%n", account.getName(), account.getId());
     }
@@ -441,7 +438,7 @@ public class ModelFacade {
             }
 
             fireAccountChanged();
-            fireWatchlistChanged(getWatchlist(), getPortfolioItems());
+            fireWatchlistChanged(getWatchlistView(), getPortfolioItems());
         } catch (Exception e) {
             fireError("Failed to place order", e);
         }
